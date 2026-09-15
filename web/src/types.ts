@@ -3,6 +3,8 @@ export type FieldType =
   | "textarea"
   | "number"
   | "select"
+  | "multiselect"
+  | "combo"
   | "boolean"
   | "json"
   | "keyvalue"
@@ -18,6 +20,7 @@ export interface FieldDef {
   help?: string;
   default?: unknown;
   options?: { value: string; label: string }[];
+  suggestFromCredential?: boolean;
   showIf?: { field: string; values: unknown[] };
 }
 
@@ -32,7 +35,7 @@ export interface NodeDefinition {
   color: string;
   group: NodeGroup;
   kind: "trigger" | "action";
-  triggerType?: "manual" | "webhook" | "schedule" | "poll";
+  triggerType?: "manual" | "webhook" | "schedule" | "app";
   credentialTypes?: string[];
   credentialOptional?: boolean;
   fields: FieldDef[];
@@ -47,12 +50,15 @@ export interface CredentialTypeDef {
   description?: string;
   docsUrl?: string;
   hasTest: boolean;
+  models?: string[];
+  defaultModel?: string;
   fields: { key: string; label: string; secret?: boolean; placeholder?: string; help?: string; required?: boolean }[];
 }
 
 export interface Meta {
   appName: string;
   publicUrl: string;
+  platform: { isVercel: boolean; receivesWebhooks: boolean; backgroundWorkers: boolean };
   nodes: NodeDefinition[];
   credentialTypes: CredentialTypeDef[];
 }

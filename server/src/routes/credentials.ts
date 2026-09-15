@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { decrypt, encrypt } from "../crypto.js";
-import { db, newId, now } from "../db.js";
+import { newId, now, one, query, run } from "../db.js";
 import type { CredentialType } from "../engine/types.js";
 import { httpError, requireString } from "../errors.js";
 import { getCredentialType } from "../nodes/index.js";
@@ -8,12 +8,13 @@ import { errorMessage } from "../nodes/util.js";
 
 const mask = (value: string | undefined) => (!value ? "" : value.length <= 8 ? "••••••" : `••••••${value.slice(-4)}`);
 
-function toSummary(row: any, userId: string) {
+async function toSummary(row: any, userId: string) {
   const type = getCredentialType(row.type);
   const data = decrypt<Record<string, string>>(row.data);
-  const usedBy = db
-    .prepare("SELECT id, name FROM workflows WHERE user_id = ? AND instr(graph, ?) > 0")
-    .all(userId, `"credentialId":"${row.id}"`);
+  const usedBy = await query("SELECT id, name FROM workflows WHERE user_id = $1 AND strpos(graph, $2) > 0", [
+    userId,
+    `"credentialId":"${row.id}"`,
+  ]);
   return {
     id: row.id,
     type: row.type,
@@ -45,8 +46,8 @@ async function runTest(type: CredentialType, data: Record<string, string>) {
   }
 }
 
-function getOwned(req: FastifyRequest, id: string) {
-  const row = db.prepare("SELECT * FROM credentials WHERE id = ? AND user_id = ?").get(id, req.user.id) as any;
+async function getOwned(req: FastifyRequest, id: string) {
+  const row = await one("SELECT * FROM credentials WHERE id = $1 AND user_id = $2", [id, req.user.id]);
   if (!row) throw httpError(404, "الحساب مش موجود");
   return row;
 }
@@ -59,8 +60,8 @@ const requireType = (key: unknown) => {
 
 export async function credentialRoutes(app: FastifyInstance) {
   app.get("/api/credentials", async (req) => {
-    const rows = db.prepare("SELECT * FROM credentials WHERE user_id = ? ORDER BY created_at DESC").all(req.user.id);
-    return rows.map((row) => toSummary(row, req.user.id));
+    const rows = await query("SELECT * FROM credentials WHERE user_id = $1 ORDER BY created_at DESC", [req.user.id]);
+    return Promise.all(rows.map((row) => toSummary(row, req.user.id)));
   });
 
   app.post("/api/credentials", async (req) => {
@@ -70,7 +71,7 @@ export async function credentialRoutes(app: FastifyInstance) {
     const data = cleanData(type, body.data);
     const id = newId();
     const timestamp = now();
-    db.prepare("INSERT INTO credentials (id, user_id, type, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+    await run("INSERT INTO credentials (id, user_id, type, name, data, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
       id,
       req.user.id,
       type.key,
@@ -78,31 +79,31 @@ export async function credentialRoutes(app: FastifyInstance) {
       encrypt(data),
       timestamp,
       timestamp,
-    );
-    return toSummary(getOwned(req, id), req.user.id);
+    ]);
+    return toSummary(await getOwned(req, id), req.user.id);
   });
 
   app.put("/api/credentials/:id", async (req) => {
     const { id } = req.params as { id: string };
-    const row = getOwned(req, id);
+    const row = await getOwned(req, id);
     const body = (req.body ?? {}) as Record<string, unknown>;
     const type = requireType(row.type);
     const name = body.name === undefined ? row.name : requireString(body.name, "اسم الحساب", 120);
     const data = cleanData(type, body.data, decrypt(row.data));
-    db.prepare("UPDATE credentials SET name = ?, data = ?, updated_at = ? WHERE id = ?").run(name, encrypt(data), now(), id);
-    return toSummary(getOwned(req, id), req.user.id);
+    await run("UPDATE credentials SET name = $1, data = $2, updated_at = $3 WHERE id = $4", [name, encrypt(data), now(), id]);
+    return toSummary(await getOwned(req, id), req.user.id);
   });
 
   app.delete("/api/credentials/:id", async (req) => {
     const { id } = req.params as { id: string };
-    getOwned(req, id);
-    db.prepare("DELETE FROM credentials WHERE id = ?").run(id);
+    await getOwned(req, id);
+    await run("DELETE FROM credentials WHERE id = $1", [id]);
     return { ok: true };
   });
 
   app.post("/api/credentials/:id/test", async (req) => {
     const { id } = req.params as { id: string };
-    const row = getOwned(req, id);
+    const row = await getOwned(req, id);
     return runTest(requireType(row.type), decrypt(row.data));
   });
 

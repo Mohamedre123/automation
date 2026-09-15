@@ -53,7 +53,8 @@ export function defaultParams(def: NodeDefinition): Record<string, unknown> {
   for (const field of def.fields) {
     if (field.default !== undefined) params[field.key] = structuredClone(field.default);
   }
-  if (def.type === "trigger.webhook") params.path = randomPath();
+  // Webhook and app triggers own a URL path (Telegram gets its webhook pointed at it).
+  if (def.triggerType === "webhook" || def.triggerType === "app") params.path = randomPath();
   return params;
 }
 

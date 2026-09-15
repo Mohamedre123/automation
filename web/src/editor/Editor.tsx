@@ -29,9 +29,31 @@ const nodeTypes = { app: FlowNode };
 
 interface RunResponse {
   execution?: Execution;
-  count?: number;
+  /** Waiting for real trigger data: poll the test session until it resolves. */
+  sessionId?: string;
+  waitingFor?: "webhook" | "app";
+  url?: string;
   message?: string;
 }
+
+interface TestSession {
+  status: "waiting" | "running" | "done" | "error" | "expired" | "cancelled";
+  message: string | null;
+  execution: Execution | null;
+}
+
+const sleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
 
 export function Editor() {
   return (
@@ -63,6 +85,7 @@ function EditorCanvas() {
   const [running, setRunning] = useState(false);
   const runController = useRef<AbortController | null>(null);
   const [execution, setExecution] = useState<Execution | null>(null);
+  const [waiting, setWaiting] = useState<{ waitingFor: "webhook" | "app"; url?: string } | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [picker, setPicker] = useState<{ after?: string; handle?: string } | null>(null);
 
@@ -232,6 +255,21 @@ function EditorCanvas() {
     }
   };
 
+  const showExecution = (record: Execution) => {
+    setExecution(record);
+    if (record.status === "success") {
+      toast("اتشغل بنجاح ✓", "success");
+      return;
+    }
+    toast("التشغيل فشل - شوف الخطوة اللي عليها علامة !", "error");
+    const failed = record.steps.find((s) => s.status === "error");
+    if (failed) {
+      setSelectedId(failed.nodeId);
+      setSide("node");
+      setPanelTab("result");
+    }
+  };
+
   const runOnce = async () => {
     if (running) {
       runController.current?.abort();
@@ -245,32 +283,37 @@ function EditorCanvas() {
     runController.current = controller;
     setRunning(true);
     setExecution(null);
+    setWaiting(null);
     setShowResults(false);
+    let sessionId = "";
     try {
       const res = await api<RunResponse>(`/workflows/${id}/run`, {
         body: { graph: toGraph(nodes, edges) },
         signal: controller.signal,
       });
-      if (res.execution) {
-        setExecution(res.execution);
-        if (res.execution.status === "success") {
-          toast(res.count && res.count > 1 ? `اتشغل ${res.count} مرات بنجاح ✓` : "اتشغل بنجاح ✓", "success");
-        } else {
-          toast("التشغيل فشل - شوف الخطوة اللي عليها علامة !", "error");
-          const failed = res.execution.steps.find((s) => s.status === "error");
-          if (failed) {
-            setSelectedId(failed.nodeId);
-            setSide("node");
-            setPanelTab("result");
-          }
+      if (res.execution) return showExecution(res.execution);
+      if (!res.sessionId) return void toast(res.message ?? "مفيش نتيجة");
+
+      sessionId = res.sessionId;
+      setWaiting({ waitingFor: res.waitingFor ?? "webhook", url: res.url });
+      for (;;) {
+        await sleep(1500, controller.signal);
+        const session = await api<TestSession>(`/workflows/${id}/test/${sessionId}`, { signal: controller.signal });
+        if (session.execution) return showExecution(session.execution);
+        if (session.status !== "waiting" && session.status !== "running") {
+          return void toast(session.message ?? "التجربة اتوقفت", session.status === "error" ? "error" : "info");
         }
-      } else if (res.message) {
-        toast(res.message);
       }
     } catch (e) {
-      toast((e as Error).name === "AbortError" ? "اتلغى التشغيل" : (e as Error).message, (e as Error).name === "AbortError" ? "info" : "error");
+      if ((e as Error).name === "AbortError") {
+        toast("اتلغى التشغيل");
+        if (sessionId) api(`/workflows/${id}/test/${sessionId}`, { method: "DELETE" }).catch(() => {});
+      } else {
+        toast((e as Error).message, "error");
+      }
     } finally {
       setRunning(false);
+      setWaiting(null);
       runController.current = null;
     }
   };
@@ -394,22 +437,22 @@ function EditorCanvas() {
             <div className="alert info" style={{ boxShadow: "var(--shadow)", alignItems: "center" }}>
               <Spinner size={16} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {triggerDef?.triggerType === "webhook" ? (
+                {waiting?.waitingFor === "webhook" ? (
                   <>
                     <strong>مستني طلب يوصل على الـ Webhook (لحد دقيقتين)...</strong>
                     <div className="copy-box" style={{ marginTop: 6 }}>
-                      <input className="input mono" readOnly value={webhookUrl} onFocus={(e) => e.target.select()} />
+                      <input className="input mono" readOnly value={waiting.url ?? webhookUrl} onFocus={(e) => e.target.select()} />
                       <button
                         className="btn icon"
                         title="نسخ"
-                        onClick={() => copyText(webhookUrl).then((ok) => ok && toast("اتنسخ", "success"))}
+                        onClick={() => copyText(waiting.url ?? webhookUrl).then((ok) => ok && toast("اتنسخ", "success"))}
                       >
                         <Icon name="copy" size={15} />
                       </button>
                     </div>
                   </>
-                ) : triggerDef?.triggerType === "poll" ? (
-                  <strong>مستني بيانات جديدة... ابعت رسالة للبوت دلوقتي (لحد دقيقة ونص)</strong>
+                ) : waiting?.waitingFor === "app" ? (
+                  <strong>مستني رسالة جديدة... ابعت رسالة للبوت دلوقتي (لحد دقيقتين)</strong>
                 ) : (
                   <strong>جاري التشغيل...</strong>
                 )}

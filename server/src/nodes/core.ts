@@ -1,5 +1,5 @@
 import { randomToken } from "../crypto.js";
-import { db, now } from "../db.js";
+import { now, one, run } from "../db.js";
 import type { NodeDefinition } from "../engine/types.js";
 import { keyValueRows, sleep, toNumber } from "./util.js";
 
@@ -45,6 +45,7 @@ const webhookTrigger: NodeDefinition = {
       help: "ابعت أي طلب (GET/POST) للرابط ده. لو فيه خطوة «رد على الـ Webhook» الرد هيستنى نتيجتها.",
     },
   ],
+  webhook: { parse: (request) => [request] },
   sampleOutput: {
     method: "POST",
     body: { name: "Ahmed", email: "ahmed@example.com", message: "مرحبا" },
@@ -201,10 +202,10 @@ const delayNode: NodeDefinition = {
   color: "#0f766e",
   group: "logic",
   kind: "action",
-  fields: [{ key: "seconds", label: "عدد الثواني (حد أقصى 300)", type: "number", default: 5 }],
+  fields: [{ key: "seconds", label: "عدد الثواني (حد أقصى 120)", type: "number", default: 5 }],
   sampleOutput: { waitedSeconds: 5 },
   async run({ params, signal }) {
-    const seconds = Math.min(Math.max(toNumber(params.seconds, 5), 0), 300);
+    const seconds = Math.min(Math.max(toNumber(params.seconds, 5), 0), 120);
     await sleep(seconds * 1000, signal);
     return { output: { waitedSeconds: seconds } };
   },
@@ -247,6 +248,23 @@ const respondNode: NodeDefinition = {
 
 const storeField = { key: "store", label: "اسم المخزن", type: "text", default: "default", required: true } as const;
 
+export async function datastoreWrite(userId: string, store: string, key: string, value: unknown) {
+  await run(
+    `INSERT INTO datastore (user_id, store, key, value, updated_at) VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, store, key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+    [userId, store, key, JSON.stringify(value ?? null), now()],
+  );
+}
+
+export async function datastoreRead(userId: string, store: string, key: string): Promise<{ found: boolean; value: unknown }> {
+  const row = await one<{ value: string }>("SELECT value FROM datastore WHERE user_id = $1 AND store = $2 AND key = $3", [
+    userId,
+    store,
+    key,
+  ]);
+  return { found: Boolean(row), value: row ? JSON.parse(row.value) : null };
+}
+
 const datastoreSet: NodeDefinition = {
   type: "datastore.set",
   name: "حفظ في مخزن البيانات",
@@ -266,10 +284,7 @@ const datastoreSet: NodeDefinition = {
     const key = String(params.key ?? "").trim();
     if (!key) throw new Error("المفتاح فاضي");
     const store = String(params.store || "default");
-    db.prepare(
-      `INSERT INTO datastore (user_id, store, key, value, updated_at) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(user_id, store, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    ).run(workflow.userId, store, key, JSON.stringify(params.value ?? null), now());
+    await datastoreWrite(workflow.userId, store, key, params.value);
     return { output: { store, key, value: params.value ?? null } };
   },
 };
@@ -287,10 +302,7 @@ const datastoreGet: NodeDefinition = {
   sampleOutput: { found: true, key: "ahmed@example.com", value: { name: "Ahmed" } },
   async run({ params, workflow }) {
     const key = String(params.key ?? "").trim();
-    const row = db
-      .prepare("SELECT value FROM datastore WHERE user_id = ? AND store = ? AND key = ?")
-      .get(workflow.userId, String(params.store || "default"), key) as { value: string } | undefined;
-    return { output: { found: Boolean(row), key, value: row ? JSON.parse(row.value) : null } };
+    return { output: { key, ...(await datastoreRead(workflow.userId, String(params.store || "default"), key)) } };
   },
 };
 
@@ -306,10 +318,12 @@ const datastoreDelete: NodeDefinition = {
   fields: [storeField, { key: "key", label: "المفتاح", type: "text", required: true }],
   sampleOutput: { deleted: true },
   async run({ params, workflow }) {
-    const result = db
-      .prepare("DELETE FROM datastore WHERE user_id = ? AND store = ? AND key = ?")
-      .run(workflow.userId, String(params.store || "default"), String(params.key ?? "").trim());
-    return { output: { deleted: Number(result.changes) > 0 } };
+    const deleted = await run("DELETE FROM datastore WHERE user_id = $1 AND store = $2 AND key = $3", [
+      workflow.userId,
+      String(params.store || "default"),
+      String(params.key ?? "").trim(),
+    ]);
+    return { output: { deleted: deleted > 0 } };
   },
 };
 

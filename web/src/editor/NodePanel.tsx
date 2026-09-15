@@ -37,6 +37,8 @@ export function NodePanel({
   const setParam = (key: string, value: unknown) => onChange({ params: { ...node.params, [key]: value } });
   const matching = credentials.filter((c) => def.credentialTypes?.includes(c.type));
   const showResult = tab === "result" && step;
+  const selectedType = credType(matching.find((c) => c.id === node.credentialId)?.type ?? def.credentialTypes?.[0] ?? "");
+  const models = selectedType?.models ?? [];
 
   return (
     <aside className="panel" aria-label="إعدادات الخطوة">
@@ -87,16 +89,24 @@ export function NodePanel({
                     onChange={(e) => onChange({ credentialId: e.target.value || null })}
                   >
                     <option value="">{def.credentialOptional ? "بدون مصادقة" : "— اختار حساب —"}</option>
-                    {matching.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({credType(c.type)?.name})
-                      </option>
-                    ))}
+                    {matching.map((c) => {
+                      const typeName = credType(c.type)?.name;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {typeName && typeName !== c.name ? `${c.name} (${typeName})` : c.name}
+                        </option>
+                      );
+                    })}
                   </select>
                   <button className="btn" onClick={() => setCredentialModal(true)}>
                     <Icon name="plus" size={15} /> جديد
                   </button>
                 </div>
+                {def.credentialTypes.length > 1 && (
+                  <div className="help">
+                    اختار الحساب اللي عندك مفتاحه ({def.credentialTypes.map((t) => credType(t)?.name ?? t).join(" أو ")}) - الخطوة هتشتغل بيه.
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -111,14 +121,26 @@ export function NodePanel({
                       </div>
                       {field.help && <div className="help">{field.help}</div>}
                     </div>
-                    <FieldInput field={field} value={node.params[field.key] ?? field.default} onChange={(v) => setParam(field.key, v)} nodeId={node.id} />
+                    <FieldInput
+                      field={field}
+                      value={node.params[field.key] ?? field.default}
+                      onChange={(v) => setParam(field.key, v)}
+                      nodeId={node.id}
+                      models={models}
+                    />
                   </div>
                 ) : (
                   <div className="field" key={field.key}>
                     <label className="label">
                       {field.label} {field.required && <span className="req">*</span>}
                     </label>
-                    <FieldInput field={field} value={node.params[field.key] ?? field.default} onChange={(v) => setParam(field.key, v)} nodeId={node.id} />
+                    <FieldInput
+                      field={field}
+                      value={node.params[field.key] ?? field.default}
+                      onChange={(v) => setParam(field.key, v)}
+                      nodeId={node.id}
+                      models={models}
+                    />
                     {field.help && <div className="help">{field.help}</div>}
                   </div>
                 ),

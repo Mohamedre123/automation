@@ -285,11 +285,14 @@ export function FieldInput({
   value,
   onChange,
   nodeId,
+  models = [],
 }: {
   field: FieldDef;
   value: unknown;
   onChange: (value: unknown) => void;
   nodeId: string;
+  /** Model suggestions of the selected credential (for combo fields). */
+  models?: string[];
 }) {
   const { meta } = useMeta();
   const toast = useToast();
@@ -324,6 +327,44 @@ export function FieldInput({
           ))}
         </select>
       );
+    case "combo": {
+      const listId = `models-${nodeId}-${field.key}`;
+      return (
+        <>
+          <input
+            className="input mono"
+            list={listId}
+            value={text}
+            placeholder={field.placeholder}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <datalist id={listId}>
+            {(field.suggestFromCredential ? models : (field.options ?? []).map((o) => o.value)).map((model) => (
+              <option key={model} value={model} />
+            ))}
+          </datalist>
+        </>
+      );
+    }
+    case "multiselect": {
+      const selected: string[] = Array.isArray(value) ? value : [];
+      return (
+        <div className="picker-list">
+          {field.options?.map((option) => (
+            <label key={option.value} className="node-option" style={{ cursor: "pointer", padding: "7px 8px", gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option.value)}
+                onChange={(e) =>
+                  onChange(e.target.checked ? [...selected, option.value] : selected.filter((v) => v !== option.value))
+                }
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
     case "boolean":
       return <Toggle on={Boolean(value)} onChange={onChange} />;
     case "number":

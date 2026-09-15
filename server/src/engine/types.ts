@@ -3,6 +3,8 @@ export type FieldType =
   | "textarea"
   | "number"
   | "select"
+  | "multiselect"
+  | "combo"
   | "boolean"
   | "json"
   | "keyvalue"
@@ -18,6 +20,8 @@ export interface FieldDef {
   help?: string;
   default?: unknown;
   options?: { value: string; label: string }[];
+  /** combo fields: suggest the model list of the selected credential type. */
+  suggestFromCredential?: boolean;
   /** Only show this field when another field has one of these values. */
   showIf?: { field: string; values: unknown[] };
 }
@@ -38,6 +42,9 @@ export interface CredentialType {
   description?: string;
   docsUrl?: string;
   fields: CredentialField[];
+  /** AI providers: model suggestions and the model used when the field is empty. */
+  models?: string[];
+  defaultModel?: string;
   /** Resolves with a short success note, throws with a readable message on failure. */
   test?: (data: Record<string, string>) => Promise<string>;
 }
@@ -51,6 +58,13 @@ export interface CredentialValue {
 export interface WebhookResponse {
   status: number;
   headers: Record<string, string>;
+  body: unknown;
+}
+
+export interface WebhookRequest {
+  method: string;
+  headers: Record<string, unknown>;
+  query: unknown;
   body: unknown;
 }
 
@@ -80,6 +94,20 @@ export interface PollContext {
   testMode: boolean;
 }
 
+export interface TriggerWebhook {
+  /** Point the external service at our URL (on activation or a test run). */
+  register?: (ctx: {
+    params: Record<string, any>;
+    credential?: CredentialValue;
+    url: string;
+    secretToken: string;
+    signal: AbortSignal;
+  }) => Promise<void>;
+  unregister?: (ctx: { params: Record<string, any>; credential?: CredentialValue; signal: AbortSignal }) => Promise<void>;
+  /** Incoming request -> trigger items (one execution each). Return [] to ignore. */
+  parse: (request: WebhookRequest, ctx: { params: Record<string, any>; secretToken: string }) => unknown[];
+}
+
 export type NodeGroup = "trigger" | "ai" | "apps" | "logic" | "data";
 
 export interface NodeDefinition {
@@ -91,13 +119,15 @@ export interface NodeDefinition {
   color: string;
   group: NodeGroup;
   kind: "trigger" | "action";
-  triggerType?: "manual" | "webhook" | "schedule" | "poll";
+  /** webhook = our URL is called directly, app = an external app pushes events (webhook) or is polled locally. */
+  triggerType?: "manual" | "webhook" | "schedule" | "app";
   credentialTypes?: string[];
   credentialOptional?: boolean;
   fields: FieldDef[];
   outputs?: { key: string; label: string }[];
   sampleOutput?: unknown;
   run?: (ctx: NodeContext) => Promise<NodeResult>;
+  webhook?: TriggerWebhook;
   poll?: (ctx: PollContext) => Promise<{ items: unknown[]; state: any }>;
 }
 

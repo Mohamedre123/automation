@@ -50,7 +50,15 @@ interface MetaState {
 
 const MetaContext = createContext<MetaState>(null as unknown as MetaState);
 
-const fallbackColors: Record<string, string> = { http: "#2563eb", anthropic: "#d97757", telegram: "#229ed9" };
+const fallbackColors: Record<string, string> = {
+  http: "#2563eb",
+  anthropic: "#d97757",
+  telegram: "#229ed9",
+  openai: "#10a37f",
+  gemini: "#4285f4",
+  ai: "#7c3aed",
+  agent: "#9333ea",
+};
 
 export function MetaProvider({ children }: { children: ReactNode }) {
   const [meta, setMeta] = useState<Meta | null>(null);

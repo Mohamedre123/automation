@@ -21,7 +21,7 @@ export const telegramCredential: CredentialType = {
   key: "telegramBot",
   name: "Telegram Bot",
   app: "telegram",
-  description: "هات الـ token من @BotFather على تيليجرام.",
+  description: "هات الـ token من @BotFather على تيليجرام. يُفضّل بوت مخصص للمنصة.",
   docsUrl: "https://core.telegram.org/bots/tutorial#obtain-your-bot-token",
   fields: [{ key: "botToken", label: "Bot Token", secret: true, required: true, placeholder: "123456:ABC-DEF..." }],
   async test(data) {
@@ -59,6 +59,16 @@ const sampleMessage = {
   text: "مرحبا، عايز أعرف الأسعار",
 };
 
+const updateTypes = (params: Record<string, any>) => {
+  const type = String(params.updateType || "message");
+  return type === "all" ? [] : [type];
+};
+
+const matchesType = (update: any, params: Record<string, any>) => {
+  const types = updateTypes(params);
+  return types.length === 0 || types.some((t) => t in (update ?? {}));
+};
+
 export const telegramNodes: NodeDefinition[] = [
   {
     type: "telegram.trigger",
@@ -69,7 +79,7 @@ export const telegramNodes: NodeDefinition[] = [
     color: "#229ed9",
     group: "trigger",
     kind: "trigger",
-    triggerType: "poll",
+    triggerType: "app",
     credentialTypes: ["telegramBot"],
     fields: [
       {
@@ -82,35 +92,48 @@ export const telegramNodes: NodeDefinition[] = [
           { value: "callback_query", label: "ضغطات الأزرار (Callback)" },
           { value: "all", label: "كل التحديثات" },
         ],
-      },
-      {
-        key: "dropWebhook",
-        label: "إلغاء أي Webhook قديم على البوت",
-        type: "boolean",
-        default: true,
-        help: "تيليجرام مش بيسمح بالاستقبال من مكانين. لو البوت مربوط بـ Make أو غيره هيتفك منه.",
+        help: "البوت بيستقبل من مكان واحد بس. لو نفس البوت مربوط بمنصة تانية هيتفك منها.",
       },
     ],
     sampleOutput: { update_id: 900000001, message: sampleMessage },
+    // Deployed (public HTTPS): Telegram pushes updates to our webhook.
+    webhook: {
+      async register({ params, credential, url, secretToken, signal }) {
+        await telegram(
+          credential?.data.botToken ?? "",
+          "setWebhook",
+          { url, secret_token: secretToken, allowed_updates: updateTypes(params), drop_pending_updates: false },
+          signal,
+        );
+      },
+      async unregister({ credential, signal }) {
+        await telegram(credential?.data.botToken ?? "", "deleteWebhook", { drop_pending_updates: false }, signal);
+      },
+      parse(request, { params, secretToken }) {
+        if (request.headers["x-telegram-bot-api-secret-token"] !== secretToken) {
+          throw Object.assign(new Error("Invalid Telegram secret token"), { statusCode: 401 });
+        }
+        return matchesType(request.body, params) ? [request.body] : [];
+      },
+    },
+    // Local dev (no public URL): long polling from the running server.
     async poll({ params, credential, state, signal, testMode }) {
       const token = credential?.data.botToken ?? "";
-      let nextState = { ...(state ?? {}) };
-      if (!nextState.webhookCleared && params.dropWebhook !== false) {
+      const nextState = { ...(state ?? {}) };
+      if (!nextState.webhookCleared) {
         const info = await telegram<{ url: string }>(token, "getWebhookInfo", {}, signal);
         if (info.url) await telegram(token, "deleteWebhook", { drop_pending_updates: false }, signal);
         nextState.webhookCleared = true;
       }
-      const type = String(params.updateType || "message");
       const waitSeconds = testMode ? 3 : 25;
       const updates = await telegram<any[]>(
         token,
         "getUpdates",
-        { offset: nextState.offset, timeout: waitSeconds, allowed_updates: type === "all" ? [] : [type] },
+        { offset: nextState.offset, timeout: waitSeconds, allowed_updates: updateTypes(params) },
         withTimeout(signal, (waitSeconds + 15) * 1000),
       );
       if (updates.length) nextState.offset = updates[updates.length - 1].update_id + 1;
-      const items = type === "all" ? updates : updates.filter((u) => type in u);
-      return { items, state: nextState };
+      return { items: updates.filter((u) => matchesType(u, params)), state: nextState };
     },
   },
   {
@@ -134,17 +157,25 @@ export const telegramNodes: NodeDefinition[] = [
     async run({ params, credential, signal }) {
       const text = String(params.text ?? "");
       if (!text.trim()) throw new Error("نص الرسالة فاضي");
-      const body: Record<string, unknown> = {
-        chat_id: String(params.chatId ?? "").trim(),
-        text: text.slice(0, 4096),
-        link_preview_options: { is_disabled: Boolean(params.disablePreview) },
-      };
-      if (params.parseMode) body.parse_mode = params.parseMode;
+      const token = credential?.data.botToken ?? "";
+      const chatId = String(params.chatId ?? "").trim();
       const replyTo = Number(params.replyToMessageId);
-      if (Number.isInteger(replyTo) && replyTo > 0) {
-        body.reply_parameters = { message_id: replyTo, allow_sending_without_reply: true };
+      // Telegram caps a message at 4096 characters: long AI answers are split.
+      const chunks = text.match(/[\s\S]{1,4000}(?=\s|$)|[\s\S]{1,4000}/g) ?? [text];
+      let last: unknown;
+      for (const [i, chunk] of chunks.entries()) {
+        const body: Record<string, unknown> = {
+          chat_id: chatId,
+          text: chunk,
+          link_preview_options: { is_disabled: Boolean(params.disablePreview) },
+        };
+        if (params.parseMode) body.parse_mode = params.parseMode;
+        if (i === 0 && Number.isInteger(replyTo) && replyTo > 0) {
+          body.reply_parameters = { message_id: replyTo, allow_sending_without_reply: true };
+        }
+        last = await telegram(token, "sendMessage", body, signal);
       }
-      return { output: await telegram(credential?.data.botToken ?? "", "sendMessage", body, signal) };
+      return { output: last };
     },
   },
   {
@@ -172,6 +203,23 @@ export const telegramNodes: NodeDefinition[] = [
       };
       if (params.parseMode) body.parse_mode = params.parseMode;
       return { output: await telegram(credential?.data.botToken ?? "", "sendPhoto", body, signal) };
+    },
+  },
+  {
+    type: "telegram.typing",
+    name: "إظهار «بيكتب...»",
+    description: "بيظهر للعميل إن البوت بيكتب لحد ما الرد يوصل.",
+    app: "telegram",
+    appName: "Telegram Bot",
+    color: "#229ed9",
+    group: "apps",
+    kind: "action",
+    credentialTypes: ["telegramBot"],
+    fields: [chatIdField],
+    sampleOutput: { sent: true },
+    async run({ params, credential, signal }) {
+      await telegram(credential?.data.botToken ?? "", "sendChatAction", { chat_id: String(params.chatId ?? "").trim(), action: "typing" }, signal);
+      return { output: { sent: true } };
     },
   },
 ];

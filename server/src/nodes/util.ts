@@ -1,13 +1,3 @@
-export class HttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly body?: unknown,
-  ) {
-    super(message);
-  }
-}
-
 export function withTimeout(signal: AbortSignal, ms: number): AbortSignal {
   return AbortSignal.any([signal, AbortSignal.timeout(ms)]);
 }
@@ -46,6 +36,27 @@ export const toNumber = (value: unknown, fallback: number) => {
 
 export const keyValueRows = (value: unknown): { key: string; value: unknown }[] =>
   Array.isArray(value) ? value.filter((row) => row && String(row.key ?? "").trim()) : [];
+
+/** Blocks obvious internal targets for URLs chosen at runtime (e.g. by an AI agent). */
+export function assertPublicUrl(raw: string): URL {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("الرابط مش صحيح");
+  }
+  if (!/^https?:$/.test(url.protocol)) throw new Error("الرابط لازم يبدأ بـ http أو https");
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  if (
+    /^(localhost|0\.|127\.|10\.|192\.168\.|169\.254\.|::1$|fc|fd|fe80)/i.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local")
+  ) {
+    throw new Error("مش مسموح بالوصول لعناوين داخلية");
+  }
+  return url;
+}
 
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) {

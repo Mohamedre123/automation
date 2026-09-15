@@ -48,6 +48,21 @@ const paths: Record<string, ReactElement> = {
     </>
   ),
   zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
+  sparkles: (
+    <>
+      <path d="M12 3.5 13.8 8.2 18.5 10 13.8 11.8 12 16.5 10.2 11.8 5.5 10 10.2 8.2z" />
+      <path d="M19 15.5 19.8 17.7 22 18.5 19.8 19.3 19 21.5 18.2 19.3 16 18.5 18.2 17.7z" />
+    </>
+  ),
+  bot: (
+    <>
+      <rect x="4" y="8" width="16" height="12" rx="3" />
+      <path d="M12 8V4M2 14h2M20 14h2" />
+      <circle cx="9.5" cy="13.5" r="1" />
+      <circle cx="14.5" cy="13.5" r="1" />
+      <path d="M9.5 17h5" />
+    </>
+  ),
   webhook: (
     <>
       <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2" />
@@ -168,6 +183,9 @@ const appIcons: Record<string, string> = {
   logic: "branch",
   tools: "tools",
   datastore: "database",
+  ai: "sparkles",
+  agent: "bot",
+  gemini: "sparkles",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
@@ -177,6 +195,9 @@ export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
         A\
       </span>
     );
+  }
+  if (app === "openai") {
+    return <span style={{ fontWeight: 700, fontSize: size * 0.52, direction: "ltr", letterSpacing: 0.5 }}>GPT</span>;
   }
   return <Icon name={appIcons[app] ?? "zap"} size={size} />;
 }

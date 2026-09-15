@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { decrypt } from "../crypto.js";
-import { db, newId, now, parseJson } from "../db.js";
+import { newId, now, one, parseJson, run } from "../db.js";
 import { getNode } from "../nodes/index.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
@@ -39,21 +39,22 @@ const MAX_STORED_CHARS = 200_000;
 
 export const findTrigger = (graph: WorkflowGraph) => graph.nodes.find((n) => getNode(n.type)?.kind === "trigger");
 
-export function loadCredential(userId: string, credentialId: string): CredentialValue | undefined {
-  const row = db
-    .prepare("SELECT id, type, data FROM credentials WHERE id = ? AND user_id = ?")
-    .get(credentialId, userId) as { id: string; type: string; data: string } | undefined;
+export async function loadCredential(userId: string, credentialId: string): Promise<CredentialValue | undefined> {
+  const row = await one<{ id: string; type: string; data: string }>(
+    "SELECT id, type, data FROM credentials WHERE id = $1 AND user_id = $2",
+    [credentialId, userId],
+  );
   if (!row) return undefined;
   return { id: row.id, type: row.type, data: decrypt<Record<string, string>>(row.data) };
 }
 
-export function resolveCredential(def: NodeDefinition, node: WorkflowNode, userId: string) {
+export async function resolveCredential(def: NodeDefinition, node: WorkflowNode, userId: string) {
   if (!def.credentialTypes?.length) return undefined;
   if (!node.credentialId) {
     if (def.credentialOptional) return undefined;
     throw new Error("اختار الحساب (Credential) للخطوة دي");
   }
-  const credential = loadCredential(userId, node.credentialId);
+  const credential = await loadCredential(userId, node.credentialId);
   if (!credential) throw new Error("الحساب (Credential) المختار اتمسح - اختار واحد تاني");
   if (!def.credentialTypes.includes(credential.type)) throw new Error("نوع الحساب المختار مش مناسب للخطوة دي");
   return credential;
@@ -76,10 +77,10 @@ function compact(value: unknown): unknown {
 }
 
 export function executeWorkflow(options: RunOptions): Promise<ExecutionRecord> {
-  return executionQueue.run(() => run(options));
+  return executionQueue.run(() => execute(options));
 }
 
-async function run({ workflow, triggerOutput, mode, respond, signal }: RunOptions): Promise<ExecutionRecord> {
+async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOptions): Promise<ExecutionRecord> {
   const { graph } = workflow;
   const id = newId();
   const startedAt = now();
@@ -88,9 +89,10 @@ async function run({ workflow, triggerOutput, mode, respond, signal }: RunOption
   const steps: StepLog[] = [];
   let error: string | null = null;
 
-  db.prepare(
-    "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES (?, ?, ?, 'running', ?, ?, '[]')",
-  ).run(id, workflow.id, workflow.userId, mode, startedAt);
+  await run(
+    "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES ($1, $2, $3, 'running', $4, $5, '[]')",
+    [id, workflow.id, workflow.userId, mode, startedAt],
+  );
 
   try {
     const trigger = findTrigger(graph);
@@ -129,7 +131,7 @@ async function run({ workflow, triggerOutput, mode, respond, signal }: RunOption
         params = resolveParams(def.fields, node.params ?? {}, { outputs, vars });
         const result = await def.run({
           params,
-          credential: resolveCredential(def, node, workflow.userId),
+          credential: await resolveCredential(def, node, workflow.userId),
           outputs,
           workflow: { id: workflow.id, name: workflow.name, userId: workflow.userId },
           execution: { id, mode },
@@ -173,18 +175,19 @@ async function run({ workflow, triggerOutput, mode, respond, signal }: RunOption
     steps,
   };
 
-  db.prepare("UPDATE executions SET status = ?, finished_at = ?, duration_ms = ?, error = ?, steps = ? WHERE id = ?").run(
+  await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5 WHERE id = $6", [
     record.status,
     record.finishedAt,
     record.durationMs,
     record.error,
     JSON.stringify(steps),
     id,
+  ]);
+  await run(
+    `DELETE FROM executions WHERE workflow_id = $1 AND id NOT IN (
+       SELECT id FROM executions WHERE workflow_id = $1 ORDER BY started_at DESC LIMIT $2)`,
+    [workflow.id, config.executionsKeptPerWorkflow],
   );
-  db.prepare(
-    `DELETE FROM executions WHERE workflow_id = ? AND id NOT IN (
-       SELECT id FROM executions WHERE workflow_id = ? ORDER BY started_at DESC LIMIT ?)`,
-  ).run(workflow.id, workflow.id, config.executionsKeptPerWorkflow);
 
   return record;
 }
@@ -204,8 +207,9 @@ export function executionFromRow(row: any, withSteps = true): ExecutionRecord & 
   };
 }
 
-export function markInterruptedExecutions() {
-  db.prepare(
-    "UPDATE executions SET status = 'error', error = 'السيرفر اتقفل أثناء التشغيل', finished_at = ? WHERE status = 'running'",
-  ).run(now());
+export async function markStaleExecutions(olderThanMs: number) {
+  await run("UPDATE executions SET status = 'error', error = 'التشغيل اتقطع قبل ما يخلص', finished_at = $1 WHERE status = 'running' AND started_at < $2", [
+    now(),
+    new Date(Date.now() - olderThanMs).toISOString(),
+  ]);
 }
