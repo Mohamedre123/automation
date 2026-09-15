@@ -1,0 +1,163 @@
+import { useState } from "react";
+import { AppIcon, StatusBadge, Toggle, formatDuration } from "../components/ui";
+import { useMeta } from "../context";
+import { Icon } from "../icons";
+import { CredentialModal } from "../pages/Credentials";
+import { StepDetails } from "../pages/Executions";
+import type { Credential, StepLog, WorkflowNode } from "../types";
+import { FieldInput } from "./fields";
+import { isFieldVisible } from "./graph";
+
+export function NodePanel({
+  node,
+  step,
+  credentials,
+  tab,
+  setTab,
+  onChange,
+  onDelete,
+  onClose,
+  onCredentialCreated,
+}: {
+  node: WorkflowNode;
+  step?: StepLog;
+  credentials: Credential[];
+  tab: "settings" | "result";
+  setTab: (tab: "settings" | "result") => void;
+  onChange: (patch: Partial<WorkflowNode>) => void;
+  onDelete: () => void;
+  onClose: () => void;
+  onCredentialCreated: (credential: Credential) => void;
+}) {
+  const { nodeDef, credType } = useMeta();
+  const [credentialModal, setCredentialModal] = useState(false);
+  const def = nodeDef(node.type);
+  if (!def) return null;
+
+  const setParam = (key: string, value: unknown) => onChange({ params: { ...node.params, [key]: value } });
+  const matching = credentials.filter((c) => def.credentialTypes?.includes(c.type));
+  const showResult = tab === "result" && step;
+
+  return (
+    <aside className="panel" aria-label="إعدادات الخطوة">
+      <div className="panel-head">
+        <AppIcon app={def.app} size={36} />
+        <input value={node.name ?? ""} placeholder={def.appName} onChange={(e) => onChange({ name: e.target.value })} aria-label="اسم الخطوة" />
+        <span className="fnode-id">{node.id}</span>
+        <button className="btn ghost icon sm danger" title="حذف الخطوة" onClick={onDelete}>
+          <Icon name="trash" size={16} />
+        </button>
+        <button className="btn ghost icon sm" title="إغلاق" onClick={onClose}>
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+      <div className="tabs">
+        <button className={`tab ${!showResult ? "active" : ""}`} onClick={() => setTab("settings")}>
+          الإعدادات
+        </button>
+        <button className={`tab ${showResult ? "active" : ""}`} onClick={() => setTab("result")} disabled={!step}>
+          النتيجة {step && (step.status === "success" ? "✓" : step.status === "error" ? "⚠" : "")}
+        </button>
+      </div>
+
+      <div className="panel-body">
+        {showResult ? (
+          <>
+            <div className="row" style={{ marginBottom: 12 }}>
+              <StatusBadge status={step.status} />
+              <span className="faint">{formatDuration(step.durationMs)}</span>
+            </div>
+            <StepDetails step={step} />
+          </>
+        ) : (
+          <>
+            <p className="muted" style={{ marginTop: 0 }}>
+              <strong>{def.name}</strong> - {def.description}
+            </p>
+
+            {def.credentialTypes?.length ? (
+              <div className="field">
+                <label className="label">
+                  الحساب (Credential) {!def.credentialOptional && <span className="req">*</span>}
+                </label>
+                <div className="row">
+                  <select
+                    className="select"
+                    value={node.credentialId ?? ""}
+                    onChange={(e) => onChange({ credentialId: e.target.value || null })}
+                  >
+                    <option value="">{def.credentialOptional ? "بدون مصادقة" : "— اختار حساب —"}</option>
+                    {matching.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({credType(c.type)?.name})
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn" onClick={() => setCredentialModal(true)}>
+                    <Icon name="plus" size={15} /> جديد
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {def.fields
+              .filter((field) => isFieldVisible(def, field.key, node.params))
+              .map((field) =>
+                field.type === "boolean" ? (
+                  <div className="field row" key={field.key} style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div className="label" style={{ marginBottom: 0 }}>
+                        {field.label}
+                      </div>
+                      {field.help && <div className="help">{field.help}</div>}
+                    </div>
+                    <FieldInput field={field} value={node.params[field.key] ?? field.default} onChange={(v) => setParam(field.key, v)} nodeId={node.id} />
+                  </div>
+                ) : (
+                  <div className="field" key={field.key}>
+                    <label className="label">
+                      {field.label} {field.required && <span className="req">*</span>}
+                    </label>
+                    <FieldInput field={field} value={node.params[field.key] ?? field.default} onChange={(v) => setParam(field.key, v)} nodeId={node.id} />
+                    {field.help && <div className="help">{field.help}</div>}
+                  </div>
+                ),
+              )}
+
+            {def.kind !== "trigger" && (
+              <>
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 6 }}>
+                  <div className="label">إعدادات متقدمة</div>
+                  <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+                    <span>كمّل السيناريو حتى لو الخطوة دي فشلت</span>
+                    <Toggle on={Boolean(node.continueOnFail)} onChange={(v) => onChange({ continueOnFail: v })} />
+                  </div>
+                  <div className="row" style={{ justifyContent: "space-between" }}>
+                    <span>تعطيل الخطوة (هتتخطّى هي واللي بعدها)</span>
+                    <Toggle on={Boolean(node.disabled)} onChange={(v) => onChange({ disabled: v })} />
+                  </div>
+                </div>
+                <div className="alert info" style={{ marginTop: 14 }}>
+                  <Icon name="braces" size={16} />
+                  <span>دوس على الزرار ده جنب أي حقل عشان تستخدم بيانات من الخطوات اللي قبلها.</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {credentialModal && (
+        <CredentialModal
+          types={def.credentialTypes}
+          onClose={() => setCredentialModal(false)}
+          onSaved={(credential) => {
+            setCredentialModal(false);
+            onCredentialCreated(credential);
+            onChange({ credentialId: credential.id });
+          }}
+        />
+      )}
+    </aside>
+  );
+}

@@ -1,0 +1,16 @@
+import type { CredentialType, NodeDefinition } from "../engine/types.js";
+import { anthropicCredential, anthropicNodes } from "./anthropic.js";
+import { coreNodes } from "./core.js";
+import { httpCredentials, httpRequest } from "./http.js";
+import { telegramCredential, telegramNodes } from "./telegram.js";
+
+// Adding an integration = one file exporting its nodes (+ credential type), registered here.
+export const nodeDefinitions: NodeDefinition[] = [...coreNodes, httpRequest, ...telegramNodes, ...anthropicNodes];
+
+export const credentialTypes: CredentialType[] = [anthropicCredential, telegramCredential, ...httpCredentials];
+
+const nodesByType = new Map(nodeDefinitions.map((n) => [n.type, n]));
+const credentialsByKey = new Map(credentialTypes.map((c) => [c.key, c]));
+
+export const getNode = (type: string) => nodesByType.get(type);
+export const getCredentialType = (key: string) => credentialsByKey.get(key);
