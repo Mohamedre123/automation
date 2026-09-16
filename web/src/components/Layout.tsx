@@ -25,9 +25,7 @@ export function Layout() {
     <div className="shell">
       <header className="topbar">
         <Link to="/app" className="brand">
-          <span className="brand-mark">
-            <Icon name="zap" size={19} />
-          </span>
+          <img className="brand-logo" src="/logo.png" alt="تدفّق" />
           <span className="brand-name">تدفّق</span>
         </Link>
 

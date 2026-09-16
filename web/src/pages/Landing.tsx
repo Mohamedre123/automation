@@ -80,7 +80,7 @@ export function Landing() {
             ))}
           </div>
           <div className="result">
-            <strong style={{ color: "var(--success)" }}>✓ اتشغل بنجاح</strong> · العميل استلم رده في 3 ثواني، والطلب اتسجل،
+            <strong style={{ color: "var(--success)" }}>✓ اشتغل بنجاح</strong> · العميل استلم رده في 3 ثواني، والطلب اتسجل،
             والإشعار وصلك.
           </div>
         </div>
@@ -111,7 +111,7 @@ export function Landing() {
 
       <section className="section">
         <div className="section-head reveal">
-          <h2>يربط التطبيقات اللي بتشتغل عليها</h2>
+          <h2>اربط التطبيقات اللي بتشتغل عليها</h2>
           <p>وأي خدمة تانية عندها API - تضيفها في خطوة واحدة.</p>
         </div>
         <div className="apps-strip reveal">

@@ -1,5 +1,6 @@
 import type { CredentialValue } from "../engine/types.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
+import { sendCustomMessage } from "./custom.js";
 import { postJson } from "./llm.js";
 
 /** Bots can't message a private @username: we remember the chat id of everyone who wrote to the bot. */
@@ -79,9 +80,12 @@ export async function sendNotification(credential: CredentialValue, target: stri
         );
       }
       return;
+    case "customApi":
+      await sendCustomMessage(credential, to, text, signal);
+      return;
     default:
-      throw new Error("نوع الحساب ده مينفعش يبعت إشعارات - اختار بوت تيليجرام أو حساب واتساب");
+      throw new Error("نوع الحساب ده مينفعش يبعت إشعارات - اختار بوت تيليجرام أو حساب واتساب أو خدمة خارجية");
   }
 }
 
-export const NOTIFY_CREDENTIAL_TYPES = ["telegramBot", "wasenderApi", "whatsappCloud"];
+export const NOTIFY_CREDENTIAL_TYPES = ["telegramBot", "wasenderApi", "whatsappCloud", "customApi"];

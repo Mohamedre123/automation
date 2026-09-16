@@ -12,7 +12,7 @@ export const APP_COLORS: Record<string, string> = {
   anthropic: "#d97757",
   webhook: "#e5487a",
   http: "#2563eb",
-  schedule: "#7c5cff",
+  schedule: "#f97316",
   manual: "#64748b",
   datastore: "#0284c7",
   agent: "#9333ea",
@@ -49,11 +49,13 @@ export const APP_COLORS: Record<string, string> = {
   youtube: "#ff0000",
   gmail: "#ea4335",
   social: "#ec4899",
+  customai: "#0f766e",
+  customapi: "#475569",
 };
 
 export function AppBadge({ app, size = 34, color }: { app: string; size?: number; color?: string }) {
   return (
-    <span className="app-icon" style={{ width: size, height: size, background: brandBackground(app, color ?? APP_COLORS[app] ?? "#7c5cff") }}>
+    <span className="app-icon" style={{ width: size, height: size, background: brandBackground(app, color ?? APP_COLORS[app] ?? "#f97316") }}>
       <AppGlyph app={app} size={Math.round(size * 0.52)} />
     </span>
   );

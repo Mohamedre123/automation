@@ -55,9 +55,7 @@ export function NavDrawer({
       <aside className={`drawer ${open ? "open" : ""}`} aria-label="القائمة" aria-hidden={!open} inert={!open}>
         <div className="drawer-head">
           <Link to={homeTo} className="brand" onClick={onClose}>
-            <span className="brand-mark">
-              <Icon name="zap" size={19} />
-            </span>
+            <img className="brand-logo" src="/logo.png" alt="تدفّق" />
             <span className="brand-name">تدفّق</span>
           </Link>
           <button className="btn ghost icon sm" onClick={onClose} aria-label="إغلاق القائمة">

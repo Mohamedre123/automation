@@ -79,7 +79,7 @@ function NetworkCanvas() {
           const dy = a.y - b.y;
           const dist = Math.hypot(dx, dy);
           if (dist < LINK_DISTANCE) {
-            ctx.strokeStyle = `rgba(${light ? "91, 72, 214" : "124, 92, 255"}, ${lineAlpha * (1 - dist / LINK_DISTANCE)})`;
+            ctx.strokeStyle = `rgba(${light ? "234, 88, 12" : "249, 115, 22"}, ${lineAlpha * (1 - dist / LINK_DISTANCE)})`;
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
@@ -90,7 +90,7 @@ function NetworkCanvas() {
         if (pointer.active) {
           const dist = Math.hypot(a.x - pointer.x, a.y - pointer.y);
           if (dist < POINTER_DISTANCE) {
-            ctx.strokeStyle = `rgba(${light ? "8, 145, 178" : "34, 211, 238"}, ${(light ? 0.4 : 0.5) * (1 - dist / POINTER_DISTANCE)})`;
+            ctx.strokeStyle = `rgba(${light ? "225, 29, 72" : "251, 191, 36"}, ${(light ? 0.4 : 0.5) * (1 - dist / POINTER_DISTANCE)})`;
             ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
@@ -101,7 +101,7 @@ function NetworkCanvas() {
       }
 
       for (const p of points) {
-        const color = p.hue > 0.5 ? (light ? "8, 145, 178" : "34, 211, 238") : light ? "91, 72, 214" : "154, 128, 255";
+        const color = p.hue > 0.5 ? (light ? "225, 29, 72" : "251, 191, 36") : light ? "234, 88, 12" : "251, 146, 60";
         ctx.fillStyle = `rgba(${color}, ${dotAlpha})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);

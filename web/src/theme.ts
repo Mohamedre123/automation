@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 export type Theme = "dark" | "light";
 
 const STORAGE_KEY = "tadfuq_theme";
-const THEME_COLORS: Record<Theme, string> = { dark: "#080a12", light: "#f6f7fc" };
+const THEME_COLORS: Record<Theme, string> = { dark: "#0b0907", light: "#fbf8f4" };
 
 export const currentTheme = (): Theme => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
 

@@ -125,7 +125,7 @@ export const mediaNodes: NodeDefinition[] = [
     color: "#7c3aed",
     group: "ai",
     kind: "action",
-    credentialTypes: ["geminiApi", "openaiApi"],
+    credentialTypes: ["geminiApi", "openaiApi", "customAiApi"],
     fields: [
       whenField,
       { key: "model", label: "الموديل", type: "model", modelKind: "image", help: "اختار موديل صور من حسابك، أو سيبه على الافتراضي." },
@@ -192,8 +192,26 @@ export const mediaNodes: NodeDefinition[] = [
         const part = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
         base64 = part?.inlineData?.data ?? "";
         mimeType = part?.inlineData?.mimeType ?? mimeType;
+      } else if (credential?.type === "customAiApi") {
+        const base = String(credential.data.baseUrl ?? "").trim().replace(/\/+$/, "");
+        const imageModel = model || credential.data.imageModel;
+        if (!imageModel) throw new Error("اكتب موديل الصور في الخطوة أو في إعدادات حساب المزوّد");
+        const data = await postJson(
+          `${base}/images/generations`,
+          { model: imageModel, prompt, size, n: 1, response_format: "b64_json" },
+          { authorization: `Bearer ${credential.data.apiKey}` },
+          signal,
+          "المزوّد",
+        );
+        const item = data?.data?.[0];
+        base64 = item?.b64_json ?? "";
+        if (!base64 && item?.url) {
+          const image = await imageAsBase64(item.url, signal);
+          base64 = image.data;
+          mimeType = image.mimeType;
+        }
       } else {
-        throw new Error("توليد الصور متاح مع Gemini أو OpenAI - اختار حساب منهم");
+        throw new Error("توليد الصور متاح مع Gemini أو OpenAI أو مزوّد متوافق - اختار حساب منهم");
       }
 
       if (!base64) throw new Error("المزوّد مرجّعش صورة - جرّب وصف تاني أو موديل تاني");
@@ -202,7 +220,7 @@ export const mediaNodes: NodeDefinition[] = [
         folder: String(params.folder ?? "مولّدة"),
         source: "generated",
       });
-      return { output: { ...stored, prompt, provider: credential.type === "openaiApi" ? "openai" : "gemini" } };
+      return { output: { ...stored, prompt, provider: credential.type === "openaiApi" ? "openai" : credential.type === "customAiApi" ? "custom" : "gemini" } };
     },
   },
   {

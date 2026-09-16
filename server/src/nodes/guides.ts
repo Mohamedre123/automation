@@ -24,6 +24,16 @@ export const credentialGuides: Record<string, string[]> = {
     "انسخ المفتاح (بيبدأ بـ sk-ant-) والصقه هنا.",
   ],
 
+  customAiApi: [
+    "ينفع مع أي مزوّد متوافق مع OpenAI API. أمثلة للرابط (Base URL):",
+    "DeepSeek: https://api.deepseek.com/v1 - Groq: https://api.groq.com/openai/v1 - OpenRouter: https://openrouter.ai/api/v1",
+    "Mistral: https://api.mistral.ai/v1 - xAI (Grok): https://api.x.ai/v1 - Qwen: https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "سيرفرك الخاص: Ollama على http://your-server:11434/v1 أو LM Studio (لازم يكون على رابط عام).",
+    "من لوحة المزوّد روح API Keys واعمل مفتاح جديد والصقه هنا.",
+    "اكتب اسم الموديل الافتراضي زي ما المزوّد كاتبه (مثلاً deepseek-chat أو llama-3.3-70b-versatile).",
+    "اضغط «اختبار الاتصال»، وبعد الحفظ هتلاقيه في كل خطوات الذكاء الاصطناعي جنب Gemini وChatGPT وClaude.",
+  ],
+
   /* ---------- واتساب وتيليجرام ---------- */
   telegramBot: [
     "افتح تيليجرام وابحث عن @BotFather (عليه علامة التوثيق الزرقا).",

@@ -44,9 +44,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       </div>
       <form className="card auth-card" onSubmit={submit}>
         <Link to="/" className="auth-brand" style={{ color: "inherit" }}>
-          <span className="brand-mark" style={{ width: 44, height: 44, borderRadius: 14 }}>
-            <Icon name="zap" size={22} />
-          </span>
+          <img className="brand-logo lg" src="/logo.png" alt="تدفّق" />
           <div>
             <h1 style={{ fontSize: 22 }}>تدفّق</h1>
             <div className="muted" style={{ fontSize: 13 }}>

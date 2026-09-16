@@ -4,6 +4,7 @@ import { anthropicNodes } from "./anthropic.js";
 import { commerceCredentials, commerceNodes } from "./commerce.js";
 import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
+import { customApiCredential, customApiNode } from "./custom.js";
 import { credentialGuides } from "./guides.js";
 import { googleCredential, googleNodes } from "./google.js";
 import { httpCredentials, httpRequest } from "./http.js";
@@ -40,6 +41,7 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...marketingNodes,
   ...feedNodes,
   httpRequest,
+  customApiNode,
   ...anthropicNodes,
 ];
 
@@ -58,6 +60,7 @@ export const credentialTypes: CredentialType[] = [
   ...storeCredentials,
   ...marketingCredentials,
   ...httpCredentials,
+  customApiCredential,
 ];
 
 for (const type of credentialTypes) type.steps ??= credentialGuides[type.key];

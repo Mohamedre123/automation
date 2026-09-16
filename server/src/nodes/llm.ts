@@ -10,6 +10,8 @@ export interface ToolSpec {
 
 export interface LlmRunOptions {
   apiKey: string;
+  /** OpenAI-compatible providers: their API root (e.g. https://api.deepseek.com/v1). */
+  baseUrl?: string;
   model: string;
   system?: string;
   history: { role: "user" | "assistant"; text: string }[];
@@ -159,7 +161,73 @@ async function geminiRun(o: LlmRunOptions): Promise<LlmRunResult> {
   throw tooManySteps();
 }
 
+/* ---------- Any OpenAI-compatible provider (Chat Completions) ---------- */
+export const customBaseUrl = (data: Record<string, string>) => String(data.baseUrl ?? "").trim().replace(/\/+$/, "").replace(/\/chat\/completions$/, "");
+
+async function compatibleRun(o: LlmRunOptions): Promise<LlmRunResult> {
+  const result: LlmRunResult = { text: "", model: o.model, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
+  if (!o.baseUrl) throw new Error("رابط الـ API (Base URL) بتاع المزوّد فاضي");
+  if (!o.model) throw new Error("اكتب اسم الموديل في الخطوة أو في إعدادات حساب المزوّد");
+  const messages: any[] = [
+    ...(o.system ? [{ role: "system", content: o.system }] : []),
+    ...o.history.map((h) => ({ role: h.role, content: h.text })),
+    { role: "user", content: o.prompt },
+  ];
+  const tools = o.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
+
+  for (let step = 0; step <= o.maxSteps; step++) {
+    const body: Record<string, unknown> = { model: o.model, messages, max_tokens: o.maxTokens };
+    if (tools.length) body.tools = tools;
+    const data = await postJson(`${o.baseUrl}/chat/completions`, body, { authorization: `Bearer ${o.apiKey}` }, o.signal, "المزوّد");
+    result.model = data.model ?? o.model;
+    result.usage.inputTokens += data.usage?.prompt_tokens ?? 0;
+    result.usage.outputTokens += data.usage?.completion_tokens ?? 0;
+    const message = data.choices?.[0]?.message;
+    if (!message) throw new Error("المزوّد مرجّعش رد - اتأكد من الرابط واسم الموديل");
+    const calls: any[] = message.tool_calls ?? [];
+    if (!calls.length) {
+      result.text = String(message.content ?? "").trim();
+      return result;
+    }
+    messages.push({ role: "assistant", content: message.content ?? null, tool_calls: calls });
+    for (const call of calls) {
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(call.function?.arguments || "{}");
+      } catch {
+        /* the model sent invalid JSON: run the tool without arguments */
+      }
+      const output = await callTool(o, result, call.function?.name, args);
+      messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(output) });
+    }
+  }
+  throw tooManySteps();
+}
+
 /* ---------- credentials ---------- */
+export const customAiCredential: CredentialType = {
+  key: "customAiApi",
+  name: "مزوّد ذكاء اصطناعي تاني",
+  app: "customai",
+  description:
+    "أي مزوّد متوافق مع OpenAI API: DeepSeek، Groq، OpenRouter، Mistral، xAI (Grok)، Qwen، Together، أو سيرفرك الخاص (Ollama / LM Studio).",
+  fields: [
+    { key: "baseUrl", label: "رابط الـ API (Base URL)", required: true, placeholder: "https://api.deepseek.com/v1" },
+    { key: "apiKey", label: "API Key", secret: true, required: true },
+    { key: "model", label: "الموديل الافتراضي", required: true, placeholder: "deepseek-chat" },
+    { key: "imageModel", label: "موديل الصور (اختياري)", placeholder: "لو المزوّد بيدعم /images/generations" },
+  ],
+  async test(data) {
+    const response = await fetch(`${customBaseUrl(data)}/models`, {
+      headers: { authorization: `Bearer ${data.apiKey}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("المزوّد: المفتاح غلط");
+    if (!response.ok && response.status !== 404) throw new Error(`المزوّد: HTTP ${response.status} - اتأكد من رابط الـ API`);
+    return "متصل ✓";
+  },
+};
+
 export const openaiCredential: CredentialType = {
   key: "openaiApi",
   name: "OpenAI (ChatGPT)",
@@ -200,15 +268,16 @@ export const geminiCredential: CredentialType = {
   },
 };
 
-export const AI_CREDENTIAL_TYPES = ["geminiApi", "openaiApi", "anthropicApi"];
+export const AI_CREDENTIAL_TYPES = ["geminiApi", "openaiApi", "anthropicApi", "customAiApi"];
 
 const runners: Record<string, (o: LlmRunOptions) => Promise<LlmRunResult>> = {
   openaiApi: openaiRun,
   geminiApi: geminiRun,
   anthropicApi: claudeRun,
+  customAiApi: compatibleRun,
 };
 
-export const providerLabel: Record<string, string> = { openaiApi: "openai", geminiApi: "gemini", anthropicApi: "anthropic" };
+export const providerLabel: Record<string, string> = { openaiApi: "openai", geminiApi: "gemini", anthropicApi: "anthropic", customAiApi: "custom" };
 
 /** Picks the provider from the credential the customer selected. */
 export function runModel(
@@ -216,12 +285,12 @@ export function runModel(
   credentialTypes: CredentialType[],
   options: Omit<LlmRunOptions, "apiKey" | "model"> & { model?: string },
 ) {
-  if (!credential) throw new Error("اختار حساب AI (Gemini أو OpenAI أو Claude)");
+  if (!credential) throw new Error("اختار حساب AI (Gemini أو OpenAI أو Claude أو مزوّد تاني)");
   const runner = runners[credential.type];
   const type = credentialTypes.find((t) => t.key === credential.type);
   if (!runner || !type) throw new Error("نوع الحساب المختار مش حساب ذكاء اصطناعي");
-  const model = String(options.model ?? "").trim() || type.defaultModel || "";
-  return runner({ ...options, apiKey: credential.data.apiKey, model });
+  const model = String(options.model ?? "").trim() || credential.data.model || type.defaultModel || "";
+  return runner({ ...options, apiKey: credential.data.apiKey, model, baseUrl: customBaseUrl(credential.data) });
 }
 
 export function extractJson(text: string): unknown {

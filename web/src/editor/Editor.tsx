@@ -270,7 +270,7 @@ function EditorCanvas() {
   const showExecution = (record: Execution) => {
     setExecution(record);
     if (record.status === "success") {
-      toast("اتشغل بنجاح ✓", "success");
+      toast("اشتغل بنجاح ✓", "success");
       return;
     }
     toast("التشغيل فشل - شوف الخطوة اللي عليها علامة !", "error");

@@ -35,9 +35,7 @@ export function PublicLayout() {
       <div className="landing-inner">
         <header className="topbar">
           <Link to="/" className="brand">
-            <span className="brand-mark">
-              <Icon name="zap" size={19} />
-            </span>
+            <img className="brand-logo" src="/logo.png" alt="تدفّق" />
             <span className="brand-name">تدفّق</span>
           </Link>
 
@@ -105,9 +103,7 @@ export function PublicLayout() {
           <div className="footer-grid">
             <div>
               <Link to="/" className="brand" style={{ marginBottom: 10 }}>
-                <span className="brand-mark">
-                  <Icon name="zap" size={19} />
-                </span>
+                <img className="brand-logo" src="/logo.png" alt="تدفّق" />
                 تدفّق
               </Link>
               <p className="faint" style={{ margin: 0, fontSize: 13.5 }}>

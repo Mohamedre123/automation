@@ -19,7 +19,7 @@ const edge = (source: string, target: string, sourceHandle: string | null = null
 
 const at = (x: number, y = 0) => ({ x: x * 280, y });
 
-const AI_ACCOUNT = "حساب ذكاء اصطناعي: Gemini (فيه باقة مجانية) أو ChatGPT أو Claude";
+const AI_ACCOUNT = "حساب ذكاء اصطناعي: Gemini (فيه باقة مجانية) أو ChatGPT أو Claude - أو أي مزوّد تاني عندك مفتاحه";
 const telegramTrigger = (id = "1") => ({ id, type: "telegram.trigger", position: at(0), params: { updateType: "message" } });
 const replyToChat = (id: string, x: number, textExpr: string, y = 0) => ({
   id,

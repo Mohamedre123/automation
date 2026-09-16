@@ -2,11 +2,11 @@ import { loadCredential } from "../engine/executor.js";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
 import { anthropicCredential } from "./anthropic.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
-import { AI_CREDENTIAL_TYPES, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec } from "./llm.js";
+import { AI_CREDENTIAL_TYPES, customAiCredential, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec } from "./llm.js";
 import { NOTIFY_CREDENTIAL_TYPES, sendNotification } from "./notify.js";
 import { assertPublicUrl, parseBody, toNumber, withTimeout } from "./util.js";
 
-export const aiCredentialTypes: CredentialType[] = [geminiCredential, openaiCredential, anthropicCredential];
+export const aiCredentialTypes: CredentialType[] = [geminiCredential, openaiCredential, anthropicCredential, customAiCredential];
 
 const MEMORY_STORE = "ذاكرة_المحادثات";
 /** Conversations handed to a human: the agent stays silent with that customer until this expires. */
@@ -267,7 +267,7 @@ export const aiNodes: NodeDefinition[] = [
         label: "التحويل لموظف: الإشعار يتبعت من أنهي حساب",
         type: "credential",
         credentialTypes: NOTIFY_CREDENTIAL_TYPES,
-        help: "سيبه فاضي = نفس البوت أو رقم الواتساب اللي بيكلم العملاء في المحفّز. أو اختار بوت/رقم تاني مخصص للإشعارات.",
+        help: "سيبه فاضي = نفس البوت أو رقم الواتساب اللي بيكلم العملاء في المحفّز. أو اختار بوت/رقم تاني، أو خدمة خارجية بتاعتك.",
       },
       {
         key: "handoffTarget",

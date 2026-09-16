@@ -107,8 +107,9 @@ export async function credentialRoutes(app: FastifyInstance) {
     const row = await getOwned(req, id);
     const type = requireType(row.type);
     try {
-      const models = await listModels({ id: row.id, type: row.type, data: decrypt(row.data) });
-      return { models, defaultModel: type.defaultModel ?? null };
+      const data = decrypt<Record<string, string>>(row.data);
+      const models = await listModels({ id: row.id, type: row.type, data });
+      return { models, defaultModel: (row.type === "customAiApi" ? data.model : type.defaultModel) ?? null };
     } catch (error) {
       // Still usable offline: the static suggestions come back with the error.
       return { models: type.models ?? [], defaultModel: type.defaultModel ?? null, error: errorMessage(error) };

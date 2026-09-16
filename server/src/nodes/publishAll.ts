@@ -4,6 +4,7 @@ import type { CredentialValue, FieldDef, NodeContext, NodeDefinition, StepLog } 
 import { publishingNodes } from "./publishing.js";
 import { socialNodes } from "./social.js";
 import { telegramNodes } from "./telegram.js";
+import { customRequest, fillTemplate } from "./custom.js";
 import { errorMessage } from "./util.js";
 
 // Loaded directly (not via the executor) so this module has no import cycle with the node registry.
@@ -112,6 +113,19 @@ const PLATFORMS: PlatformDef[] = [
     node: "pinterest.createPin",
     targetField: { key: "pinterestBoardId", label: "Pinterest: رقم اللوحة (Board ID)", type: "text" },
   },
+  {
+    key: "custom",
+    label: "خدمة نشر خارجية",
+    credentialType: "customApi",
+    node: "custom.request",
+    targetField: {
+      key: "customPath",
+      label: "خدمة نشر خارجية: المسار",
+      type: "text",
+      placeholder: "/post",
+      help: "لو عندك خدمة نشر تانية (Ayrshare، Publer، سيستمك). الـ Body بيتبعت بالشكل اللي تحت.",
+    },
+  },
 ];
 
 const nodesByType = new Map([...socialNodes, ...publishingNodes, ...telegramNodes].map((n) => [n.type, n]));
@@ -123,6 +137,7 @@ export interface PublishPayload {
   link: string;
   mediaMode: "both" | "video" | "image";
   platforms: { key: string; credentialId: string; target?: string }[];
+  customBody?: string;
 }
 
 interface PlatformResult {
@@ -167,6 +182,10 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       return [{ text: p.caption, link: p.link, linkTitle: p.link ? clip(p.caption.split("\n")[0], 200) : "" }];
     case "bluesky":
       return [{ text: clip(withLink, 300), imageUrl: image || p.imageUrl }];
+    case "custom": {
+      if (!target) throw new Error("اكتب مسار الخدمة الخارجية");
+      return [{ _custom: true, path: target }];
+    }
     case "pinterest": {
       if (!target) throw new Error("اكتب رقم لوحة Pinterest (Board ID)");
       if (!p.imageUrl) throw new Error("Pinterest محتاج صورة - اتخطّى");
@@ -191,6 +210,18 @@ export async function publishToPlatforms(
       const credential = await loadCredential(userId, selected.credentialId);
       if (!credential) throw new Error("الحساب المختار اتمسح");
       for (const post of platformPosts(platform.key, payload, String(selected.target ?? "").trim())) {
+        if ((post as { _custom?: boolean })._custom) {
+          const template =
+            payload.customBody?.trim() || '{"text":"[caption]","imageUrl":"[imageUrl]","videoUrl":"[videoUrl]","link":"[link]"}';
+          const body = fillTemplate(template, {
+            caption: payload.caption,
+            imageUrl: payload.imageUrl,
+            videoUrl: payload.videoUrl,
+            link: payload.link,
+          });
+          result.posts.push(await customRequest(credential, "POST", String((post as { path: string }).path), body, context.signal));
+          continue;
+        }
         const { _node, ...params } = post as Record<string, unknown> & { _node?: string };
         const node = nodesByType.get(_node ?? platform.node);
         if (!node?.run) throw new Error("خطوة النشر مش موجودة");
@@ -260,6 +291,13 @@ export const publishAllNode: NodeDefinition = {
     },
     { key: "timezone", label: "المنطقة الزمنية", type: "text", default: "Africa/Cairo" },
     ...credentialFields,
+    {
+      key: "customBody",
+      label: "خدمة نشر خارجية: شكل الـ Body",
+      type: "textarea",
+      placeholder: '{"post":"[caption]","media":["[imageUrl]"],"platforms":["tiktok"]}',
+      help: "[caption] النص، [imageUrl] الصورة، [videoUrl] الفيديو، [link] الرابط. فاضي = شكل افتراضي بالأربع قيم.",
+    },
   ],
   sampleOutput: {
     scheduled: true,
@@ -285,6 +323,7 @@ export const publishAllNode: NodeDefinition = {
       link: String(params.link ?? "").trim(),
       mediaMode: params.mediaMode === "video" || params.mediaMode === "image" ? params.mediaMode : "both",
       platforms,
+      customBody: String(params.customBody ?? ""),
     };
     const labels = platforms.map((p) => PLATFORMS.find((d) => d.key === p.key)!.label);
     const at = parsePublishAt(params.publishAt, String(params.timezone || "Africa/Cairo"));

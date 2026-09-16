@@ -14,6 +14,15 @@ export async function listModels(credential: CredentialValue): Promise<string[]>
     return (data.data ?? []).map((m) => m.id).sort();
   }
 
+  if (credential.type === "customAiApi") {
+    const base = String(credential.data.baseUrl ?? "").trim().replace(/\/+$/, "");
+    const response = await fetch(`${base}/models`, { headers: { authorization: `Bearer ${key}` }, signal });
+    if (response.status === 401 || response.status === 403) throw new Error("المزوّد: المفتاح غلط");
+    if (!response.ok) throw new Error(`المزوّد مش بيعرض قايمة موديلات (HTTP ${response.status}) - اكتب اسم الموديل بإيدك`);
+    const data = (await response.json()) as { data?: { id: string }[] };
+    return (data.data ?? []).map((m) => m.id).sort();
+  }
+
   if (credential.type === "geminiApi") {
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {
       headers: { "x-goog-api-key": key },
