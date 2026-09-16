@@ -78,6 +78,18 @@ export function NodePanel({
             <p className="muted" style={{ marginTop: 0 }}>
               <strong>{def.name}</strong> - {def.description}
             </p>
+            {def.guide?.length ? (
+              <details className="guide" open>
+                <summary>
+                  <Icon name="sparkles" size={14} /> إزاي بيشتغل
+                </summary>
+                <ol>
+                  {def.guide.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
 
             {def.credentialTypes?.length ? (
               <div className="field">

@@ -154,6 +154,8 @@ export interface NodeDefinition {
   fields: FieldDef[];
   outputs?: { key: string; label: string }[];
   sampleOutput?: unknown;
+  /** Short "how this works" steps shown at the top of the step settings. */
+  guide?: string[];
   run?: (ctx: NodeContext) => Promise<NodeResult>;
   webhook?: TriggerWebhook;
   poll?: (ctx: PollContext) => Promise<{ items: unknown[]; state: any }>;

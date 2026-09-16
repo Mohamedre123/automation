@@ -954,18 +954,18 @@ export const templates: Template[] = [
     id: "selected-images-posts",
     name: "بوست لكل صورة تختارها: @الصور ← فكرة كل صورة ← تصميم وكابشن ← نشر",
     description:
-      "اختار صور منتجاتك بـ @ واكتب فكرة لكل صورة: كل صورة لوحدها بالترتيب بيتعمل لها تصميم إعلاني وكابشن بـ CTA وهاشتاجات وتتنشر على المنصات اللي ربطتها. (أو صورة واحدة كل تشغيل لو جدولته يومي.)",
+      "اختار صور منتجاتك بـ @ واكتب فكرة لكل صورة: كل يوم الساعة 10 بياخد الصورة اللي عليها الدور، يعمل لها تصميم إعلاني وكابشن بـ CTA وهاشتاجات، وينزل الساعة 7 بالليل على المنصات اللي ربطتها. (عايز كلهم مرة واحدة؟ غيّر «طريقة الشغل» في خطوة الصور.)",
     category: "المحتوى",
     requires: ["صورك في مكتبة الصور", "حساب Gemini (للنص والتصميم)", "حسابات المنصات أو خدمة نشر (Upload-Post / Ayrshare ...)"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.manual", position: at(0), params: {} },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "10:00", publishTime: "19:00", timezone: "Africa/Cairo" } },
         {
           id: "2",
           type: "media.select",
           name: "الصور وأفكارها",
           position: at(1),
-          params: { images: "", ideas: "", mode: "each" },
+          params: { images: "", ideas: "", mode: "rotate" },
         },
         {
           id: "3",

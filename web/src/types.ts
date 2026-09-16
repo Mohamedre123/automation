@@ -47,6 +47,7 @@ export interface NodeDefinition {
   fields: FieldDef[];
   outputs?: { key: string; label: string }[];
   sampleOutput?: unknown;
+  guide?: string[];
 }
 
 export interface CredentialTypeDef {
@@ -159,6 +160,8 @@ export interface Template {
   category: string;
   requires: string[];
   steps: number;
+  starts?: string;
+  howTo?: string[];
   apps: { key: string; name: string }[];
   graph: WorkflowGraph;
 }

@@ -101,6 +101,8 @@ function EditorCanvas() {
   const [testBody, setTestBody] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [activationError, setActivationError] = useState("");
+  const [activating, setActivating] = useState(false);
   const [picker, setPicker] = useState<{ after?: string; handle?: string } | null>(null);
 
   useEffect(() => {
@@ -269,13 +271,24 @@ function EditorCanvas() {
   }, [save, toast]);
 
   const setActive = async (active: boolean) => {
+    setActivationError("");
+    if (active && triggerNode?.data.node.type === "trigger.manual") {
+      setActivationError(
+        "المحفّز «تشغيل يدوي» بيشتغل بزرار «تشغيل مرة» بس. عشان السيناريو يفضل شغال لوحده: امسح أول خطوة وحط «جدولة» (كل يوم في ساعة) أو «فورم» أو رسايل واتساب / تيليجرام.",
+      );
+      return;
+    }
     if (dirty && !(await save())) return;
+    setActivating(true);
     try {
       const updated = await api<Workflow>(`/workflows/${id}/activate`, { body: { active } });
       setWorkflow(updated);
       toast(active ? "السيناريو اتفعّل وبقى شغال في الخلفية ✓" : "السيناريو اتوقف", "success");
     } catch (e) {
-      toast((e as Error).message, "error");
+      // Shown until dismissed: a vanishing toast made the switch look broken.
+      setActivationError((e as Error).message);
+    } finally {
+      setActivating(false);
     }
   };
 
@@ -502,11 +515,43 @@ function EditorCanvas() {
             </button>
             <span className="divider" />
             <span className="row" style={{ gap: 7, fontSize: 13 }}>
-              <Toggle on={workflow.active} onChange={setActive} title={workflow.active ? "إيقاف" : "تفعيل"} />
-              {workflow.active ? "مفعّل" : "متوقف"}
+              {activating ? <Spinner size={16} /> : <Toggle on={workflow.active} onChange={setActive} title={workflow.active ? "إيقاف" : "تفعيل - يفضل شغال لوحده"} />}
+              {workflow.active ? "مفعّل - شغال لوحده" : "متوقف"}
             </span>
           </div>
         </div>
+
+        {activationError && !running && (
+          <div className="run-banner">
+            <div className="alert error" style={{ boxShadow: "var(--shadow)", alignItems: "flex-start" }}>
+              <Icon name="alert" size={16} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong>مقدرتش أفعّل السيناريو</strong>
+                <div>{activationError}</div>
+              </div>
+              <button className="btn ghost icon sm" onClick={() => setActivationError("")} aria-label="إغلاق">
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+        {triggerNode?.data.node.type === "trigger.form" && triggerNode.data.node.params.path && !running && !activationError && (
+          <div className="form-link-pill">
+            <Icon name="form" size={15} />
+            <span className="truncate">{workflow.active ? "الفورم شغال - ابعت الرابط لأي حد" : "رابط الفورم (فعّل السيناريو عشان يشتغل على طول)"}</span>
+            <a className="btn sm" href={`${window.location.origin}/form/${String(triggerNode.data.node.params.path)}`} target="_blank" rel="noreferrer">
+              افتح الفورم
+            </a>
+            <button
+              className="btn sm"
+              onClick={async () => {
+                if (await copyText(`${window.location.origin}/form/${String(triggerNode.data.node.params.path)}`)) toast("رابط الفورم اتنسخ", "success");
+              }}
+            >
+              <Icon name="copy" size={14} /> نسخ
+            </button>
+          </div>
+        )}
 
         {running ? (
           <div className="run-banner">

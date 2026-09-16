@@ -85,7 +85,10 @@ function validateForActivation(graph: WorkflowGraph) {
   const info = triggerInfo(graph);
   if (!info) throw httpError(400, "ضيف محفّز (Trigger) قبل التفعيل");
   if (info.def.triggerType === "manual") {
-    throw httpError(400, "المحفّز اليدوي مينفعش يتفعّل - غيّره لـ Webhook أو جدولة أو تطبيق");
+    throw httpError(
+      400,
+      "المحفّز «تشغيل يدوي» بيشتغل بزرار «تشغيل مرة» بس ومش بيتفعّل. عشان السيناريو يفضل شغال لوحده: امسح المحفّز وحط «جدولة» (كل يوم في ساعة) أو «فورم» أو رسايل واتساب / تيليجرام.",
+    );
   }
   for (const node of graph.nodes) {
     if (node.disabled) continue;
@@ -98,6 +101,8 @@ function validateForActivation(graph: WorkflowGraph) {
       const value = node.params[field.key] ?? field.default;
       const controller = field.showIf ? def.fields.find((f) => f.key === field.showIf!.field) : undefined;
       const visible = !field.showIf || field.showIf.values.includes(node.params[field.showIf.field] ?? controller?.default);
+      // Caption / image / video boxes fill themselves from earlier steps at run time.
+      if (field.autoFill) continue;
       if (field.required && visible && (value === undefined || value === null || String(value).trim() === "")) {
         throw httpError(400, `الخطوة ${label}: حقل «${field.label}» مطلوب`);
       }

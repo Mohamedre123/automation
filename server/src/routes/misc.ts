@@ -82,6 +82,66 @@ export async function miscRoutes(app: FastifyInstance) {
   });
 }
 
+/** Plain steps for starting a template, written for its trigger (form, schedule, messages...). */
+function templateGuide(graph: WorkflowGraph): { starts: string; howTo: string[] } {
+  const trigger = graph.nodes.find((n) => getNode(n.type)?.kind === "trigger");
+  const def = trigger ? getNode(trigger.type) : undefined;
+  const accounts = "اختار الحسابات في الخطوات اللي عليها علامة حساب (أو دوس «ربط» جنب الخانة وهتلاقي الشرح).";
+  const common = ["دوس «استخدم التيمبلت» - هيتعمل سيناريو باسمه ويفتح في المحرر.", accounts];
+  if (!trigger || !def) return { starts: "", howTo: common };
+  switch (true) {
+    case trigger.type === "trigger.form":
+      return {
+        starts: "بفورم",
+        howTo: [
+          ...common,
+          "دوس على أول خطوة «فورم»: هتلاقي «رابط الفورم» - ده صفحة جاهزة فيها الأسئلة (تقدر تعدّل الأسئلة من نفس الخطوة).",
+          "للتجربة: دوس «تشغيل مرة» وبعدين زرار «افتح الفورم» اللي هيظهر فوق، واملاه خلال دقيقتين - هتشوف كل خطوة بتنور.",
+          "عشان يشتغل على طول: فعّل السيناريو من زرار «متوقف / مفعّل» فوق.",
+          "ابعت رابط الفورم لعملاءك أو حطه في موقعك - كل مرة حد يملاه السيناريو بيشتغل لوحده، والنتايج في «التشغيلات».",
+        ],
+      };
+    case trigger.type === "trigger.schedule":
+      return {
+        starts: "بميعاد",
+        howTo: [
+          ...common,
+          "دوس على خطوة «جدولة» وحدد ساعة البداية (وساعة النشر لو فيه نشر).",
+          "جرّبه مرة بزرار «تشغيل مرة» وشوف النتيجة.",
+          "فعّله من زرار «متوقف / مفعّل» - هيشتغل لوحده كل يوم في ميعاده.",
+        ],
+      };
+    case def.triggerType === "schedule":
+      return {
+        starts: "لما يوصل جديد",
+        howTo: [...common, "دوس «تشغيل مرة» عشان يجرّب على آخر عنصر موجود.", "فعّله - هيشيّك كل كام دقيقة ويشتغل مع كل جديد."],
+      };
+    case trigger.type === "trigger.webhook":
+      return {
+        starts: "برابط Webhook",
+        howTo: [
+          ...common,
+          "دوس على خطوة «Webhook» وانسخ الرابط، وحطه في الموقع أو النظام اللي هيبعت البيانات.",
+          "فعّل السيناريو - كل ما النظام يبعت بيانات السيناريو هيشتغل.",
+        ],
+      };
+    case def.triggerType === "app":
+      return {
+        starts: "برسالة",
+        howTo: [
+          ...common,
+          "فعّل السيناريو من زرار «متوقف / مفعّل» فوق.",
+          "ابعت رسالة للبوت أو الرقم من موبايلك - هتلاقي الرد وصل، وكل تشغيل متسجل في «التشغيلات».",
+        ],
+      };
+    default:
+      return {
+        starts: "يدوي",
+        howTo: [...common, "دوس «تشغيل مرة» كل ما تحب تشغّله.", "عايزه يشتغل لوحده؟ غيّر المحفّز لـ «جدولة»."],
+      };
+  }
+}
+
 function templateSummaries() {
   return templates.map((t) => {
     const apps = new Map<string, string>();
@@ -89,7 +149,7 @@ function templateSummaries() {
       const def = getNode(node.type);
       if (def && !apps.has(def.app)) apps.set(def.app, def.appName);
     }
-    return { ...t, apps: [...apps].map(([key, name]) => ({ key, name })), steps: t.graph.nodes.length };
+    return { ...t, apps: [...apps].map(([key, name]) => ({ key, name })), steps: t.graph.nodes.length, ...templateGuide(t.graph) };
   });
 }
 

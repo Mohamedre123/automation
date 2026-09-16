@@ -3618,3 +3618,39 @@ h3 {
     opacity: 1;
   }
 }
+
+.tpl-guide {
+  margin: 0;
+}
+.tpl-guide ol {
+  font-size: 13px;
+}
+.form-link-pill {
+  position: absolute;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 6px 8px 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+.form-link-pill .truncate {
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .form-link-pill {
+    top: 116px;
+    font-size: 12px;
+  }
+  .form-link-pill > span {
+    display: none;
+  }
+}

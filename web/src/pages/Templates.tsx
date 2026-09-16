@@ -104,6 +104,18 @@ export function Templates() {
                   ))}
                 </ul>
               </div>
+              {t.howTo?.length ? (
+                <details className="guide tpl-guide">
+                  <summary>
+                    <Icon name="sparkles" size={14} /> إزاي أشغّله{t.starts ? ` (بيبدأ ${t.starts})` : ""}
+                  </summary>
+                  <ol>
+                    {t.howTo.map((step, i) => (
+                      <li key={i}>{step}</li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <span className="faint" style={{ fontSize: 12 }}>
                   {t.category} · {t.steps} خطوات
