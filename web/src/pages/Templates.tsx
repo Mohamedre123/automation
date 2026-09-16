@@ -22,7 +22,7 @@ export function Templates() {
     try {
       const res = await api<{ id: string }>(`/templates/${template.id}/use`, { method: "POST" });
       toast("اتعمل سيناريو من التيمبلت - اختار الحسابات وجرّبه", "success");
-      navigate(`/workflows/${res.id}`);
+      navigate(`/app/workflows/${res.id}`);
     } catch (e) {
       toast((e as Error).message, "error");
       setUsing("");

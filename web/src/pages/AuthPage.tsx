@@ -13,7 +13,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/app" replace />;
   const isRegister = mode === "register";
 
   const submit = async (e: FormEvent) => {
@@ -23,7 +23,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     try {
       const res = await api<{ token: string; user: User }>(isRegister ? "/auth/register" : "/auth/login", { body: form });
       signIn(res.token, res.user);
-      navigate("/", { replace: true });
+      navigate("/app", { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -36,15 +36,17 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="auth-wrap">
       <form className="card auth-card" onSubmit={submit}>
-        <div className="auth-brand">
-          <div className="logo">
-            <Icon name="zap" size={24} />
-          </div>
+        <Link to="/" className="auth-brand" style={{ color: "inherit" }}>
+          <span className="brand-mark" style={{ width: 44, height: 44, borderRadius: 14 }}>
+            <Icon name="zap" size={22} />
+          </span>
           <div>
             <h1 style={{ fontSize: 22 }}>تدفّق</h1>
-            <div className="muted">منصة الأتمتة وسيناريوهات العمل</div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              منصة الأتمتة وسيناريوهات العمل
+            </div>
           </div>
-        </div>
+        </Link>
         <h2 style={{ fontSize: 18, marginBottom: 16 }}>{isRegister ? "إنشاء حساب جديد" : "تسجيل الدخول"}</h2>
         {isRegister && (
           <div className="field">

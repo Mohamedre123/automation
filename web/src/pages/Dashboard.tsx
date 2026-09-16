@@ -43,7 +43,7 @@ function UsageChart({ daily }: { daily: Stats["daily"] }) {
               className="seg"
               style={{ height: `${(d.success / max) * 100}%`, background: d.success ? "var(--success)" : "transparent" }}
             />
-            {d.success + d.error === 0 && <div className="seg" style={{ height: 3, background: "#e3e5ee" }} />}
+            {d.success + d.error === 0 && <div className="seg" style={{ height: 3, background: "var(--border)" }} />}
           </div>
         ))}
       </div>
@@ -75,7 +75,7 @@ export function Dashboard() {
     setCreating(true);
     try {
       const wf = await api<Workflow>("/workflows", { body: { name: "سيناريو جديد" } });
-      navigate(`/workflows/${wf.id}`);
+      navigate(`/app/workflows/${wf.id}`);
     } catch (e) {
       toast((e as Error).message, "error");
       setCreating(false);
@@ -111,7 +111,7 @@ export function Dashboard() {
           <p>ابني سيناريوهات أتمتة تربط تطبيقاتك ببعض وتشتغل لوحدها.</p>
         </div>
         <div className="row">
-          <Link className="btn" to="/templates">
+          <Link className="btn" to="/app/templates">
             <Icon name="templates" size={16} /> من تيمبلت
           </Link>
           <button className="btn primary" onClick={create} disabled={creating}>
@@ -158,7 +158,7 @@ export function Dashboard() {
             text="ابدأ من الصفر أو استخدم تيمبلت جاهز وعدّل عليه."
             action={
               <div className="row" style={{ justifyContent: "center" }}>
-                <Link className="btn" to="/templates">
+                <Link className="btn" to="/app/templates">
                   تصفّح التيمبلت
                 </Link>
                 <button className="btn primary" onClick={create}>
@@ -181,7 +181,7 @@ export function Dashboard() {
               </thead>
               <tbody>
                 {workflows.map((wf) => (
-                  <tr key={wf.id} className="clickable" onClick={() => navigate(`/workflows/${wf.id}`)}>
+                  <tr key={wf.id} className="clickable" onClick={() => navigate(`/app/workflows/${wf.id}`)}>
                     <td>
                       <div className="row" style={{ gap: 12 }}>
                         <div className="app-stack">

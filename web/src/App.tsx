@@ -9,6 +9,7 @@ import { Credentials } from "./pages/Credentials";
 import { Dashboard } from "./pages/Dashboard";
 import { DataStore } from "./pages/DataStore";
 import { Executions } from "./pages/Executions";
+import { Landing } from "./pages/Landing";
 import { Templates } from "./pages/Templates";
 
 function Protected({ children }: { children: ReactNode }) {
@@ -29,9 +30,11 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<AuthPage mode="login" />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route
+              path="/app"
               element={
                 <Protected>
                   <MetaProvider>

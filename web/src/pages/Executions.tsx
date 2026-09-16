@@ -85,7 +85,7 @@ export function ExecutionModal({ executionId, onClose }: { executionId: string; 
       onClose={onClose}
       footer={
         execution && (
-          <Link className="btn" to={`/workflows/${execution.workflowId}`}>
+          <Link className="btn" to={`/app/workflows/${execution.workflowId}`}>
             فتح السيناريو
           </Link>
         )
