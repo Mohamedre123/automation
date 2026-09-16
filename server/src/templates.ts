@@ -186,7 +186,7 @@ export const templates: Template[] = [
     requires: [AI_ACCOUNT, "حساب إنستجرام بيزنس"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 12 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "12:00", timezone: "Africa/Cairo" } },
         {
           id: "2",
           type: "ai.generate",
@@ -240,7 +240,7 @@ export const templates: Template[] = [
     requires: ["صور منتجاتك في مكتبة الصور (فولدر «منتجات»)", "حساب Gemini (للصور والكتابة)", "حساب إنستجرام بيزنس", "صفحة فيسبوك"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 18 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "18:00", timezone: "Africa/Cairo" } },
         { id: "2", type: "media.pick", position: at(1), params: { folder: "منتجات", mode: "sequential" } },
         {
           id: "3",
@@ -516,7 +516,7 @@ export const templates: Template[] = [
     requires: ["Google Sheets فيه أعمدة: الاسم، الموبايل، الميعاد (YYYY-MM-DD)", "حساب WasenderAPI"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 9 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "09:00", timezone: "Africa/Cairo" } },
         { id: "2", type: "sheets.read", position: at(1), params: { spreadsheetId: "", sheet: "Sheet1", limit: 500 } },
         { id: "3", type: "logic.iterator", position: at(2), params: { list: "{{2.rows}}", limit: 200 } },
         { id: "4", type: "tools.date", position: at(3), params: { operation: "format", date: "{{$now}}", format: "ymd", timezone: "Africa/Cairo" } },
@@ -574,7 +574,7 @@ export const templates: Template[] = [
     requires: [AI_ACCOUNT, "موقع WordPress (Application Password)", "LinkedIn", "X (تويتر)", "صفحة فيسبوك"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 10 * * 0", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "weekly", days: ["0"], time: "10:00", timezone: "Africa/Cairo" } },
         {
           id: "2",
           type: "ai.generate",
@@ -691,7 +691,7 @@ export const templates: Template[] = [
     requires: ["صور منتجات في مكتبة الصور", AI_ACCOUNT, "Pinterest"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 18 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "18:00", timezone: "Africa/Cairo" } },
         { id: "2", type: "media.pick", position: at(1), params: { folder: "منتجات", mode: "sequential" } },
         {
           id: "3",
@@ -728,7 +728,7 @@ export const templates: Template[] = [
     ],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 10 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "10:00", publishTime: "19:00", timezone: "Africa/Cairo" } },
         {
           id: "2",
           type: "logic.set",
@@ -742,7 +742,6 @@ export const templates: Template[] = [
               { key: "ideas", value: "أفكار ولا عروض الفترة دي (مثلاً: خصم 20% لآخر الشهر، هدية مع كل طلب)" },
               { key: "makeImages", value: "نعم" },
               { key: "makeVideos", value: "نعم" },
-              { key: "publishAt", value: "19:00" },
               { key: "link", value: "https://mystore.com" },
             ],
           },
@@ -788,7 +787,6 @@ export const templates: Template[] = [
             videoUrl: "{{6.url}}",
             link: "{{2.link}}",
             mediaMode: "both",
-            publishAt: "{{2.publishAt}}",
             timezone: "Africa/Cairo",
           },
         },
@@ -1203,7 +1201,7 @@ export const templates: Template[] = [
     requires: [AI_ACCOUNT, "بوت تيليجرام", "رابط API فيه بياناتك"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 9 * * *", timezone: "Africa/Cairo" } },
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "daily", time: "09:00", timezone: "Africa/Cairo" } },
         {
           id: "2",
           type: "http.request",

@@ -22,7 +22,7 @@ import type {
   WorkflowNode,
 } from "../engine/types.js";
 import { getNode } from "../nodes/index.js";
-import { runScheduledPosts } from "../nodes/publishAll.js";
+import { parsePublishAt, runScheduledPosts } from "../nodes/publishAll.js";
 import { cleanupRateLimits } from "../protection.js";
 import { errorMessage, sleep, toNumber } from "../nodes/util.js";
 
@@ -71,11 +71,44 @@ export async function setTriggerError(workflowId: string, message: string | null
   if (message) console.error(`[trigger ${workflowId}] ${message}`);
 }
 
+/** "10:00", "7:30 م", "7 pm" -> [hour, minute] in 24h. */
+function parseClock(value: unknown): [number, number] {
+  const text = String(value ?? "").trim();
+  const match = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(ص|م|am|pm)?$/i);
+  if (!match) throw new Error(`الساعة «${text}» مش مفهومة - اكتبها زي 10:00 أو 7:30 م`);
+  let hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  const meridiem = match[3]?.toLowerCase();
+  if ((meridiem === "م" || meridiem === "pm") && hour < 12) hour += 12;
+  if ((meridiem === "ص" || meridiem === "am") && hour === 12) hour = 0;
+  if (hour > 23 || minute > 59) throw new Error(`الساعة «${text}» مش مفهومة - اكتبها زي 10:00 أو 7:30 م`);
+  return [hour, minute];
+}
+
+/** Daily / weekly schedules are cron under the hood. */
+export function scheduleCron(params: Record<string, any>): string | null {
+  if (params.mode === "cron") return String(params.cron ?? "");
+  if (params.mode !== "daily" && params.mode !== "weekly") return null;
+  const [hour, minute] = parseClock(params.time || "10:00");
+  const days = Array.isArray(params.days) && params.days.length ? [...new Set(params.days.map(String))].sort().join(",") : "*";
+  return `${minute} ${hour} * * ${params.mode === "weekly" ? days : "*"}`;
+}
+
+/** What a schedule trigger hands to the steps: when it fired and (optionally) when the post should go out. */
+export function scheduleOutput(params: Record<string, any>) {
+  const output: Record<string, unknown> = { firedAt: now() };
+  if (String(params.publishTime ?? "").trim()) {
+    output.publishAt = new Date(parsePublishAt(params.publishTime, String(params.timezone || "Africa/Cairo"))).toISOString();
+  }
+  return output;
+}
+
 export function computeNextRun(params: Record<string, any>, from = new Date()): string {
-  if (params.mode === "cron") {
+  const cron = scheduleCron(params);
+  if (cron !== null) {
     let next: Date | null;
     try {
-      next = new Cron(String(params.cron ?? ""), { timezone: params.timezone || undefined }).nextRun(from);
+      next = new Cron(cron, { timezone: params.timezone || undefined }).nextRun(from);
     } catch (e) {
       throw new Error(`Cron غير صالح: ${errorMessage(e)}`);
     }
@@ -311,7 +344,7 @@ export async function startTestRun(workflow: RuntimeWorkflow, live = false): Pro
         if (!items.length) throw new Error("مفيش بيانات دلوقتي أجرّب عليها - تأكد إن فيه عنصر واحد على الأقل (صف، طلب، خبر...)");
         return runNow(workflow, items[0], live);
       }
-      return runNow(workflow, { firedAt: now() }, live);
+      return runNow(workflow, scheduleOutput(params), live);
     }
     case "webhook":
       return { sessionId: await createTestSession(workflow, info.path), waitingFor: "webhook", url: webhookUrl(info.path) };
@@ -476,7 +509,7 @@ export async function runDueSchedules(limit = 25): Promise<number> {
       }
       continue;
     }
-    await executeWorkflow({ workflow, triggerOutput: { firedAt: now() }, mode: "schedule" }).catch((e) =>
+    await executeWorkflow({ workflow, triggerOutput: scheduleOutput(triggerParams(info.def, info.node)), mode: "schedule" }).catch((e) =>
       setTriggerError(row.id, errorMessage(e)),
     );
   }

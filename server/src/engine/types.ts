@@ -31,7 +31,7 @@ export interface FieldDef {
   /** readonly path fields: which public link to show. */
   urlKind?: "webhook" | "form";
   /** Filled automatically from earlier steps when the step is added: the post text, a generated image / video, or the source product image. */
-  autoFill?: "caption" | "image" | "images" | "video" | "sourceImage";
+  autoFill?: "caption" | "image" | "images" | "video" | "sourceImage" | "publishTime";
   /** Only show this field when another field has one of these values. */
   showIf?: { field: string; values: unknown[] };
 }

@@ -76,11 +76,11 @@ for (const type of credentialTypes) type.steps ??= credentialGuides[type.key];
 
 // Publishing steps pick up the caption and media from the steps before them, so nobody wires them by hand.
 const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>>> = {
-  "social.publishAll": { caption: "caption", imageUrl: "image", videoUrl: "video" },
-  "uploadpost.post": { title: "caption", imageUrls: "images", videoUrl: "video" },
-  "ayrshare.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
-  "zernio.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
-  "blotato.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
+  "social.publishAll": { caption: "caption", imageUrl: "image", videoUrl: "video", publishAt: "publishTime" },
+  "uploadpost.post": { title: "caption", imageUrls: "images", videoUrl: "video", scheduledDate: "publishTime" },
+  "ayrshare.post": { text: "caption", imageUrls: "images", videoUrl: "video", scheduledAt: "publishTime" },
+  "zernio.post": { text: "caption", imageUrls: "images", videoUrl: "video", scheduledAt: "publishTime" },
+  "blotato.post": { text: "caption", imageUrls: "images", videoUrl: "video", scheduledAt: "publishTime" },
   "facebook.post": { message: "caption", imageUrl: "image", videoUrl: "video" },
   "instagram.post": { caption: "caption", imageUrl: "image", videoUrl: "video" },
   "telegram.sendPhoto": { caption: "caption", photo: "image" },

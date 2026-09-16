@@ -70,11 +70,20 @@ export function autoFillFromRun(
     return "";
   };
 
+  const publishTime = () => {
+    const trigger = earlier.find((n) => n.type === "trigger.schedule");
+    const at = trigger ? out(trigger).publishAt : undefined;
+    // Only a future time schedules the post; otherwise it goes out right away.
+    return typeof at === "string" && Date.parse(at) > Date.now() + 90_000 ? at : "";
+  };
+
   const next = { ...params };
   for (const field of fields) {
     if (!empty(next[field.key])) continue;
     const value =
-      field.autoFill === "caption"
+      field.autoFill === "publishTime"
+        ? publishTime()
+        : field.autoFill === "caption"
         ? caption()
         : field.autoFill === "video"
           ? generated("ai.video")

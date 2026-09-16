@@ -3584,3 +3584,37 @@ h3 {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* ---------- delete a step right from the canvas ---------- */
+.fnode-delete {
+  position: absolute;
+  top: -8px;
+  left: 2px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--bg-2);
+  background: var(--surface-3);
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+}
+.fnode:hover .fnode-delete,
+.fnode.selected .fnode-delete {
+  opacity: 1;
+  transform: none;
+}
+.fnode-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+@media (hover: none) {
+  .fnode.selected .fnode-delete {
+    opacity: 1;
+  }
+}

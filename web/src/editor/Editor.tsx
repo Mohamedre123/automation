@@ -437,6 +437,7 @@ function EditorCanvas() {
       steps,
       variableSources,
       onAddAfter: (nodeId, handle) => setPicker({ after: nodeId, handle }),
+      onDelete: (nodeId) => deleteNode(nodeId),
       onOpenStep: (nodeId) => {
         setSelectedId(nodeId);
         setSide("node");

@@ -107,13 +107,47 @@ const scheduleTrigger: NodeDefinition = {
   fields: [
     {
       key: "mode",
-      label: "النوع",
+      label: "يشتغل إمتى",
       type: "select",
-      default: "interval",
+      default: "daily",
       options: [
+        { value: "daily", label: "كل يوم في ساعة معينة" },
+        { value: "weekly", label: "أيام معينة في الأسبوع" },
         { value: "interval", label: "كل عدد دقايق" },
-        { value: "cron", label: "Cron (مواعيد مخصصة)" },
+        { value: "cron", label: "متقدم (Cron)" },
       ],
+    },
+    {
+      key: "time",
+      label: "ساعة البداية (يبدأ يشتغل)",
+      type: "text",
+      default: "10:00",
+      placeholder: "10:00",
+      help: "بنظام 24 ساعة (19:00 = 7 بالليل) - أو اكتب 7:00 م",
+      showIf: { field: "mode", values: ["daily", "weekly"] },
+    },
+    {
+      key: "days",
+      label: "الأيام",
+      type: "multiselect",
+      default: ["6", "0", "1", "2", "3", "4"],
+      options: [
+        { value: "6", label: "السبت" },
+        { value: "0", label: "الأحد" },
+        { value: "1", label: "الاتنين" },
+        { value: "2", label: "التلات" },
+        { value: "3", label: "الأربع" },
+        { value: "4", label: "الخميس" },
+        { value: "5", label: "الجمعة" },
+      ],
+      showIf: { field: "mode", values: ["weekly"] },
+    },
+    {
+      key: "publishTime",
+      label: "ساعة النشر (اختياري)",
+      type: "text",
+      placeholder: "19:00",
+      help: "لو السيناريو بيجهّز بوست: يبدأ الشغل في ساعة البداية وينزل البوست الساعة دي (تلقائي في خطوات النشر). فاضي = ينزل أول ما يخلص.",
     },
     { key: "minutes", label: "كل كام دقيقة", type: "number", default: 15, showIf: { field: "mode", values: ["interval"] } },
     {
@@ -126,7 +160,7 @@ const scheduleTrigger: NodeDefinition = {
     },
     { key: "timezone", label: "المنطقة الزمنية", type: "text", default: "Africa/Cairo" },
   ],
-  sampleOutput: { firedAt: "2026-01-01T09:00:00.000Z" },
+  sampleOutput: { firedAt: "2026-01-01T07:00:00.000Z", publishAt: "2026-01-01T17:00:00.000Z" },
 };
 
 const ifNode: NodeDefinition = {

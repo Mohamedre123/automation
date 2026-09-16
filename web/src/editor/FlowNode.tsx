@@ -17,6 +17,7 @@ export interface VariableSource {
 export interface EditorContextValue {
   steps: Record<string, StepLog>;
   onAddAfter: (nodeId: string, handle: string) => void;
+  onDelete: (nodeId: string) => void;
   onOpenStep: (nodeId: string) => void;
   variableSources: (nodeId: string) => VariableSource[];
 }
@@ -27,9 +28,26 @@ export const useEditor = () => useContext(EditorContext);
 const CIRCLE_CENTER = 48;
 const HANDLE_INSET = 27;
 
+const DAY_NAMES: Record<string, string> = { "6": "سبت", "0": "حد", "1": "اتنين", "2": "تلات", "3": "أربع", "4": "خميس", "5": "جمعة" };
+
+/** "كل يوم 10:00 ← نشر 19:00" under a schedule trigger, so the times are visible without opening it. */
+function scheduleSummary(node: { type: string; params: Record<string, any> }) {
+  if (node.type !== "trigger.schedule") return null;
+  const p = node.params ?? {};
+  const mode = p.mode ?? "daily";
+  const publish = String(p.publishTime ?? "").trim() ? ` ← نشر ${p.publishTime}` : "";
+  if (mode === "daily") return `كل يوم ${p.time || "10:00"}${publish}`;
+  if (mode === "weekly") {
+    const days = Array.isArray(p.days) ? p.days.map((d: string) => DAY_NAMES[d] ?? d).join("، ") : "";
+    return `${days} ${p.time || "10:00"}${publish}`;
+  }
+  if (mode === "interval") return `كل ${p.minutes || 15} دقيقة`;
+  return null;
+}
+
 export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
   const { nodeDef } = useMeta();
-  const { steps, onAddAfter, onOpenStep } = useEditor();
+  const { steps, onAddAfter, onOpenStep, onDelete } = useEditor();
   const node = data.node;
   const def = nodeDef(node.type);
   const step = steps[id];
@@ -40,6 +58,18 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
       {!isTrigger && (
         <Handle type="target" position={Position.Left} className="fhandle" style={{ top: CIRCLE_CENTER, left: HANDLE_INSET }} />
       )}
+      <button
+        type="button"
+        className="fnode-delete nodrag"
+        title="امسح الخطوة"
+        aria-label="امسح الخطوة"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(id);
+        }}
+      >
+        <Icon name="x" size={13} />
+      </button>
       <div className="fnode-circle" style={{ background: brandBackground(def?.app ?? "", def?.color ?? "#94a3b8") }}>
         <AppGlyph app={def?.app ?? ""} size={42} />
         {isTrigger && (
@@ -62,7 +92,7 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
       )}
       <div className="fnode-title">{node.name || def?.appName || node.type}</div>
       <div className="fnode-sub">
-        {def?.name ?? "غير معروف"}
+        {scheduleSummary(node) ?? def?.name ?? "غير معروف"}
         <span className="fnode-id">{id}</span>
       </div>
 
