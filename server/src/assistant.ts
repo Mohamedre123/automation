@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { rateLimit } from "./protection.js";
-import { one, parseJson, query } from "./db.js";
+import { newId, now, one, parseJson, query, run } from "./db.js";
 import { executionFromRow } from "./engine/executor.js";
 import type { WorkflowGraph } from "./engine/types.js";
 import { httpError } from "./errors.js";
@@ -15,7 +15,7 @@ import { insertWorkflow, sanitizeGraph, updateInactiveWorkflow } from "./routes/
  * and explains failed runs. Uses the platform owner's key, so it is a paid-plan feature.
  */
 
-const MODEL = "claude-opus-5";
+const DEFAULT_MODEL = "claude-opus-5";
 const MAX_TOOL_ROUNDS = 12;
 
 type Access = { ok: true } | { ok: false; reason: "not_configured" | "plan" };
@@ -60,8 +60,16 @@ function catalog() {
 const INSTRUCTIONS = `أنت «مساعد تدفّق»، المساعد الذكي جوه منصة الأتمتة «تدفّق» (زي Make وn8n). بتساعد المستخدم يبني سيناريوهات أتمتة، ويفهم المنصة، ويحل أخطاء التشغيل.
 
 # أسلوبك
-- رد باللهجة المصرية، واضح ومختصر، وقسّم الخطوات بنقاط لما يكون فيه أكتر من خطوة.
+- رد باللهجة المصرية، واضح ومختصر.
+- الكتابة نص عادي: للخطوات استخدم سطور تبدأ بـ "- " أو "1." بس. ممنوع ** أو # أو جداول أو أي تنسيق Markdown تاني.
 - لو طلب المستخدم مش واضح بما يكفي لبناء سيناريو صح، اسأل سؤال واحد قصير بس قبل ما تبني.
+
+# التزم باللي المستخدم طلبه بالظبط
+- نفّذ الطلب بنفس الخطوات والمنصات والخدمات اللي المستخدم ذكرها. لو قال «عايز 1 و2 و3» ابني 1 و2 و3 بس - متضيفش ومتشيلش ومتغيرش الفكرة.
+- اختار دايماً أبسط طريقة تحقق الطلب بالخطوات الجاهزة في الكتالوج.
+- لو المستخدم ذكر خدمة أو API خارجي (مثلاً Upload-Post أو مزوّد واتساب أو SMS غير رسمي أو خدمة نشر)، استخدمه زي ما هو: uploadpost.post لـ Upload-Post، أو custom.request أو http.request لأي خدمة تانية. متقترحش الرسمي بداله ولا تقوله إنه أصعب أو أحسن.
+- متقترحش بدائل أو تحسينات أو خطوات زيادة إلا لو المستخدم سأل، أو لو اللي طلبه مستحيل فعلاً - وساعتها قول السبب في جملة واحدة.
+- ممكن تضيف في آخر ردك سطر واحد بس فيه اقتراح اختياري، من غير ما تنفذه.
 - متقولش أبداً إنك عملت أو عدّلت سيناريو إلا لو الأداة رجعت نجاح.
 - قبل ما تعدّل سيناريو موجود، اشرح التعديل واستنى موافقة المستخدم. إنشاء سيناريو جديد مش محتاج موافقة لو المستخدم طلبه.
 
@@ -210,16 +218,66 @@ async function runTool(name: string, input: Record<string, any>, userId: string,
   }
 }
 
-interface ChatMessage {
+/* ---------- conversations (kept per account, so a refresh never loses a chat) ---------- */
+interface StoredMessage {
   role: "user" | "assistant";
   text: string;
+  actions?: AssistantAction[];
+  error?: boolean;
 }
 
-async function chat(userId: string, history: ChatMessage[], workflowId?: string) {
+async function loadConversation(userId: string, id: string) {
+  const row = await one<{ id: string; title: string; messages: string; model: string }>(
+    "SELECT id, title, messages, model FROM assistant_conversations WHERE id = $1 AND user_id = $2",
+    [id, userId],
+  );
+  return row ? { id: row.id, title: row.title, model: row.model, messages: parseJson<StoredMessage[]>(row.messages, []) } : undefined;
+}
+
+async function saveConversation(userId: string, id: string, title: string, model: string, messages: StoredMessage[], isNew: boolean) {
+  const timestamp = now();
+  const body = JSON.stringify(messages.slice(-200));
+  if (isNew) {
+    await run(
+      "INSERT INTO assistant_conversations (id, user_id, title, model, messages, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [id, userId, title, model, body, timestamp, timestamp],
+    );
+  } else {
+    await run("UPDATE assistant_conversations SET messages = $1, model = $2, updated_at = $3 WHERE id = $4 AND user_id = $5", [
+      body,
+      model,
+      timestamp,
+      id,
+      userId,
+    ]);
+  }
+}
+
+/* ---------- models ---------- */
+let modelCache: { at: number; models: { id: string; name: string }[] } | null = null;
+
+async function availableModels() {
+  if (modelCache && Date.now() - modelCache.at < 3_600_000) return modelCache.models;
+  const client = new Anthropic({ apiKey: config.assistantApiKey, maxRetries: 1, timeout: 15_000 });
+  const models: { id: string; name: string }[] = [];
+  try {
+    for await (const model of client.models.list({ limit: 100 })) models.push({ id: model.id, name: model.display_name ?? model.id });
+  } catch {
+    models.push({ id: DEFAULT_MODEL, name: "Claude Opus 5" });
+  }
+  if (!models.some((m) => m.id === DEFAULT_MODEL)) models.unshift({ id: DEFAULT_MODEL, name: "Claude Opus 5" });
+  modelCache = { at: Date.now(), models };
+  return models;
+}
+
+/* ---------- streaming chat ---------- */
+type Emit = (event: Record<string, unknown>) => void;
+
+async function streamChat(userId: string, history: StoredMessage[], workflowId: string | undefined, model: string, emit: Emit, signal: AbortSignal) {
   const client = new Anthropic({ apiKey: config.assistantApiKey, maxRetries: 2 });
-  const trimmed = history.filter((m) => m.text?.trim()).slice(-30);
+  const trimmed = history.filter((m) => !m.error && m.text?.trim()).slice(-30);
   const firstUser = trimmed.findIndex((m) => m.role === "user");
-  const messages: Anthropic.MessageParam[] = trimmed.slice(Math.max(firstUser, 0)).map((m) => ({ role: m.role, content: m.text }));
+  const messages: Anthropic.Beta.BetaMessageParam[] = trimmed.slice(Math.max(firstUser, 0)).map((m) => ({ role: m.role, content: m.text }));
   if (!messages.length || messages[messages.length - 1].role !== "user") throw httpError(400, "ابعت رسالة الأول");
   if (workflowId) {
     const last = messages[messages.length - 1];
@@ -227,38 +285,56 @@ async function chat(userId: string, history: ChatMessage[], workflowId?: string)
   }
 
   // Stable prefix (instructions + node catalog) is cached across requests.
-  const system: Anthropic.TextBlockParam[] = [
+  const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: "text", text: `${INSTRUCTIONS}\n\n# كتالوج الخطوات المتاحة (JSON)\n${catalog()}`, cache_control: { type: "ephemeral" } },
   ];
   const actions: AssistantAction[] = [];
+  let reply = "";
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    let response: any;
+    let message: any;
     try {
-      response = await client.beta.messages.create({
-        model: MODEL,
-        max_tokens: 16000,
-        system,
-        messages,
-        tools: TOOLS,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-      } as any);
+      const stream = client.beta.messages.stream(
+        {
+          model,
+          max_tokens: 32000,
+          system,
+          messages,
+          tools: TOOLS as any,
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default",
+        } as any,
+        { signal },
+      );
+      for await (const event of stream as any) {
+        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+          reply += event.delta.text;
+          emit({ type: "text", text: event.delta.text });
+        }
+      }
+      message = await stream.finalMessage();
     } catch (error) {
+      if (signal.aborted) throw error;
       if (error instanceof Anthropic.RateLimitError) throw httpError(429, "المساعد عليه ضغط دلوقتي - جرّب كمان دقيقة");
       if (error instanceof Anthropic.AuthenticationError) throw httpError(503, "مفتاح المساعد (ANTHROPIC_API_KEY) غلط");
+      if (error instanceof Anthropic.NotFoundError) throw httpError(400, `الموديل ${model} مش متاح - اختار موديل تاني`);
       if (error instanceof Anthropic.APIError) throw httpError(502, `المساعد مش متاح دلوقتي: ${error.message}`);
       throw error;
     }
 
-    if (response.stop_reason === "refusal") {
-      return { reply: "معلش، مقدرش أساعد في الطلب ده.", actions };
+    if (message.stop_reason === "refusal") {
+      const text = "معلش، مقدرش أساعد في الطلب ده.";
+      emit({ type: "text", text: reply ? `\n\n${text}` : text });
+      return { reply: `${reply}${reply ? "\n\n" : ""}${text}`, actions };
     }
-    if (response.stop_reason === "tool_use" || response.stop_reason === "pause_turn") {
-      messages.push({ role: "assistant", content: response.content });
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue;
+    const toolUses = message.content.filter((block: any) => block.type === "tool_use");
+    // A tool call cut off by the token limit is incomplete: never run it.
+    if ((message.stop_reason === "tool_use" || message.stop_reason === "pause_turn") && message.stop_reason !== "max_tokens") {
+      messages.push({ role: "assistant", content: message.content });
+      if (message.stop_reason === "pause_turn" && !toolUses.length) continue;
+      const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
+      for (const block of toolUses) {
+        emit({ type: "status", text: TOOL_STATUS[block.name] ?? "بشتغل..." });
         try {
           const output = await runTool(block.name, block.input ?? {}, userId, actions);
           results.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(output) });
@@ -267,32 +343,112 @@ async function chat(userId: string, history: ChatMessage[], workflowId?: string)
         }
       }
       if (results.length) messages.push({ role: "user", content: results });
+      if (reply && !reply.endsWith("\n")) {
+        reply += "\n\n";
+        emit({ type: "text", text: "\n\n" });
+      }
       continue;
     }
-    const reply = response.content
-      .filter((block: any) => block.type === "text")
-      .map((block: any) => block.text as string)
-      .join("\n")
-      .trim();
-    return { reply: reply || "خلصت.", actions };
+    return { reply: reply.trim() || "خلصت.", actions };
   }
-  return { reply: "الطلب ده طوّل أكتر من اللازم - جرّب تقسّمه لخطوات أصغر.", actions };
+  const text = "الطلب ده طوّل أكتر من اللازم - جرّب تقسّمه لخطوات أصغر.";
+  emit({ type: "text", text });
+  return { reply: `${reply}${text}`, actions };
 }
+
+const TOOL_STATUS: Record<string, string> = {
+  list_workflows: "بشوف السيناريوهات بتاعتك...",
+  get_workflow: "بقرا السيناريو...",
+  get_recent_executions: "بشوف آخر التشغيلات والأخطاء...",
+  list_credentials: "بشوف الحسابات المربوطة...",
+  create_workflow: "ببني السيناريو...",
+  update_workflow: "بعدّل السيناريو...",
+};
 
 export async function assistantRoutes(app: FastifyInstance) {
   app.get("/api/assistant/status", async (req) => {
     const access = await assistantAccess(req);
-    return access.ok ? { available: true } : { available: false, reason: access.reason };
+    return access.ok ? { available: true, defaultModel: DEFAULT_MODEL } : { available: false, reason: access.reason };
   });
 
-  app.post("/api/assistant/chat", async (req) => {
+  app.get("/api/assistant/models", async (req) => {
+    const access = await assistantAccess(req);
+    if (!access.ok) return { models: [], defaultModel: DEFAULT_MODEL };
+    return { models: await availableModels(), defaultModel: DEFAULT_MODEL };
+  });
+
+  app.get("/api/assistant/conversations", async (req) =>
+    query("SELECT id, title, model, updated_at AS \"updatedAt\" FROM assistant_conversations WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 50", [
+      req.user.id,
+    ]),
+  );
+
+  app.get("/api/assistant/conversations/:id", async (req) => {
+    const conversation = await loadConversation(req.user.id, (req.params as { id: string }).id);
+    if (!conversation) throw httpError(404, "المحادثة مش موجودة");
+    return conversation;
+  });
+
+  app.delete("/api/assistant/conversations/:id", async (req) => {
+    await run("DELETE FROM assistant_conversations WHERE id = $1 AND user_id = $2", [(req.params as { id: string }).id, req.user.id]);
+    return { ok: true };
+  });
+
+  /** Server-Sent Events: the reply shows up word by word, tool work as short status lines. */
+  app.post("/api/assistant/chat", async (req, reply) => {
     await rateLimit(`assistant:${req.user.id}`, 40, 3600, "استخدمت المساعد كتير في الساعة دي - جرّب بعد شوية");
     const access = await assistantAccess(req);
     if (!access.ok) {
       throw httpError(403, access.reason === "plan" ? "المساعد الذكي متاح في الباقة الاحترافية" : "المساعد الذكي مش متضبط على المنصة");
     }
-    const body = (req.body ?? {}) as { messages?: ChatMessage[]; workflowId?: string };
-    if (!Array.isArray(body.messages)) throw httpError(400, "messages مطلوبة");
-    return chat(req.user.id, body.messages, typeof body.workflowId === "string" ? body.workflowId : undefined);
+    const body = (req.body ?? {}) as { conversationId?: string; message?: string; workflowId?: string; model?: string };
+    const text = String(body.message ?? "").trim();
+    if (!text) throw httpError(400, "ابعت رسالة الأول");
+    if (text.length > 8000) throw httpError(400, "الرسالة طويلة جداً");
+    const model = /^claude-[a-z0-9.-]+$/i.test(String(body.model ?? "")) ? String(body.model) : DEFAULT_MODEL;
+
+    const existing = body.conversationId ? await loadConversation(req.user.id, String(body.conversationId)) : undefined;
+    const conversationId = existing?.id ?? newId();
+    const title = existing?.title ?? text.replace(/\s+/g, " ").slice(0, 60);
+    const history: StoredMessage[] = [...(existing?.messages ?? []), { role: "user", text }];
+    await saveConversation(req.user.id, conversationId, title, model, history, !existing);
+
+    reply.hijack();
+    const res = reply.raw;
+    res.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-store, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
+    });
+    const emit: Emit = (event) => {
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+    const controller = new AbortController();
+    res.on("close", () => {
+      if (!res.writableFinished) controller.abort();
+    });
+    emit({ type: "conversation", id: conversationId, title, model });
+
+    try {
+      const result = await streamChat(
+        req.user.id,
+        history,
+        typeof body.workflowId === "string" ? body.workflowId : undefined,
+        model,
+        emit,
+        controller.signal,
+      );
+      history.push({ role: "assistant", text: result.reply, actions: result.actions });
+      await saveConversation(req.user.id, conversationId, title, model, history, false);
+      emit({ type: "done", actions: result.actions });
+    } catch (error: any) {
+      const message = controller.signal.aborted ? "اتوقف الرد" : errorMessage(error);
+      history.push({ role: "assistant", text: message, error: true });
+      await saveConversation(req.user.id, conversationId, title, model, history, false).catch(() => undefined);
+      emit({ type: "error", message });
+    } finally {
+      res.end();
+    }
   });
 }

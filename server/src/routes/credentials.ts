@@ -23,7 +23,12 @@ async function toSummary(row: any, userId: string) {
     name: row.name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    preview: Object.fromEntries((type?.fields ?? []).map((f) => [f.key, f.secret ? mask(data[f.key]) : (data[f.key] ?? "")])),
+    preview: Object.fromEntries(
+      (type?.fields ?? []).map((f) => {
+        const value = data[f.key] ?? "";
+        return [f.key, f.secret || (value.length > 48 && !/^https?:\/\//.test(value)) ? mask(value) : value];
+      }),
+    ),
     ...(type?.oauth ? { oauth: { account: data.account ?? "", expiresAt: data.expiresAt ?? "", refreshable: Boolean(data.refreshToken) } } : {}),
     usedBy,
   };
@@ -36,6 +41,9 @@ function cleanData(type: CredentialType, input: unknown, existing: Record<string
     const value = typeof raw[field.key] === "string" ? (raw[field.key] as string).trim() : "";
     data[field.key] = value || existing[field.key] || "";
     if (field.required && !data[field.key]) throw httpError(400, `حقل «${field.label}» مطلوب`);
+  }
+  if (type.key === "customApi" && data.authHeader && !/^[A-Za-z0-9-]{1,60}$/.test(data.authHeader)) {
+    throw httpError(400, "«اسم Header المفتاح» لازم يكون اسم قصير زي Authorization أو X-API-Key - المفتاح نفسه اكتبه في «قيمة المفتاح»");
   }
   return data;
 }

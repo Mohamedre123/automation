@@ -28,6 +28,15 @@ export const customApiCredential: CredentialType = {
       help: "[to] = المستلم و [text] = النص. فاضي = الشكل ده بالظبط.",
     },
   ],
+  async test(data) {
+    const header = String(data.authHeader ?? "").trim();
+    if (header && !/^[A-Za-z0-9-]{1,60}$/.test(header)) {
+      throw new Error("«اسم Header المفتاح» لازم يكون اسم قصير زي Authorization أو X-API-Key - المفتاح نفسه بيتكتب في «قيمة المفتاح»");
+    }
+    const url = String(data.baseUrl ?? "").trim();
+    if (!/^https?:\/\//i.test(url)) throw new Error("رابط الـ API لازم يبدأ بـ https://");
+    return "الإعدادات سليمة ✓ (جرّب خطوة من السيناريو للتأكد من الرد)";
+  },
   steps: [
     "من لوحة المزوّد بتاعك هات رابط الـ API الأساسي (Base URL) والمفتاح (API Key / Token).",
     "من التوثيق بتاعهم اعرف المفتاح بيتبعت إزاي: غالباً Header اسمه Authorization وقيمته Bearer + المفتاح، أو Header زي X-API-Key.",

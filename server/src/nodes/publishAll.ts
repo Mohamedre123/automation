@@ -6,6 +6,8 @@ import { publishingNodes } from "./publishing.js";
 import { socialNodes } from "./social.js";
 import { telegramNodes } from "./telegram.js";
 import { customRequest, fillTemplate } from "./custom.js";
+import { AGGREGATORS, splitList, type AggregatorKey } from "./aggregators.js";
+import { uploadPostPublish } from "./uploadpost.js";
 import { errorMessage } from "./util.js";
 
 // Loaded directly (not via the executor) so this module has no import cycle with the node registry.
@@ -119,6 +121,32 @@ const PLATFORMS: PlatformDef[] = [
     targetField: { key: "pinterestBoardId", label: "Pinterest: رقم اللوحة (Board ID)", type: "text" },
   },
   {
+    key: "uploadpost",
+    label: "Upload-Post",
+    credentialTypes: ["uploadPostApi"],
+    node: "uploadpost.post",
+    targetField: {
+      key: "uploadpostPlatforms",
+      label: "Upload-Post: المنصات",
+      type: "text",
+      default: "instagram, tiktok, youtube",
+      help: "المنصات اللي تنزل عن طريق Upload-Post (مفصولة بفاصلة): instagram, facebook, tiktok, youtube, x, linkedin, threads, pinterest, bluesky",
+    },
+  },
+  ...(Object.entries(AGGREGATORS) as [AggregatorKey, (typeof AGGREGATORS)[AggregatorKey]][]).map(([key, service]) => ({
+    key,
+    label: service.label,
+    credentialTypes: [service.credentialType],
+    node: `${key}.post`,
+    targetField: {
+      key: `${key}Platforms`,
+      label: `${service.label}: المنصات`,
+      type: "text" as const,
+      default: "instagram, facebook, tiktok",
+      help: "المنصات اللي تنزل عن طريق الخدمة دي (مفصولة بفاصلة): instagram, facebook, tiktok, youtube, x, linkedin, threads, pinterest, bluesky",
+    },
+  })),
+  {
     key: "custom",
     label: "خدمة نشر خارجية",
     credentialTypes: ["customApi"],
@@ -187,6 +215,19 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       return [{ text: p.caption, link: p.link, linkTitle: p.link ? clip(p.caption.split("\n")[0], 200) : "" }];
     case "bluesky":
       return [{ text: clip(withLink, 300), imageUrl: image || p.imageUrl }];
+    case "uploadpost": {
+      const platforms = (target || "instagram, tiktok").split(/[,،\s]+/).map((p) => p.trim().toLowerCase()).filter(Boolean);
+      const base = { _uploadpost: true, platforms, title: clip(withLink, 2200) };
+      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: [image] }];
+      return [{ ...base, videoUrl: video || undefined, imageUrls: image ? [image] : [] }];
+    }
+    case "ayrshare":
+    case "zernio":
+    case "blotato": {
+      const base = { _aggregator: key, platforms: splitList(target || "instagram, facebook"), text: withLink };
+      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: [image] }];
+      return [{ ...base, videoUrl: video || undefined, imageUrls: image ? [image] : [] }];
+    }
     case "custom": {
       if (!target) throw new Error("اكتب مسار الخدمة الخارجية");
       return [{ _custom: true, path: target }];
@@ -223,6 +264,16 @@ export async function publishToPlatforms(
       const credential = await loadCredential(userId, selected.credentialId);
       if (!credential) throw new Error("الحساب المختار اتمسح");
       for (const post of platformPosts(platform.key, payload, String(selected.target ?? "").trim())) {
+        if ((post as { _aggregator?: AggregatorKey })._aggregator) {
+          const { _aggregator, ...aggregatorPost } = post as any;
+          result.posts.push(await AGGREGATORS[_aggregator as AggregatorKey].publish(credential, aggregatorPost, context.signal));
+          continue;
+        }
+        if ((post as { _uploadpost?: boolean })._uploadpost) {
+          const { _uploadpost, ...uploadPost } = post as any;
+          result.posts.push(await uploadPostPublish(credential, uploadPost, context.signal));
+          continue;
+        }
         if ((post as { _custom?: boolean })._custom) {
           const template =
             payload.customBody?.trim() || '{"text":"[caption]","imageUrl":"[imageUrl]","videoUrl":"[videoUrl]","link":"[link]"}';

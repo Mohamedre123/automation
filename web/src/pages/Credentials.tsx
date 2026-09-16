@@ -342,9 +342,11 @@ export function Credentials() {
                     </div>
                   )}
                   {type?.fields.map((f) => (
-                    <div key={f.key} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+                    <div key={f.key} className="cred-row">
                       <span className="muted">{f.label}</span>
-                      <span className="mono faint">{c.preview[f.key] || "—"}</span>
+                      <span className="mono faint cred-value" title={c.preview[f.key] || ""}>
+                        {c.preview[f.key] || "—"}
+                      </span>
                     </div>
                   ))}
                 </div>

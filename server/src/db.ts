@@ -127,6 +127,17 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS assistant_conversations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    messages TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_assistant_conversations_user ON assistant_conversations(user_id, updated_at);
+
   CREATE TABLE IF NOT EXISTS rate_limits (
     key TEXT PRIMARY KEY,
     window_start BIGINT NOT NULL,

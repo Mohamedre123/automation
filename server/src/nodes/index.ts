@@ -6,6 +6,8 @@ import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
 import { connectedCredentials, connectedNodes } from "./connected.js";
 import { customApiCredential, customApiNode } from "./custom.js";
+import { uploadPostCredential, uploadPostNode } from "./uploadpost.js";
+import { aggregatorCredentials, aggregatorNodes } from "./aggregators.js";
 import { credentialGuides } from "./guides.js";
 import { googleCredential, googleNodes } from "./google.js";
 import { httpCredentials, httpRequest } from "./http.js";
@@ -44,6 +46,8 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...feedNodes,
   httpRequest,
   customApiNode,
+  uploadPostNode,
+  ...aggregatorNodes,
   ...anthropicNodes,
 ];
 
@@ -64,6 +68,8 @@ export const credentialTypes: CredentialType[] = [
   ...marketingCredentials,
   ...httpCredentials,
   customApiCredential,
+  uploadPostCredential,
+  ...aggregatorCredentials,
 ];
 
 for (const type of credentialTypes) type.steps ??= credentialGuides[type.key];
