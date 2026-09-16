@@ -385,6 +385,187 @@ export const templates: Template[] = [
     },
   },
 
+  /* ---------- المتاجر الإلكترونية ---------- */
+  {
+    id: "shopify-order-whatsapp",
+    name: "طلب Shopify جديد ← رسالة واتساب للعميل + إشعار للفريق",
+    description: "مع كل طلب جديد: العميل يستلم رسالة تأكيد على واتساب، والفريق يوصله ملخص الطلب على Slack.",
+    category: "المتاجر الإلكترونية",
+    requires: ["متجر Shopify (Admin API token)", "حساب WasenderAPI", "Slack"],
+    graph: {
+      nodes: [
+        { id: "1", type: "shopify.orderTrigger", position: at(0), params: { minutes: 5 } },
+        {
+          id: "2",
+          type: "wasender.send",
+          position: at(1, -90),
+          params: {
+            to: "{{1.customer.phone}}",
+            messageType: "text",
+            text: "أهلاً {{1.customer.name}} 👋\nطلبك رقم {{1.name}} اتسجل بنجاح بإجمالي {{1.total}} {{1.currency}}.\nهنتواصل معاك قريب لتأكيد الشحن.",
+          },
+        },
+        {
+          id: "3",
+          type: "slack.message",
+          position: at(1, 90),
+          params: { channel: "#orders", text: "🛒 طلب جديد {{1.name}} - {{1.customer.name}} - {{1.total}} {{1.currency}}" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("1", "3")],
+    },
+  },
+  {
+    id: "woocommerce-order-telegram",
+    name: "طلب WooCommerce جديد ← إشعار تيليجرام",
+    description: "كل طلب جديد في متجر ووردبريس يوصلك فوراً على تيليجرام بالتفاصيل.",
+    category: "المتاجر الإلكترونية",
+    requires: ["متجر WooCommerce (REST API key)", "بوت تيليجرام"],
+    graph: {
+      nodes: [
+        { id: "1", type: "woocommerce.orderTrigger", position: at(0), params: { minutes: 5 } },
+        {
+          id: "2",
+          type: "telegram.sendMessage",
+          position: at(1),
+          params: {
+            chatId: "",
+            text: "🛒 طلب جديد #{{1.id}}\nالعميل: {{1.customer.name}} - {{1.customer.phone}}\nالإجمالي: {{1.total}} {{1.currency}}",
+          },
+        },
+      ],
+      edges: [edge("1", "2")],
+    },
+  },
+  {
+    id: "stripe-payment-crm",
+    name: "دفع Stripe ناجح ← HubSpot + إيميل شكر",
+    description: "لما عميل يدفع: يتسجل أو يتحدّث في HubSpot، ويوصله إيميل شكر تلقائي.",
+    category: "المتاجر الإلكترونية",
+    requires: ["Stripe (Secret key)", "HubSpot (Private App)", "إيميل عن طريق Resend"],
+    graph: {
+      nodes: [
+        { id: "1", type: "stripe.paymentTrigger", position: at(0), params: { minutes: 5 } },
+        {
+          id: "2",
+          type: "hubspot.contact",
+          position: at(1),
+          params: { email: "{{1.customer.email}}", firstname: "{{1.customer.name}}", phone: "{{1.customer.phone}}" },
+        },
+        {
+          id: "3",
+          type: "email.send",
+          position: at(2),
+          params: {
+            to: "{{1.customer.email}}",
+            subject: "شكراً لدفعك 🙏",
+            body: "أهلاً {{1.customer.name}},\n\nوصلنا دفعك بقيمة {{1.amount}} {{1.currency}}. شكراً لثقتك فينا!",
+            format: "text",
+          },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+
+  /* ---------- جداول وبيانات ---------- */
+  {
+    id: "form-to-sheets-welcome",
+    name: "فورم تسجيل ← Google Sheets + إيميل ترحيب",
+    description: "أي حد يسجّل من الفورم بيتضاف صف في الشيت، ويوصله إيميل ترحيب فوراً.",
+    category: "المبيعات والتسويق",
+    requires: ["Google Sheets (Service Account)", "إيميل عن طريق Resend"],
+    graph: {
+      nodes: [
+        {
+          id: "1",
+          type: "trigger.form",
+          position: at(0),
+          params: {
+            title: "سجّل معانا",
+            formFields: [
+              { key: "name", value: "الاسم" },
+              { key: "email", value: "الإيميل" },
+              { key: "phone", value: "رقم الموبايل" },
+            ],
+            submitLabel: "تسجيل",
+            successMessage: "تم التسجيل ✓ هيوصلك إيميل حالاً",
+          },
+        },
+        {
+          id: "2",
+          type: "sheets.append",
+          position: at(1),
+          params: { spreadsheetId: "", sheet: "Sheet1", row: '["{{1.data.name}}", "{{1.data.email}}", "{{1.data.phone}}", "{{$now}}"]' },
+        },
+        {
+          id: "3",
+          type: "email.send",
+          position: at(2),
+          params: { to: "{{1.data.email}}", subject: "أهلاً بيك!", body: "أهلاً {{1.data.name}},\n\nتم تسجيلك بنجاح وهنتواصل معاك قريب.", format: "text" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+  {
+    id: "sheet-daily-reminders",
+    name: "تذكير يومي على واتساب من Google Sheets",
+    description: "كل يوم الصبح يقرأ الشيت، ويبعت رسالة تذكير على واتساب لكل عميل ميعاده النهارده. مثال على التكرار والفلتر.",
+    category: "أدوات",
+    requires: ["Google Sheets فيه أعمدة: الاسم، الموبايل، الميعاد (YYYY-MM-DD)", "حساب WasenderAPI"],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 9 * * *", timezone: "Africa/Cairo" } },
+        { id: "2", type: "sheets.read", position: at(1), params: { spreadsheetId: "", sheet: "Sheet1", limit: 500 } },
+        { id: "3", type: "logic.iterator", position: at(2), params: { list: "{{2.rows}}", limit: 200 } },
+        { id: "4", type: "tools.date", position: at(3), params: { operation: "format", date: "{{$now}}", format: "ymd", timezone: "Africa/Cairo" } },
+        {
+          id: "5",
+          type: "logic.filter",
+          position: at(4),
+          params: { combine: "all", conditions: [{ left: "{{3.الميعاد}}", op: "equals", right: "{{4.result}}" }] },
+        },
+        {
+          id: "6",
+          type: "wasender.send",
+          position: at(5),
+          params: { to: "{{3.الموبايل}}", messageType: "text", text: "أهلاً {{3.الاسم}} 👋\nبنفكّرك إن ميعادك النهارده. مستنيينك!" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5"), edge("5", "6")],
+    },
+  },
+  {
+    id: "rss-ai-digest",
+    name: "أخبار RSS ← ملخص بالذكاء الاصطناعي ← تيليجرام",
+    description: "أي خبر جديد في موقع أو مدونة بيتلخّص في سطرين وينزل على قناة التيليجرام بتاعتك.",
+    category: "المحتوى",
+    requires: ["رابط RSS", AI_ACCOUNT, "بوت تيليجرام (أدمن في القناة)"],
+    graph: {
+      nodes: [
+        { id: "1", type: "rss.trigger", position: at(0), params: { url: "", minutes: 30 } },
+        {
+          id: "2",
+          type: "ai.generate",
+          position: at(1),
+          params: {
+            system: "لخّص الخبر في سطرين بالعربي بأسلوب جذاب، من غير مقدمات.",
+            prompt: "العنوان: {{1.title}}\nالتفاصيل: {{1.description}}",
+            maxTokens: 800,
+          },
+        },
+        {
+          id: "3",
+          type: "telegram.sendMessage",
+          position: at(2),
+          params: { chatId: "@your_channel", text: "📰 {{1.title}}\n\n{{2.text}}\n\n🔗 {{1.link}}" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+
   /* ---------- المبيعات وخدمة العملاء ---------- */
   {
     id: "contact-form-telegram",

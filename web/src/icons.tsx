@@ -116,6 +116,18 @@ const paths: Record<string, ReactElement> = {
   plus: <path d="M12 5v14M5 12h14" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  rss: (
+    <>
+      <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" />
+      <circle cx="5" cy="19" r="1.2" />
+    </>
+  ),
   form: (
     <>
       <rect x="4" y="3" width="16" height="18" rx="2.5" />
@@ -231,6 +243,24 @@ const appIcons: Record<string, string> = {
   instagram: "instagram",
   form: "form",
   media: "image",
+  email: "mail",
+  rss: "rss",
+};
+
+/** Brands without a drawn icon get a short mark on their brand color. */
+const APP_MARKS: Record<string, string> = {
+  slack: "#",
+  discord: "D",
+  sheets: "S",
+  airtable: "A",
+  notion: "N",
+  trello: "T",
+  github: "GH",
+  shopify: "S",
+  woocommerce: "W",
+  stripe: "S",
+  hubspot: "H",
+  mailchimp: "M",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
@@ -243,6 +273,12 @@ export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
   }
   if (app === "openai") {
     return <span style={{ fontWeight: 700, fontSize: size * 0.52, direction: "ltr", letterSpacing: 0.5 }}>GPT</span>;
+  }
+  if (APP_MARKS[app]) {
+    const mark = APP_MARKS[app];
+    return (
+      <span style={{ fontWeight: 800, fontSize: size * (mark.length > 1 ? 0.62 : 0.92), direction: "ltr", lineHeight: 1 }}>{mark}</span>
+    );
   }
   if (app === "facebook") {
     return <span style={{ fontWeight: 700, fontSize: size * 1.05, fontFamily: "Georgia, serif", direction: "ltr", lineHeight: 1 }}>f</span>;

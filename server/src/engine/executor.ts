@@ -109,11 +109,13 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
       output: compact(triggerOutput),
     });
 
-    const pending = nextNodes(graph, trigger.id);
+    // Each pending step carries the outputs it can see: iterators give every item its own copy.
+    const queued = (ids: string[], scope: Record<string, unknown>) => ids.map((nodeId) => ({ nodeId, scope }));
+    const pending = queued(nextNodes(graph, trigger.id), outputs);
     while (pending.length) {
       if (abortSignal.aborted) throw new Error("اتلغى التشغيل");
       if (steps.length > MAX_STEPS) throw new Error(`السيناريو عدّى الحد الأقصى (${MAX_STEPS} خطوة)`);
-      const nextId = pending.shift();
+      const { nodeId: nextId, scope } = pending.shift()!;
       const node = graph.nodes.find((n) => n.id === nextId);
       if (!node) continue;
       const def = getNode(node.type);
@@ -128,26 +130,38 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
       let params: Record<string, any> | undefined;
       try {
         if (!def?.run) throw new Error(`نوع خطوة غير معروف: ${node.type}`);
-        params = resolveParams(def.fields, node.params ?? {}, { outputs, vars });
+        params = resolveParams(def.fields, node.params ?? {}, { outputs: scope, vars });
         const result = await def.run({
           params,
           credential: await resolveCredential(def, node, workflow.userId),
-          outputs,
+          outputs: scope,
           workflow: { id: workflow.id, name: workflow.name, userId: workflow.userId },
           execution: { id, mode },
           signal: withTimeout(abortSignal, config.nodeTimeoutMs),
           respond,
         });
-        outputs[node.id] = result.output;
         steps.push({
           ...base,
           status: "success",
           durationMs: Date.now() - stepStart,
           input: compact(params),
-          output: compact(result.output),
+          output: compact(result.fanOut ? { items: result.fanOut.length, ...(result.output as object) } : result.output),
           branch: result.branch,
         });
-        pending.push(...nextNodes(graph, node.id, result.branch));
+
+        if (result.stop) {
+          if (result.stop.status === "error") error = `${base.name} (${node.id}): ${result.stop.message}`;
+          break;
+        }
+        if (result.fanOut) {
+          const children = nextNodes(graph, node.id, result.branch);
+          result.fanOut.forEach((item, index) => {
+            pending.push(...queued(children, { ...scope, [node.id]: { ...(item && typeof item === "object" && !Array.isArray(item) ? item : { value: item }), _index: index + 1, _total: result.fanOut!.length } }));
+          });
+          continue;
+        }
+        scope[node.id] = result.output;
+        pending.push(...queued(nextNodes(graph, node.id, result.branch), scope));
       } catch (err) {
         const message = errorMessage(err);
         steps.push({ ...base, status: "error", durationMs: Date.now() - stepStart, input: compact(params), error: message });
@@ -155,8 +169,8 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
           error = `${base.name} (${node.id}): ${message}`;
           break;
         }
-        outputs[node.id] = { error: message };
-        pending.push(...nextNodes(graph, node.id, def?.outputs ? "false" : undefined));
+        scope[node.id] = { error: message };
+        pending.push(...queued(nextNodes(graph, node.id, def?.outputs ? def.outputs[def.outputs.length - 1].key : undefined), scope));
       }
     }
   } catch (err) {

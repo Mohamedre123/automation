@@ -90,8 +90,12 @@ export interface NodeContext {
 
 export interface NodeResult {
   output: unknown;
-  /** For branching nodes: which output handle to follow. */
+  /** For branching nodes: which output handle to follow (a handle with no edge ends that branch). */
   branch?: string;
+  /** Iterator: the following steps run once per item, each seeing the item as this step's output. */
+  fanOut?: unknown[];
+  /** Ends the whole execution (successfully or as a failure). */
+  stop?: { status: "success" | "error"; message: string };
 }
 
 export interface PollContext {

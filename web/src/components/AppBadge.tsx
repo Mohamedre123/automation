@@ -18,6 +18,22 @@ export const APP_COLORS: Record<string, string> = {
   ai: "#7c3aed",
   logic: "#16a34a",
   tools: "#0f766e",
+  form: "#f59e0b",
+  media: "#0ea5e9",
+  email: "#f43f5e",
+  rss: "#f97316",
+  slack: "#4a154b",
+  discord: "#5865f2",
+  sheets: "#0f9d58",
+  airtable: "#18bfff",
+  notion: "#52525b",
+  trello: "#0079bf",
+  github: "#6e5494",
+  shopify: "#5e8e3e",
+  woocommerce: "#7f54b3",
+  stripe: "#635bff",
+  hubspot: "#ff7a59",
+  mailchimp: "#d4a300",
 };
 
 export function AppBadge({ app, size = 34, color }: { app: string; size?: number; color?: string }) {

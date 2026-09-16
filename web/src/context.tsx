@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, tokenStore } from "./api";
+import { APP_COLORS } from "./components/AppBadge";
 import type { CredentialTypeDef, Meta, NodeDefinition, User } from "./types";
 
 /* ---------- auth ---------- */
@@ -50,18 +51,8 @@ interface MetaState {
 
 const MetaContext = createContext<MetaState>(null as unknown as MetaState);
 
-const fallbackColors: Record<string, string> = {
-  http: "#2563eb",
-  anthropic: "#d97757",
-  telegram: "#229ed9",
-  openai: "#10a37f",
-  gemini: "#4285f4",
-  ai: "#7c3aed",
-  agent: "#9333ea",
-  whatsapp: "#25d366",
-  facebook: "#1877f2",
-  instagram: "#e1306c",
-};
+// Credential-only apps have no node to take a color from.
+const fallbackColors: Record<string, string> = APP_COLORS;
 
 export function MetaProvider({ children }: { children: ReactNode }) {
   const [meta, setMeta] = useState<Meta | null>(null);

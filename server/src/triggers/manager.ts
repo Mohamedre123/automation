@@ -281,8 +281,14 @@ export async function startTestRun(workflow: RuntimeWorkflow): Promise<TestRunRe
       return {
         execution: await executeWorkflow({ workflow, triggerOutput: { triggeredAt: now(), data: params.data ?? {} }, mode: "manual" }),
       };
-    case "schedule":
+    case "schedule": {
+      if (info.def.poll) {
+        const items = await pollOnce(workflow, info, AbortSignal.timeout(60_000), true);
+        if (!items.length) throw new Error("مفيش بيانات دلوقتي أجرّب عليها - تأكد إن فيه عنصر واحد على الأقل (صف، طلب، خبر...)");
+        return { execution: await executeWorkflow({ workflow, triggerOutput: items[0], mode: "manual" }) };
+      }
       return { execution: await executeWorkflow({ workflow, triggerOutput: { firedAt: now() }, mode: "manual" }) };
+    }
     case "webhook":
       return { sessionId: await createTestSession(workflow, info.path), waitingFor: "webhook", url: webhookUrl(info.path) };
     case "app": {
@@ -435,6 +441,17 @@ export async function runDueSchedules(limit = 25): Promise<number> {
     const claimed = await run("UPDATE workflows SET next_run_at = $1 WHERE id = $2 AND next_run_at = $3", [next, row.id, row.next_run_at]);
     if (!claimed) continue;
     ran++;
+    if (info.def.poll) {
+      // "Watch" triggers (RSS, new rows, new orders...): one execution per new item since the last check.
+      try {
+        const items = await pollOnce(workflow, info, AbortSignal.timeout(90_000), false);
+        for (const item of items.slice(0, 50)) await executeWorkflow({ workflow, triggerOutput: item, mode: "poll" });
+        if (row.trigger_error) await setTriggerError(row.id, null);
+      } catch (e) {
+        await setTriggerError(row.id, errorMessage(e));
+      }
+      continue;
+    }
     await executeWorkflow({ workflow, triggerOutput: { firedAt: now() }, mode: "schedule" }).catch((e) =>
       setTriggerError(row.id, errorMessage(e)),
     );

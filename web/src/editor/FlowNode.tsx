@@ -66,8 +66,13 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
       </div>
 
       {def?.outputs ? (
-        def.outputs.map((output, i) => {
-          const top = CIRCLE_CENTER - 20 + i * 40;
+        def.outputs.map((output, i, all) => {
+          // Two branches (If) get roomy labels; routers stack short numbered labels down the side.
+          const compact = all.length > 2;
+          const spacing = compact ? Math.min(20, 96 / (all.length - 1)) : 40;
+          const top = CIRCLE_CENTER - ((all.length - 1) * spacing) / 2 + i * spacing;
+          const color =
+            output.key === "true" ? "var(--success)" : output.key === "false" || output.key === "else" ? "var(--danger)" : "var(--accent-2)";
           return (
             <Fragment key={output.key}>
               <Handle
@@ -78,21 +83,15 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
                 style={{ top, right: HANDLE_INSET }}
               />
               <button
-                className="handle-label nodrag"
-                style={{
-                  top: top - 10,
-                  right: -18,
-                  border: 0,
-                  cursor: "pointer",
-                  color: output.key === "true" ? "var(--success)" : "var(--danger)",
-                }}
-                title={`إضافة خطوة في فرع «${output.label}»`}
+                className={`handle-label nodrag ${compact ? "compact" : ""}`}
+                style={{ top: top - (compact ? 8 : 10), right: compact ? -8 : -18, border: 0, cursor: "pointer", color }}
+                title={`إضافة خطوة في «${output.label}»`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddAfter(id, output.key);
                 }}
               >
-                {output.label} +
+                {compact ? (output.key === "else" ? "غير +" : `${output.key.replace(/\D/g, "")} +`) : `${output.label} +`}
               </button>
             </Fragment>
           );
