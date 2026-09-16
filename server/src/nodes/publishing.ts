@@ -602,6 +602,7 @@ export const publishingNodes: NodeDefinition[] = [
     credentialTypes: ["xOAuth1"],
     fields: [
       { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 280 حرف للحسابات العادية." },
+      { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", placeholder: "{{3.url}}" },
       { key: "replyTo", label: "رد على تغريدة رقم (اختياري)", type: "text" },
     ],
     sampleOutput: { id: "1835000000000000000", text: "نص التغريدة", postUrl: "https://x.com/i/web/status/1835000000000000000" },
@@ -609,8 +610,33 @@ export const publishingNodes: NodeDefinition[] = [
       const url = "https://api.x.com/2/tweets";
       const body: Record<string, unknown> = { text: String(params.text ?? "") };
       if (str(params.replyTo)) body.reply = { in_reply_to_tweet_id: str(params.replyTo) };
+      let mediaNote: string | undefined;
+      if (str(params.imageUrl)) {
+        try {
+          const image = await imageAsBase64(str(params.imageUrl), signal);
+          const uploadUrl = "https://api.x.com/2/media/upload";
+          const form = new FormData();
+          form.set("media", new Blob([Buffer.from(image.data, "base64")], { type: image.mimeType }), "image");
+          form.set("media_category", "tweet_image");
+          const response = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { authorization: oauth1Header("POST", uploadUrl, credential) },
+            body: form,
+            signal: withTimeout(signal, 60_000),
+          });
+          const uploaded: any = parseBody(await response.text(), response.headers.get("content-type"));
+          const mediaId = uploaded?.data?.id ?? uploaded?.media_id_string;
+          if (!response.ok || !mediaId) throw new Error(uploaded?.detail ?? uploaded?.title ?? `HTTP ${response.status}`);
+          body.media = { media_ids: [String(mediaId)] };
+        } catch (e) {
+          // The post still goes out; the log says why the picture is missing.
+          mediaNote = `الصورة مترفعتش على X (${(e as Error).message}) - اتنشرت التغريدة نص بس`;
+        }
+      }
       const res = await apiRequest("X", url, { headers: { authorization: oauth1Header("POST", url, credential) }, json: body, signal });
-      return { output: { ...res.data, postUrl: res.data?.id ? `https://x.com/i/web/status/${res.data.id}` : undefined } };
+      return {
+        output: { ...res.data, postUrl: res.data?.id ? `https://x.com/i/web/status/${res.data.id}` : undefined, ...(mediaNote ? { note: mediaNote } : {}) },
+      };
     },
   },
 
@@ -663,17 +689,30 @@ export const publishingNodes: NodeDefinition[] = [
     fields: [
       { key: "text", label: "النص", type: "textarea", required: true },
       { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text" },
+      { key: "videoUrl", label: "رابط فيديو (اختياري)", type: "text" },
     ],
     sampleOutput: { id: "18000000000000000" },
     async run({ params, credential, signal }) {
       const base = `https://graph.threads.net/v1.0/${encodeURIComponent(str(credential?.data.userId))}`;
       const token = str(credential?.data.accessToken);
       const imageUrl = str(params.imageUrl);
-      const create = new URLSearchParams({ media_type: imageUrl ? "IMAGE" : "TEXT", text: String(params.text ?? ""), access_token: token });
-      if (imageUrl) create.set("image_url", imageUrl);
+      const videoUrl = str(params.videoUrl);
+      const mediaType = videoUrl ? "VIDEO" : imageUrl ? "IMAGE" : "TEXT";
+      const create = new URLSearchParams({ media_type: mediaType, text: String(params.text ?? ""), access_token: token });
+      if (videoUrl) create.set("video_url", videoUrl);
+      else if (imageUrl) create.set("image_url", imageUrl);
       const container = await apiRequest("Threads", `${base}/threads`, { method: "POST", form: Object.fromEntries(create), signal });
-      // Meta recommends a short wait before publishing so the media finishes processing.
-      await sleep(imageUrl ? 8000 : 1500, signal);
+      if (videoUrl) {
+        for (let attempt = 0; attempt < 36; attempt++) {
+          const status = await apiRequest("Threads", `https://graph.threads.net/v1.0/${container.id}?fields=status,error_message&access_token=${encodeURIComponent(token)}`, { signal });
+          if (status.status === "FINISHED") break;
+          if (status.status === "ERROR" || status.status === "EXPIRED") throw new Error(`Threads: معالجة الفيديو فشلت - ${status.error_message ?? status.status}`);
+          await sleep(5000, signal);
+        }
+      } else {
+        // Meta recommends a short wait before publishing so the media finishes processing.
+        await sleep(imageUrl ? 8000 : 1500, signal);
+      }
       const published = await apiRequest("Threads", `${base}/threads_publish`, {
         method: "POST",
         form: { creation_id: container.id, access_token: token },
@@ -707,16 +746,23 @@ export const publishingNodes: NodeDefinition[] = [
       const record: Record<string, unknown> = { $type: "app.bsky.feed.post", text, createdAt: new Date().toISOString() };
       const facets = bskyLinkFacets(text);
       if (facets.length) record.facets = facets;
+      let note: string | undefined;
       if (str(params.imageUrl)) {
-        const image = await imageAsBase64(str(params.imageUrl), signal);
-        const blob = await uploadBinary(
-          "Bluesky",
-          `${bskyService(credential)}/xrpc/com.atproto.repo.uploadBlob`,
-          Buffer.from(image.data, "base64"),
-          { ...auth, "content-type": image.mimeType },
-          signal,
-        );
-        record.embed = { $type: "app.bsky.embed.images", images: [{ alt: str(params.imageAlt), image: blob.blob }] };
+        try {
+          const image = await imageAsBase64(str(params.imageUrl), signal);
+          const bytes = Buffer.from(image.data, "base64");
+          if (bytes.length > 1_000_000) throw new Error("حجم الصورة أكبر من 1 ميجا");
+          const blob = await uploadBinary(
+            "Bluesky",
+            `${bskyService(credential)}/xrpc/com.atproto.repo.uploadBlob`,
+            bytes,
+            { ...auth, "content-type": image.mimeType },
+            signal,
+          );
+          record.embed = { $type: "app.bsky.embed.images", images: [{ alt: str(params.imageAlt), image: blob.blob }] };
+        } catch (e) {
+          note = `الصورة متحطتش على Bluesky (${(e as Error).message}) - اتنشر نص بس`;
+        }
       }
       const res = await apiRequest("Bluesky", `${bskyService(credential)}/xrpc/com.atproto.repo.createRecord`, {
         headers: auth,
@@ -724,7 +770,7 @@ export const publishingNodes: NodeDefinition[] = [
         signal,
       });
       const rkey = String(res.uri ?? "").split("/").pop();
-      return { output: { ...res, postUrl: rkey ? `https://bsky.app/profile/${session.handle}/post/${rkey}` : undefined } };
+      return { output: { ...res, postUrl: rkey ? `https://bsky.app/profile/${session.handle}/post/${rkey}` : undefined, ...(note ? { note } : {}) } };
     },
   },
 ];

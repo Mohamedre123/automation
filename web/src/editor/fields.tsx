@@ -3,6 +3,7 @@ import { api } from "../api";
 import { AppIcon, Toggle, copyText, useToast } from "../components/ui";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
+import { CredentialModal } from "../pages/Credentials";
 import type { Credential, FieldDef } from "../types";
 import { useEditor } from "./FlowNode";
 import { pathSegment } from "./graph";
@@ -293,7 +294,7 @@ function ModelSelect({
   value: string;
   onChange: (value: string) => void;
   credentialId?: string | null;
-  kind: "text" | "image";
+  kind: "text" | "image" | "video";
 }) {
   const [state, setState] = useState<{ models: string[]; defaultModel: string | null; error?: string; loading: boolean }>({
     models: [],
@@ -316,7 +317,9 @@ function ModelSelect({
 
   if (!credentialId) return <div className="help">اختار الحساب الأول عشان تظهر الموديلات المتاحة فيه.</div>;
 
-  const available = state.models.filter((m) => (kind === "image" ? /image/i.test(m) : !NON_TEXT_MODEL.test(m)));
+  const available = state.models.filter((m) =>
+    kind === "image" ? /image/i.test(m) : kind === "video" ? /veo|sora/i.test(m) : !NON_TEXT_MODEL.test(m),
+  );
   const options = value && !available.includes(value) ? [value, ...available] : available;
 
   return (
@@ -336,7 +339,7 @@ function ModelSelect({
           onChange={(e) => (e.target.value === "__custom" ? setCustom(true) : onChange(e.target.value))}
         >
           <option value="">
-            {state.loading ? "جاري تحميل الموديلات..." : `الافتراضي${state.defaultModel ? ` (${state.defaultModel})` : ""}`}
+            {state.loading ? "جاري تحميل الموديلات..." : `الافتراضي${state.defaultModel && kind === "text" ? ` (${state.defaultModel})` : ""}`}
           </option>
           {options.map((model) => (
             <option key={model} value={model}>
@@ -363,28 +366,45 @@ function CredentialSelect({
   onChange,
   types,
   credentials,
+  onCredentialCreated,
 }: {
   value: string;
   onChange: (value: string) => void;
   types?: string[];
   credentials: Credential[];
+  onCredentialCreated?: (credential: Credential) => void;
 }) {
   const { credType } = useMeta();
+  const [adding, setAdding] = useState(false);
   const matching = credentials.filter((c) => !types?.length || types.includes(c.type));
   return (
     <>
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">— اختار حساب —</option>
-        {matching.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name} · {credType(c.type)?.name ?? c.type}
-          </option>
-        ))}
-      </select>
+      <div className="row">
+        <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">— اختار حساب —</option>
+          {matching.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} · {credType(c.type)?.name ?? c.type}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="btn" onClick={() => setAdding(true)}>
+          <Icon name="plus" size={15} /> ربط
+        </button>
+      </div>
       {matching.length === 0 && (
-        <div className="help">
-          مفيش حساب مناسب - ضيف {types?.map((t) => credType(t)?.name ?? t).join(" أو ")} من صفحة «الحسابات».
-        </div>
+        <div className="help">مفيش حساب {types?.map((t) => credType(t)?.name ?? t).join(" أو ")} لسه - دوس «ربط» وهتلاقي الشرح خطوة بخطوة.</div>
+      )}
+      {adding && (
+        <CredentialModal
+          types={types}
+          onClose={() => setAdding(false)}
+          onSaved={(credential) => {
+            setAdding(false);
+            onCredentialCreated?.(credential);
+            onChange(credential.id);
+          }}
+        />
       )}
     </>
   );
@@ -398,6 +418,7 @@ export function FieldInput({
   models = [],
   credentialId,
   credentials = [],
+  onCredentialCreated,
 }: {
   field: FieldDef;
   value: unknown;
@@ -408,6 +429,7 @@ export function FieldInput({
   /** The step's selected account (model fields load that account's models). */
   credentialId?: string | null;
   credentials?: Credential[];
+  onCredentialCreated?: (credential: Credential) => void;
 }) {
   const { meta } = useMeta();
   const toast = useToast();
@@ -450,7 +472,15 @@ export function FieldInput({
     case "model":
       return <ModelSelect value={text} onChange={onChange} credentialId={credentialId} kind={field.modelKind ?? "text"} />;
     case "credential":
-      return <CredentialSelect value={text} onChange={onChange} types={field.credentialTypes} credentials={credentials} />;
+      return (
+        <CredentialSelect
+          value={text}
+          onChange={onChange}
+          types={field.credentialTypes}
+          credentials={credentials}
+          onCredentialCreated={onCredentialCreated}
+        />
+      );
     case "combo": {
       const listId = `models-${nodeId}-${field.key}`;
       return (

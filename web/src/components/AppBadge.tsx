@@ -48,6 +48,7 @@ export const APP_COLORS: Record<string, string> = {
   bluesky: "#1185fe",
   youtube: "#ff0000",
   gmail: "#ea4335",
+  social: "#ec4899",
 };
 
 export function AppBadge({ app, size = 34, color }: { app: string; size?: number; color?: string }) {

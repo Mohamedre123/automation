@@ -715,6 +715,163 @@ export const templates: Template[] = [
     },
   },
 
+  {
+    id: "content-studio-daily",
+    name: "استوديو المحتوى اليومي: صور + فيديو + كابشن ← ينزل على كل المنصات في ميعاده",
+    description:
+      "كل يوم في ميعاد بتحدده: ياخد صورة منتج من مكتبتك، يكتب بوست احترافي بـ CTA وهاشتاجات، يعمل صورة إعلانية و/أو فيديو ريلز، وينشرهم في الساعة اللي تختارها على كل منصة ربطتها بس.",
+    category: "المحتوى",
+    requires: [
+      "صور منتجاتك في مكتبة الصور (فولدر «منتجات»)",
+      "حساب Gemini (للنص والصور وفيديو Veo) - أو OpenAI",
+      "حسابات المنصات اللي عايز تنشر عليها بس (واللي مش مربوطة بتتخطى)",
+    ],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 10 * * *", timezone: "Africa/Cairo" } },
+        {
+          id: "2",
+          type: "logic.set",
+          name: "إعدادات المحتوى",
+          position: at(1),
+          params: {
+            values: [
+              { key: "brand", value: "اسم البراند + بتبيع إيه (مثلاً: متجر عطور رجالي فاخر)" },
+              { key: "audience", value: "الجمهور (مثلاً: رجال 25-45 في مصر والخليج)" },
+              { key: "tone", value: "مصري ودود واحترافي" },
+              { key: "ideas", value: "أفكار ولا عروض الفترة دي (مثلاً: خصم 20% لآخر الشهر، هدية مع كل طلب)" },
+              { key: "makeImages", value: "نعم" },
+              { key: "makeVideos", value: "نعم" },
+              { key: "publishAt", value: "19:00" },
+              { key: "link", value: "https://mystore.com" },
+            ],
+          },
+        },
+        { id: "3", type: "media.pick", name: "صورة المنتج", position: at(2), params: { folder: "منتجات", mode: "sequential" } },
+        {
+          id: "4",
+          type: "ai.generate",
+          name: "كتابة المحتوى",
+          position: at(3),
+          params: {
+            system:
+              "أنت كاتب محتوى وكوبي رايتر محترف للسوشيال ميديا. اكتب بوست بيع احترافي: جملة افتتاحية تشد (Hook)، فايدة المنتج بإيجاز، CTA واضح (اطلب دلوقتي / ابعتلنا رسالة / الرابط)، و8-12 هاشتاج مناسبين للسوق. ممنوع أي مقدمات. رد بـ JSON فقط بالشكل:\n" +
+              '{"post":"البوست كامل بالـ CTA والهاشتاجات","imagePrompt":"English prompt for a professional advertising photo of this exact product, studio lighting, no text on image","videoPrompt":"English prompt for an 8-second cinematic vertical product reel of this exact product, smooth camera motion, no text"}',
+            prompt:
+              "البراند: {{2.brand}}\nالجمهور: {{2.audience}}\nالأسلوب: {{2.tone}}\nالأفكار والعروض: {{2.ideas}}\nالمنتج (اسم الصورة): {{3.name}}\nالتاريخ: {{$today}}\nاكتب بوست جديد ومختلف عن أي يوم قبل كده.",
+            parseJson: true,
+            maxTokens: 3000,
+          },
+        },
+        {
+          id: "5",
+          type: "ai.image",
+          name: "صورة إعلانية",
+          position: at(4, -90),
+          params: { when: "{{2.makeImages}}", prompt: "{{4.json.imagePrompt}}", referenceImage: "{{3.url}}", size: "1024x1024", folder: "مولّدة" },
+        },
+        {
+          id: "6",
+          type: "ai.video",
+          name: "فيديو ريلز",
+          position: at(5, 90),
+          params: { when: "{{2.makeVideos}}", prompt: "{{4.json.videoPrompt}}", referenceImage: "{{3.url}}", aspect: "9:16", seconds: 8 },
+        },
+        {
+          id: "7",
+          type: "social.publishAll",
+          name: "النشر في الميعاد",
+          position: at(6),
+          params: {
+            caption: "{{4.json.post}}",
+            imageUrl: "{{5.url}}",
+            videoUrl: "{{6.url}}",
+            link: "{{2.link}}",
+            mediaMode: "both",
+            publishAt: "{{2.publishAt}}",
+            timezone: "Africa/Cairo",
+          },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5"), edge("5", "6"), edge("6", "7")],
+    },
+  },
+  {
+    id: "content-studio-form",
+    name: "استوديو المحتوى عند الطلب: ارفع صورة المنتج والفكرة ← محتوى كامل ينزل في ميعاده",
+    description:
+      "فورم بسيط: ترفع صورة المنتج، تكتب الفكرة، تختار صور ولا فيديو ولا الاتنين، وتحدد ساعة النشر. الذكاء الاصطناعي يكتب الكابشن بالـ CTA والهاشتاجات ويعمل الميديا وينشر على المنصات المربوطة.",
+    category: "المحتوى",
+    requires: ["حساب Gemini (للنص والصور وفيديو Veo) - أو OpenAI", "حسابات المنصات اللي عايز تنشر عليها بس"],
+    graph: {
+      nodes: [
+        {
+          id: "1",
+          type: "trigger.form",
+          position: at(0),
+          params: {
+            title: "بوست جديد لمنتج",
+            description: "ارفع صورة المنتج واكتب الفكرة - والباقي علينا.",
+            formFields: [
+              { key: "productImage", value: "صورة المنتج (صورة)" },
+              { key: "idea", value: "فكرة المحتوى أو العرض" },
+              { key: "makeImages", value: "أعمل صورة إعلانية؟ (نعم/لا)" },
+              { key: "makeVideos", value: "أعمل فيديو ريلز؟ (نعم/لا)" },
+              { key: "publishAt", value: "ميعاد النشر - فاضي = فوراً (ساعة)" },
+              { key: "link", value: "رابط المنتج (اختياري)" },
+            ],
+            submitLabel: "ابدأ",
+            successMessage: "استلمنا طلبك ✓ المحتوى بيتعمل وهينزل في ميعاده - تابع النتيجة من «التشغيلات».",
+          },
+        },
+        {
+          id: "2",
+          type: "ai.generate",
+          name: "كتابة المحتوى",
+          position: at(1),
+          params: {
+            system:
+              "أنت كاتب محتوى وكوبي رايتر محترف للسوشيال ميديا باللهجة المصرية. اكتب بوست بيع: Hook قوي، فايدة المنتج، CTA واضح، و8-12 هاشتاج. ممنوع أي مقدمات. رد بـ JSON فقط:\n" +
+              '{"post":"البوست كامل بالـ CTA والهاشتاجات","imagePrompt":"English prompt for a professional advertising photo of this exact product, no text","videoPrompt":"English prompt for an 8-second cinematic vertical reel of this exact product, no text"}',
+            prompt: "الفكرة / العرض: {{1.data.idea}}\nرابط المنتج: {{1.data.link}}",
+            parseJson: true,
+            maxTokens: 3000,
+          },
+        },
+        {
+          id: "3",
+          type: "ai.image",
+          name: "صورة إعلانية",
+          position: at(2, -90),
+          params: { when: "{{1.data.makeImages}}", prompt: "{{2.json.imagePrompt}}", referenceImage: "{{1.data.productImage}}", size: "1024x1024" },
+        },
+        {
+          id: "4",
+          type: "ai.video",
+          name: "فيديو ريلز",
+          position: at(3, 90),
+          params: { when: "{{1.data.makeVideos}}", prompt: "{{2.json.videoPrompt}}", referenceImage: "{{1.data.productImage}}", aspect: "9:16", seconds: 8 },
+        },
+        {
+          id: "5",
+          type: "social.publishAll",
+          name: "النشر",
+          position: at(4),
+          params: {
+            caption: "{{2.json.post}}",
+            imageUrl: "{{3.url}}",
+            videoUrl: "{{4.url}}",
+            link: "{{1.data.link}}",
+            mediaMode: "both",
+            publishAt: "{{1.data.publishAt}}",
+            timezone: "Africa/Cairo",
+          },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5")],
+    },
+  },
+
   /* ---------- المبيعات وخدمة العملاء ---------- */
   {
     id: "contact-form-telegram",

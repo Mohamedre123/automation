@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { query, run } from "../db.js";
 import { httpError, requireString } from "../errors.js";
-import { loadMedia, MAX_UPLOAD_BYTES, mediaUrl, storeMedia } from "../nodes/media.js";
+import { loadMedia, MAX_UPLOAD_BYTES, mediaUrlFor, storeMedia } from "../nodes/media.js";
 
 /** Public so WhatsApp, Instagram and Facebook can fetch images by URL. */
 export async function mediaRoutes(app: FastifyInstance) {
@@ -9,6 +9,7 @@ export async function mediaRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const file = await loadMedia(id);
     if (!file) return reply.status(404).send({ error: "الملف مش موجود" });
+    if (!file.data && file.url) return reply.redirect(file.url, 302);
     return reply
       .type(file.mime_type)
       .header("cache-control", "public, max-age=604800, immutable")
@@ -22,13 +23,13 @@ const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/g
 export async function mediaLibraryRoutes(app: FastifyInstance) {
   app.get("/api/media", async (req) => {
     const rows = await query(
-      `SELECT id, name, folder, source, mime_type, created_at, length(data) AS size
+      `SELECT id, name, folder, source, mime_type, url, created_at, length(data) AS size
        FROM media WHERE user_id = $1 ORDER BY created_at DESC LIMIT 500`,
       [req.user.id],
     );
     return rows.map((row) => ({
       id: row.id,
-      url: mediaUrl(row.id),
+      url: mediaUrlFor(row),
       name: row.name,
       folder: row.folder,
       source: row.source,

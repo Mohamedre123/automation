@@ -99,9 +99,12 @@ export function NodePanel({
                     })}
                   </select>
                   <button className="btn" onClick={() => setCredentialModal(true)}>
-                    <Icon name="plus" size={15} /> جديد
+                    <Icon name="plus" size={15} /> ربط
                   </button>
                 </div>
+                {matching.length === 0 && (
+                  <div className="help">مفيش حساب مربوط لسه - دوس «ربط» وهتلاقي شرح إزاي تجيب المفتاح خطوة بخطوة.</div>
+                )}
                 {def.credentialTypes.length > 1 && (
                   <div className="help">
                     اختار الحساب اللي عندك مفتاحه ({def.credentialTypes.map((t) => credType(t)?.name ?? t).join(" أو ")}) - الخطوة هتشتغل بيه.
@@ -129,6 +132,7 @@ export function NodePanel({
                       models={models}
                       credentialId={node.credentialId}
                       credentials={credentials}
+                      onCredentialCreated={onCredentialCreated}
                     />
                   </div>
                 ) : (
@@ -144,6 +148,7 @@ export function NodePanel({
                       models={models}
                       credentialId={node.credentialId}
                       credentials={credentials}
+                      onCredentialCreated={onCredentialCreated}
                     />
                     {field.help && <div className="help">{field.help}</div>}
                   </div>

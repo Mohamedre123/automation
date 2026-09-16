@@ -54,6 +54,7 @@ export interface CredentialTypeDef {
   app: string;
   description?: string;
   docsUrl?: string;
+  steps?: string[];
   hasTest: boolean;
   models?: string[];
   defaultModel?: string;

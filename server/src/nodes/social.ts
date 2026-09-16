@@ -49,7 +49,7 @@ export const socialNodes: NodeDefinition[] = [
   {
     type: "facebook.post",
     name: "نشر بوست على فيسبوك",
-    description: "بينشر نص أو صورة على صفحة الفيسبوك بتاعتك.",
+    description: "بينشر نص أو صورة أو فيديو على صفحة الفيسبوك بتاعتك.",
     app: "facebook",
     appName: "فيسبوك",
     color: "#1877f2",
@@ -59,6 +59,7 @@ export const socialNodes: NodeDefinition[] = [
     fields: [
       { key: "message", label: "نص البوست", type: "textarea", required: true, placeholder: "{{2.text}}" },
       { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", placeholder: "{{3.url}}" },
+      { key: "videoUrl", label: "رابط فيديو (اختياري)", type: "text", placeholder: "{{4.url}}", help: "لو حطيت فيديو هيتنشر الفيديو بالنص." },
       { key: "link", label: "رابط مرفق (اختياري)", type: "text", placeholder: "https://..." },
     ],
     sampleOutput: { id: "123456789_987654321", postUrl: "https://facebook.com/123456789_987654321" },
@@ -67,24 +68,24 @@ export const socialNodes: NodeDefinition[] = [
       const pageId = credential?.data.pageId ?? "";
       const message = String(params.message ?? "");
       const imageUrl = String(params.imageUrl ?? "").trim();
+      const videoUrl = String(params.videoUrl ?? "").trim();
+      const auth = { authorization: `Bearer ${token}` };
+      if (videoUrl) {
+        const result = await postJson(`${GRAPH}/${pageId}/videos`, { file_url: videoUrl, description: message }, auth, signal, "فيسبوك");
+        return { output: { ...result, postUrl: result.id ? `https://facebook.com/${result.id}` : undefined, type: "video" } };
+      }
       const body: Record<string, unknown> = imageUrl
         ? { url: imageUrl, caption: message, published: true }
         : { message, ...(String(params.link ?? "").trim() ? { link: String(params.link).trim() } : {}) };
-      const result = await postJson(
-        `${GRAPH}/${pageId}/${imageUrl ? "photos" : "feed"}`,
-        body,
-        { authorization: `Bearer ${token}` },
-        signal,
-        "فيسبوك",
-      );
+      const result = await postJson(`${GRAPH}/${pageId}/${imageUrl ? "photos" : "feed"}`, body, auth, signal, "فيسبوك");
       const id = result.post_id ?? result.id;
-      return { output: { ...result, postUrl: id ? `https://facebook.com/${id}` : undefined } };
+      return { output: { ...result, postUrl: id ? `https://facebook.com/${id}` : undefined, type: imageUrl ? "image" : "text" } };
     },
   },
   {
     type: "instagram.post",
     name: "نشر بوست على إنستجرام",
-    description: "بينشر صورة بتعليق على حساب إنستجرام بيزنس. الصورة لازم تكون على رابط عام.",
+    description: "بينشر صورة أو فيديو (Reel) بتعليق على حساب إنستجرام بيزنس. الملف لازم يكون على رابط عام.",
     app: "instagram",
     appName: "إنستجرام",
     color: "#e1306c",
@@ -92,35 +93,46 @@ export const socialNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["instagramBusiness"],
     fields: [
-      { key: "imageUrl", label: "رابط الصورة", type: "text", required: true, placeholder: "{{3.url}}" },
+      { key: "imageUrl", label: "رابط الصورة", type: "text", placeholder: "{{3.url}}" },
+      { key: "videoUrl", label: "رابط الفيديو (Reel)", type: "text", placeholder: "{{4.url}}", help: "حط صورة أو فيديو. لو الاتنين موجودين هيتنشر الفيديو كـ Reel." },
       { key: "caption", label: "التعليق", type: "textarea", placeholder: "{{2.text}}" },
     ],
-    sampleOutput: { id: "17895695668004550", containerId: "17889455560051444" },
+    sampleOutput: { id: "17895695668004550", containerId: "17889455560051444", type: "image" },
     async run({ params, credential, signal }) {
       const token = credential?.data.accessToken ?? "";
       const igUserId = credential?.data.igUserId ?? "";
       const imageUrl = String(params.imageUrl ?? "").trim();
-      if (!imageUrl) throw new Error("رابط الصورة فاضي");
+      const videoUrl = String(params.videoUrl ?? "").trim();
+      if (!imageUrl && !videoUrl) throw new Error("إنستجرام محتاج صورة أو فيديو - مينفعش نص بس");
+      const auth = { authorization: `Bearer ${token}` };
 
       const container = await postJson(
         `${GRAPH}/${igUserId}/media`,
-        { image_url: imageUrl, caption: String(params.caption ?? "") },
-        { authorization: `Bearer ${token}` },
+        videoUrl
+          ? { media_type: "REELS", video_url: videoUrl, caption: String(params.caption ?? ""), share_to_feed: true }
+          : { image_url: imageUrl, caption: String(params.caption ?? "") },
+        auth,
         signal,
         "إنستجرام",
       );
-      // The container needs a moment to finish processing before it can be published.
+
+      // Videos are processed by Instagram first: wait until the container is ready.
+      if (videoUrl) {
+        for (let attempt = 0; attempt < 36; attempt++) {
+          const status = await graphGet(container.id, { fields: "status_code,status" }, token, "إنستجرام");
+          if (status.status_code === "FINISHED") break;
+          if (status.status_code === "ERROR" || status.status_code === "EXPIRED") {
+            throw new Error(`إنستجرام: معالجة الفيديو فشلت - ${status.status ?? status.status_code}`);
+          }
+          await sleep(5000, signal);
+        }
+      }
+
       let lastError: unknown;
       for (let attempt = 0; attempt < 5; attempt++) {
         try {
-          const published = await postJson(
-            `${GRAPH}/${igUserId}/media_publish`,
-            { creation_id: container.id },
-            { authorization: `Bearer ${token}` },
-            signal,
-            "إنستجرام",
-          );
-          return { output: { ...published, containerId: container.id } };
+          const published = await postJson(`${GRAPH}/${igUserId}/media_publish`, { creation_id: container.id }, auth, signal, "إنستجرام");
+          return { output: { ...published, containerId: container.id, type: videoUrl ? "reel" : "image" } };
         } catch (error) {
           lastError = error;
           await sleep(3000, signal);

@@ -101,6 +101,21 @@ const SCHEMA = `
   ALTER TABLE media ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'generated';
   CREATE INDEX IF NOT EXISTS idx_media_folder ON media(user_id, folder);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+  ALTER TABLE media ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT '';
+
+  CREATE TABLE IF NOT EXISTS scheduled_posts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    workflow_id TEXT,
+    execution_id TEXT,
+    run_at TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    result TEXT,
+    created_at TEXT NOT NULL,
+    finished_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_scheduled_posts_due ON scheduled_posts(status, run_at);
 
   CREATE TABLE IF NOT EXISTS test_sessions (
     id TEXT PRIMARY KEY,

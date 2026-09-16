@@ -25,7 +25,7 @@ export interface FieldDef {
   /** combo fields: suggest the model list of the selected credential type. */
   suggestFromCredential?: boolean;
   /** model fields: which models to offer from the provider's live list. */
-  modelKind?: "text" | "image";
+  modelKind?: "text" | "image" | "video";
   /** credential fields: a second account used by the step (e.g. where the agent notifies the owner). */
   credentialTypes?: string[];
   /** readonly path fields: which public link to show. */
@@ -49,6 +49,8 @@ export interface CredentialType {
   app: string;
   description?: string;
   docsUrl?: string;
+  /** Step-by-step guide to get the key, shown in the connect dialog. */
+  steps?: string[];
   fields: CredentialField[];
   /** AI providers: model suggestions and the model used when the field is empty. */
   models?: string[];
@@ -86,6 +88,8 @@ export interface NodeContext {
   execution: { id: string; mode: ExecutionMode };
   signal: AbortSignal;
   respond?: (response: WebhookResponse) => void;
+  /** The workflow's trigger and its account (e.g. reply or notify through the same bot by default). */
+  trigger?: { type: string; credential?: CredentialValue };
 }
 
 export interface NodeResult {
@@ -149,6 +153,10 @@ export interface NodeDefinition {
   run?: (ctx: NodeContext) => Promise<NodeResult>;
   webhook?: TriggerWebhook;
   poll?: (ctx: PollContext) => Promise<{ items: unknown[]; state: any }>;
+  /** Triggers: runs once per execution with the incoming item (e.g. remember who messaged the bot). */
+  onTriggered?: (ctx: { output: unknown; credential?: CredentialValue; userId: string }) => Promise<void>;
+  /** Steps that legitimately take long (video generation). Defaults to the platform step timeout. */
+  timeoutMs?: number;
 }
 
 export interface WorkflowNode {

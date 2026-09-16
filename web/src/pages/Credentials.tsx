@@ -101,13 +101,31 @@ export function CredentialModal({
             <div>
               <strong>{type.name}</strong>
               {type.description && <div className="muted">{type.description}</div>}
-              {type.docsUrl && (
-                <a href={type.docsUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
-                  إزاي أجيب البيانات دي؟
-                </a>
-              )}
             </div>
           </div>
+          {type.steps?.length ? (
+            <details className="guide" open={!existing}>
+              <summary>
+                <Icon name="sparkles" size={15} /> إزاي تجيب البيانات دي - خطوة بخطوة
+              </summary>
+              <ol>
+                {type.steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+              {type.docsUrl && (
+                <a href={type.docsUrl} target="_blank" rel="noreferrer">
+                  افتح الصفحة الرسمية ↗
+                </a>
+              )}
+            </details>
+          ) : (
+            type.docsUrl && (
+              <a href={type.docsUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, display: "block", marginBottom: 12 }}>
+                إزاي أجيب البيانات دي؟
+              </a>
+            )
+          )}
           <div className="field">
             <label className="label">اسم الحساب</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: بوت خدمة العملاء" />

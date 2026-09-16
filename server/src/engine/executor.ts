@@ -98,6 +98,14 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
     const trigger = findTrigger(graph);
     if (!trigger) throw new Error("السيناريو محتاج محفّز (Trigger) في البداية");
     const outputs: Record<string, unknown> = { [trigger.id]: triggerOutput };
+    const triggerDef = getNode(trigger.type);
+    const triggerCredential = trigger.credentialId ? await loadCredential(workflow.userId, trigger.credentialId).catch(() => undefined) : undefined;
+    if (triggerDef?.onTriggered) {
+      await triggerDef.onTriggered({ output: triggerOutput, credential: triggerCredential, userId: workflow.userId }).catch((e) => {
+        console.error(`[execution ${id}] onTriggered failed: ${errorMessage(e)}`);
+      });
+    }
+    const triggerContext = { type: trigger.type, credential: triggerCredential };
     const vars = systemVars({ id: workflow.id, name: workflow.name }, { id, mode });
     steps.push({
       nodeId: trigger.id,
@@ -137,7 +145,8 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
           outputs: scope,
           workflow: { id: workflow.id, name: workflow.name, userId: workflow.userId },
           execution: { id, mode },
-          signal: withTimeout(abortSignal, config.nodeTimeoutMs),
+          signal: withTimeout(abortSignal, def.timeoutMs ?? config.nodeTimeoutMs),
+          trigger: triggerContext,
           respond,
         });
         steps.push({

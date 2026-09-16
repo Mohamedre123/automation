@@ -4,12 +4,14 @@ import { anthropicNodes } from "./anthropic.js";
 import { commerceCredentials, commerceNodes } from "./commerce.js";
 import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
+import { credentialGuides } from "./guides.js";
 import { googleCredential, googleNodes } from "./google.js";
 import { httpCredentials, httpRequest } from "./http.js";
 import { marketingCredentials, marketingNodes } from "./marketing.js";
-import { mediaNodes } from "./media.js";
+import { mediaNodes, videoNode } from "./media.js";
 import { messagingCredentials, messagingNodes } from "./messaging.js";
 import { productivityCredentials, productivityNodes } from "./productivity.js";
+import { publishAllNode } from "./publishAll.js";
 import { publishingCredentials, publishingNodes } from "./publishing.js";
 import { facebookCredential, instagramCredential, socialNodes } from "./social.js";
 import { telegramCredential, telegramNodes } from "./telegram.js";
@@ -23,11 +25,13 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...toolNodes,
   ...aiNodes,
   ...mediaNodes,
+  videoNode,
   ...wasenderNodes,
   ...whatsappCloudNodes,
   ...telegramNodes,
   ...socialNodes,
   ...publishingNodes,
+  publishAllNode,
   ...messagingNodes,
   ...googleNodes,
   ...productivityNodes,
@@ -55,6 +59,8 @@ export const credentialTypes: CredentialType[] = [
   ...marketingCredentials,
   ...httpCredentials,
 ];
+
+for (const type of credentialTypes) type.steps ??= credentialGuides[type.key];
 
 const nodesByType = new Map(nodeDefinitions.map((n) => [n.type, n]));
 const credentialsByKey = new Map(credentialTypes.map((c) => [c.key, c]));

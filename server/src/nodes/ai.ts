@@ -42,6 +42,7 @@ interface HandoffConfig {
 }
 
 function buildTools(selected: string[], userId: string, store: string, signal: AbortSignal, handoff: HandoffConfig) {
+
   const specs: ToolSpec[] = [];
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
 
@@ -62,8 +63,13 @@ function buildTools(selected: string[], userId: string, store: string, signal: A
       },
     });
     handlers.handoff_to_human = async (args) => {
-      if (!handoff.credential || !handoff.target) {
-        throw new Error("Handoff is not configured on this step (no notification account or recipient). Do not claim anything was sent.");
+      if (!handoff.credential) {
+        throw new Error(
+          "Handoff is not configured: no notification account (the owner must pick a Telegram bot or WhatsApp account in the agent step). Do not claim anything was sent.",
+        );
+      }
+      if (!handoff.target) {
+        throw new Error("Handoff is not configured: the owner did not set who receives the handoff. Do not claim anything was sent.");
       }
       const text = [
         "🙋 عميل عايز يكلم موظف",
@@ -74,7 +80,7 @@ function buildTools(selected: string[], userId: string, store: string, signal: A
       ]
         .filter(Boolean)
         .join("\n");
-      await sendNotification(handoff.credential, handoff.target, text, signal);
+      await sendNotification(handoff.credential, handoff.target, text, signal, userId);
       const paused = handoff.pauseHours > 0 && Boolean(handoff.memoryId);
       if (paused) {
         await datastoreWrite(userId, HANDOFF_STORE, handoff.memoryId, {
@@ -258,17 +264,17 @@ export const aiNodes: NodeDefinition[] = [
       { key: "tools", label: "الأدوات المتاحة للـ Agent", type: "multiselect", default: [], options: TOOL_OPTIONS },
       {
         key: "handoffCredentialId",
-        label: "التحويل لموظف: يتبعتلك الإشعار من حساب",
+        label: "التحويل لموظف: الإشعار يتبعت من أنهي حساب",
         type: "credential",
         credentialTypes: NOTIFY_CREDENTIAL_TYPES,
-        help: "مطلوب لو فعّلت أداة «تحويل العميل لموظف». اختار بوت تيليجرام أو حساب واتساب.",
+        help: "سيبه فاضي = نفس البوت أو رقم الواتساب اللي بيكلم العملاء في المحفّز. أو اختار بوت/رقم تاني مخصص للإشعارات.",
       },
       {
         key: "handoffTarget",
-        label: "التحويل لموظف: يتبعت لمين",
+        label: "التحويل لموظف: يوصل لمين (المسؤول)",
         type: "text",
-        placeholder: "الـ Chat ID بتاعك في تيليجرام أو رقم واتساب",
-        help: "عشان تعرف الـ Chat ID بتاعك في تيليجرام ابعت أي رسالة لـ @userinfobot",
+        placeholder: "@your_username أو 201012345678",
+        help: "تيليجرام: اكتب يوزرنيم المسؤول (@name) أو الـ Chat ID - ومهم: المسؤول لازم يفتح البوت ويبعتله أي رسالة مرة واحدة الأول. واتساب: رقم المسؤول بالكود الدولي من غير + (مثلاً 201012345678).",
       },
       {
         key: "handoffPauseHours",
@@ -291,7 +297,7 @@ export const aiNodes: NodeDefinition[] = [
       model: "gemini-3.8-flash",
       usage: { inputTokens: 900, outputTokens: 60 },
     },
-    async run({ params, credential, workflow, signal }) {
+    async run({ params, credential, workflow, signal, trigger }) {
       const prompt = String(params.prompt ?? "");
       if (!prompt.trim()) throw new Error("رسالة العميل / المهمة فاضية");
 
@@ -312,8 +318,14 @@ export const aiNodes: NodeDefinition[] = [
       const selectedTools: string[] = Array.isArray(params.tools) ? params.tools : [];
       const handoffCredentialId = String(params.handoffCredentialId ?? "").trim();
       const handoff: HandoffConfig = {
-        credential:
-          selectedTools.includes("handoff") && handoffCredentialId ? await loadCredential(workflow.userId, handoffCredentialId) : undefined,
+        credential: !selectedTools.includes("handoff")
+          ? undefined
+          : handoffCredentialId
+            ? await loadCredential(workflow.userId, handoffCredentialId)
+            : // Default: notify through the same bot / number the customers are talking to.
+              trigger?.credential && NOTIFY_CREDENTIAL_TYPES.includes(trigger.credential.type)
+              ? trigger.credential
+              : undefined,
         target: String(params.handoffTarget ?? ""),
         pauseHours: Math.max(0, toNumber(params.handoffPauseHours, 24)),
         memoryId,

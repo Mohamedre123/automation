@@ -7,7 +7,7 @@ import { Icon } from "../icons";
 interface FormDefinition {
   title: string;
   description: string;
-  fields: { key: string; label: string }[];
+  fields: { key: string; label: string; kind: "text" | "image" | "yesno" | "time" | "optional" }[];
   submitLabel: string;
   successMessage: string;
   testing: boolean;
@@ -41,6 +41,36 @@ export function FormPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string; images: string[] } | null>(null);
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+
+  const uploadImage = async (key: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 2.8 * 1024 * 1024) {
+      setResult({ ok: false, text: "الصورة أكبر من 2.8 ميجا", images: [] });
+      return;
+    }
+    setUploading((u) => ({ ...u, [key]: true }));
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("مقدرتش أقرا الصورة"));
+        reader.readAsDataURL(file);
+      });
+      const response = await fetch(`/api/forms/${encodeURIComponent(path)}/upload`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dataUrl, name: file.name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "رفع الصورة فشل");
+      setValues((v) => ({ ...v, [key]: data.url }));
+    } catch (err) {
+      setResult({ ok: false, text: (err as Error).message, images: [] });
+    } finally {
+      setUploading((u) => ({ ...u, [key]: false }));
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/forms/${encodeURIComponent(path)}`)
@@ -60,7 +90,10 @@ export function FormPage() {
       const response = await fetch(`/webhook/${encodeURIComponent(path)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ data: values }),
+        // Yes/no questions default to "نعم" even when the visitor never touched them.
+        body: JSON.stringify({
+          data: Object.fromEntries(form!.fields.map((f) => [f.key, values[f.key] ?? (f.kind === "yesno" ? "نعم" : "")])),
+        }),
       });
       const text = await response.text();
       let body: unknown = text;
@@ -120,18 +153,53 @@ export function FormPage() {
                 <label className="label" htmlFor={`f-${field.key}`}>
                   {field.label}
                 </label>
-                <textarea
-                  id={`f-${field.key}`}
-                  className="textarea"
-                  rows={2}
-                  dir="auto"
-                  required
-                  value={values[field.key] ?? ""}
-                  onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
-                />
+                {field.kind === "image" ? (
+                  <label className="form-upload" htmlFor={`f-${field.key}`}>
+                    {values[field.key] ? (
+                      <img src={values[field.key]} alt={field.label} />
+                    ) : (
+                      <span className="muted">{uploading[field.key] ? "جاري رفع الصورة..." : "اضغط لاختيار صورة"}</span>
+                    )}
+                    <input
+                      id={`f-${field.key}`}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      required={!values[field.key]}
+                      onChange={(e) => void uploadImage(field.key, e.target.files?.[0])}
+                    />
+                  </label>
+                ) : field.kind === "yesno" ? (
+                  <select
+                    id={`f-${field.key}`}
+                    className="select"
+                    value={values[field.key] ?? "نعم"}
+                    onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                  >
+                    <option value="نعم">نعم</option>
+                    <option value="لا">لا</option>
+                  </select>
+                ) : field.kind === "time" ? (
+                  <input
+                    id={`f-${field.key}`}
+                    className="input"
+                    type="time"
+                    value={values[field.key] ?? ""}
+                    onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                  />
+                ) : (
+                  <textarea
+                    id={`f-${field.key}`}
+                    className="textarea"
+                    rows={2}
+                    dir="auto"
+                    required={field.kind !== "optional"}
+                    value={values[field.key] ?? ""}
+                    onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                  />
+                )}
               </div>
             ))}
-            <button className="btn primary" style={{ width: "100%" }} disabled={sending}>
+            <button className="btn primary" style={{ width: "100%" }} disabled={sending || Object.values(uploading).some(Boolean)}>
               {sending ? (
                 <>
                   <Spinner size={16} /> جاري التنفيذ...

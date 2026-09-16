@@ -1,4 +1,5 @@
 import type { CredentialType, FieldDef, NodeDefinition } from "../engine/types.js";
+import { rememberTelegramContact } from "./notify.js";
 import { withTimeout } from "./util.js";
 
 async function telegram<T = any>(token: string, method: string, body: object, signal?: AbortSignal): Promise<T> {
@@ -104,6 +105,7 @@ export const telegramNodes: NodeDefinition[] = [
       },
     ],
     sampleOutput: { update_id: 900000001, message: sampleMessage },
+    onTriggered: ({ output, credential, userId }) => rememberTelegramContact(userId, credential, output),
     // Deployed (public HTTPS): Telegram pushes updates to our webhook.
     webhook: {
       async register({ params, credential, url, secretToken, signal }) {
@@ -215,6 +217,34 @@ export const telegramNodes: NodeDefinition[] = [
       };
       if (params.parseMode) body.parse_mode = params.parseMode;
       return { output: await telegram(credential?.data.botToken ?? "", "sendPhoto", body, signal) };
+    },
+  },
+  {
+    type: "telegram.sendVideo",
+    name: "إرسال فيديو",
+    description: "بيبعت فيديو من رابط مع تعليق (لحد 20 ميجا).",
+    app: "telegram",
+    appName: "Telegram Bot",
+    color: "#229ed9",
+    group: "apps",
+    kind: "action",
+    credentialTypes: ["telegramBot"],
+    fields: [
+      chatIdField,
+      { key: "video", label: "رابط الفيديو", type: "text", required: true, placeholder: "{{3.url}}" },
+      { key: "caption", label: "التعليق", type: "textarea" },
+      parseModeField,
+    ],
+    sampleOutput: { message_id: 45, chat: { id: 123456789 }, caption: "" },
+    async run({ params, credential, signal }) {
+      const body: Record<string, unknown> = {
+        chat_id: String(params.chatId ?? "").trim(),
+        video: String(params.video ?? ""),
+        caption: String(params.caption ?? "").slice(0, 1024),
+        supports_streaming: true,
+      };
+      if (params.parseMode) body.parse_mode = params.parseMode;
+      return { output: await telegram(credential?.data.botToken ?? "", "sendVideo", body, signal) };
     },
   },
   {

@@ -23,7 +23,7 @@ export async function listModels(credential: CredentialValue): Promise<string[]>
     if (!response.ok) throw new Error(`Gemini: HTTP ${response.status}`);
     const data = (await response.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
     return (data.models ?? [])
-      .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+      .filter((m) => m.supportedGenerationMethods?.some((method) => method === "generateContent" || method === "predictLongRunning"))
       .map((m) => m.name.replace(/^models\//, ""))
       .sort();
   }

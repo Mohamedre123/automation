@@ -64,6 +64,12 @@ export const config = {
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),
+  /** Optional Supabase Storage for large files (videos): Vercel can't serve responses over ~4.5MB from a function. */
+  storage: {
+    url: (process.env.SUPABASE_URL || "").replace(/\/+$/, ""),
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    bucket: process.env.SUPABASE_BUCKET || "media",
+  },
   maxConcurrentExecutions: Number(process.env.MAX_CONCURRENT_EXECUTIONS || 5),
   nodeTimeoutMs: 2 * 60_000,
   executionsKeptPerWorkflow: 100,

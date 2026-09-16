@@ -101,6 +101,17 @@ function validateForActivation(graph: WorkflowGraph) {
         throw httpError(400, `الخطوة ${label}: حقل «${field.label}» مطلوب`);
       }
     }
+    // An agent allowed to hand off must know who to notify, or it can only apologise to the customer.
+    const tools = Array.isArray(node.params.tools) ? node.params.tools : [];
+    if (node.type === "ai.agent" && tools.includes("handoff")) {
+      if (!String(node.params.handoffTarget ?? "").trim()) {
+        throw httpError(400, `الخطوة ${label}: فعّلت «تحويل العميل لموظف» - اكتب يوزرنيم أو رقم المسؤول اللي يوصله التحويل`);
+      }
+      const triggerCanNotify = ["telegram.trigger", "wasender.trigger", "whatsapp.trigger"].includes(info.node.type);
+      if (!String(node.params.handoffCredentialId ?? "").trim() && !triggerCanNotify) {
+        throw httpError(400, `الخطوة ${label}: اختار البوت أو رقم الواتساب اللي يبعت منه إشعار التحويل`);
+      }
+    }
   }
 }
 

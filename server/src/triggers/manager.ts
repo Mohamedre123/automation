@@ -22,6 +22,7 @@ import type {
   WorkflowNode,
 } from "../engine/types.js";
 import { getNode } from "../nodes/index.js";
+import { runScheduledPosts } from "../nodes/publishAll.js";
 import { errorMessage, sleep, toNumber } from "../nodes/util.js";
 
 /*
@@ -456,6 +457,10 @@ export async function runDueSchedules(limit = 25): Promise<number> {
       setTriggerError(row.id, errorMessage(e)),
     );
   }
+  ran += await runScheduledPosts().catch((e) => {
+    console.error("[scheduled posts]", e);
+    return 0;
+  });
   await markStaleExecutions(20 * 60_000);
   await run("DELETE FROM test_sessions WHERE created_at < $1", [new Date(Date.now() - 86_400_000).toISOString()]);
   // Generated images expire; images the customer uploaded stay until they delete them.

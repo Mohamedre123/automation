@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 
 interface Point {
   x: number;
@@ -17,6 +18,13 @@ const POINTER_DISTANCE = 190;
  * that reaches toward the pointer or finger and shifts with scrolling. Colors follow the theme.
  */
 export function NetworkBackground() {
+  const { pathname } = useLocation();
+  // The workflow editor has its own grid: the moving network there only distracts.
+  if (pathname.startsWith("/app/workflows/")) return <div className="net-bg" aria-hidden="true" />;
+  return <NetworkCanvas />;
+}
+
+function NetworkCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

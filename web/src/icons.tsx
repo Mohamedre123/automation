@@ -236,6 +236,7 @@ const appIcons: Record<string, string> = {
   form: "form",
   media: "image",
   email: "mail",
+  social: "send",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
