@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api";
 import { AppIcon, Toggle, copyText, useToast } from "../components/ui";
 import { useMeta } from "../context";
@@ -6,6 +6,7 @@ import { Icon } from "../icons";
 import { CredentialModal } from "../pages/Credentials";
 import type { Credential, FieldDef } from "../types";
 import { useEditor } from "./FlowNode";
+import { filterLibrary, loadLibrary, MentionChips, MentionMenu, openMention, type LibraryItem } from "./MediaMention";
 import { pathSegment } from "./graph";
 
 const SYSTEM_VARS = ["$now", "$today", "$timestamp", "$workflow.name", "$execution.id"];
@@ -159,6 +160,8 @@ export function ExprInput({
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -188,6 +191,44 @@ export function ExprInput({
     });
   };
 
+  // "@" opens the image library; picking an image writes @{its name}.
+  const trackMention = (el: HTMLInputElement | HTMLTextAreaElement) => {
+    const next = openMention(el.value, el.selectionStart ?? el.value.length);
+    setMention(next);
+    if (next) setMentionIndex(0);
+  };
+
+  const pickMention = (item: LibraryItem) => {
+    if (!mention) return;
+    const el = multiline ? areaRef.current : inputRef.current;
+    const caret = el?.selectionStart ?? shown.length;
+    const before = cleanText(shown.slice(0, mention.start)) + `@{${item.name}}` + (multiline ? "\n" : " ");
+    onChange(before + cleanText(shown.slice(caret)).replace(/^[ \t]+/, ""));
+    setMention(null);
+    void loadLibrary();
+    requestAnimationFrame(() => {
+      if (!el) return;
+      const position = displayText(before).length;
+      el.focus();
+      el.setSelectionRange(position, position);
+    });
+  };
+
+  const onMentionKey = async (e: KeyboardEvent<HTMLElement>) => {
+    if (!mention) return;
+    if (e.key === "Escape") {
+      setMention(null);
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter" && e.key !== "Tab") return;
+    e.preventDefault();
+    const matches = filterLibrary(await loadLibrary(), mention.query);
+    if (!matches.length) return;
+    if (e.key === "ArrowDown") setMentionIndex((i) => (i + 1) % matches.length);
+    else if (e.key === "ArrowUp") setMentionIndex((i) => (i - 1 + matches.length) % matches.length);
+    else pickMention(matches[Math.min(mentionIndex, matches.length - 1)]);
+  };
+
   const className = `${multiline ? "textarea" : "input"} ${mono ? "mono" : ""}`;
   return (
     <div className="expr-wrap" ref={wrapRef}>
@@ -202,7 +243,13 @@ export function ExprInput({
           dir={mono ? undefined : "auto"}
           value={shown}
           placeholder={placeholder}
-          onChange={(e) => onChange(cleanText(e.target.value))}
+          onChange={(e) => {
+            onChange(cleanText(e.target.value));
+            trackMention(e.target);
+          }}
+          onKeyDown={(e) => void onMentionKey(e)}
+          onClick={(e) => trackMention(e.currentTarget)}
+          onBlur={() => setTimeout(() => setMention(null), 150)}
         />
       ) : (
         <input
@@ -211,10 +258,18 @@ export function ExprInput({
           dir={mono ? undefined : "auto"}
           value={shown}
           placeholder={placeholder}
-          onChange={(e) => onChange(cleanText(e.target.value))}
+          onChange={(e) => {
+            onChange(cleanText(e.target.value));
+            trackMention(e.target);
+          }}
+          onKeyDown={(e) => void onMentionKey(e)}
+          onClick={(e) => trackMention(e.currentTarget)}
+          onBlur={() => setTimeout(() => setMention(null), 150)}
         />
       )}
+      {mention && <MentionMenu query={mention.query} activeIndex={mentionIndex} onPick={pickMention} onHover={setMentionIndex} />}
       {open && <VariablePicker nodeId={nodeId} onPick={insert} />}
+      <MentionChips value={value ?? ""} />
     </div>
   );
 }

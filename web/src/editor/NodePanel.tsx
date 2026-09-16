@@ -151,6 +151,9 @@ export function NodePanel({
                       onCredentialCreated={onCredentialCreated}
                     />
                     {field.help && <div className="help">{field.help}</div>}
+                    {(field.type === "text" || field.type === "textarea") &&
+                      /image|photo|video|media|file|images/i.test(field.key) &&
+                      !String(field.help ?? "").includes("@") && <div className="help">💡 اكتب @ عشان تختار صورة من مكتبة الصور</div>}
                   </div>
                 ),
               )}

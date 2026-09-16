@@ -952,6 +952,55 @@ export const templates: Template[] = [
     },
   },
 
+  {
+    id: "selected-images-posts",
+    name: "بوست لكل صورة تختارها: @الصور ← فكرة كل صورة ← تصميم وكابشن ← نشر",
+    description:
+      "اختار صور منتجاتك بـ @ واكتب فكرة لكل صورة: كل صورة لوحدها بالترتيب بيتعمل لها تصميم إعلاني وكابشن بـ CTA وهاشتاجات وتتنشر على المنصات اللي ربطتها. (أو صورة واحدة كل تشغيل لو جدولته يومي.)",
+    category: "المحتوى",
+    requires: ["صورك في مكتبة الصور", "حساب Gemini (للنص والتصميم)", "حسابات المنصات أو خدمة نشر (Upload-Post / Ayrshare ...)"],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.manual", position: at(0), params: {} },
+        {
+          id: "2",
+          type: "media.select",
+          name: "الصور وأفكارها",
+          position: at(1),
+          params: { images: "", ideas: "", mode: "each" },
+        },
+        {
+          id: "3",
+          type: "ai.generate",
+          name: "كتابة البوست",
+          position: at(2),
+          params: {
+            system:
+              'أنت كوبي رايتر سوشيال ميديا محترف باللهجة المصرية. اكتب بوست بيع: Hook، فايدة المنتج، CTA واضح، و8-12 هاشتاج. رد بـ JSON فقط: {"post":"البوست كامل","imagePrompt":"English prompt: professional advertising design of this exact product, no text"}',
+            prompt: "المنتج: {{2.name}}\nالفكرة: {{2.idea}}",
+            parseJson: true,
+            maxTokens: 2500,
+          },
+        },
+        {
+          id: "4",
+          type: "ai.image",
+          name: "التصميم",
+          position: at(3),
+          params: { prompt: "{{3.json.imagePrompt}}", referenceImage: "{{2.url}}", size: "1024x1024" },
+        },
+        {
+          id: "5",
+          type: "social.publishAll",
+          name: "النشر",
+          position: at(4),
+          params: { caption: "{{3.json.post}}", imageUrl: "{{4.url}}", mediaMode: "image" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5")],
+    },
+  },
+
   /* ---------- المبيعات وخدمة العملاء ---------- */
   {
     id: "contact-form-telegram",

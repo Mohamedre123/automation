@@ -177,9 +177,30 @@ export function MediaLibrary() {
                 <img src={item.url} alt={item.name} loading="lazy" />
               </a>
               <div className="media-info">
-                <strong className="truncate" title={item.name}>
-                  {item.name}
-                </strong>
+                <input
+                  className="media-name"
+                  defaultValue={item.name}
+                  title="اسم الصورة - ده اللي بتكتبه بعد @ في السيناريو"
+                  aria-label="اسم الصورة"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  onBlur={async (e) => {
+                    const name = e.target.value.replace(/[{}]/g, "").trim();
+                    if (!name || name === item.name) {
+                      e.target.value = item.name;
+                      return;
+                    }
+                    try {
+                      await api(`/media/${item.id}`, { method: "PUT", body: { name } });
+                      item.name = name;
+                      toast("الاسم اتغيّر - استخدمه كده: @{" + name + "}", "success");
+                    } catch (err) {
+                      e.target.value = item.name;
+                      toast((err as Error).message, "error");
+                    }
+                  }}
+                />
                 <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                   {item.folder && <span className="badge">{item.folder}</span>}
                   <span className={`badge ${item.source === "generated" ? "brand" : ""}`}>

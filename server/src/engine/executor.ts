@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { decrypt } from "../crypto.js";
 import { newId, now, one, parseJson, run } from "../db.js";
 import { getNode } from "../nodes/index.js";
+import { resolveMediaMentions } from "../nodes/media.js";
 import { assertExecutionQuota } from "../protection.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
@@ -140,7 +141,8 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
       let params: Record<string, any> | undefined;
       try {
         if (!def?.run) throw new Error(`نوع خطوة غير معروف: ${node.type}`);
-        params = resolveParams(def.fields, node.params ?? {}, { outputs: scope, vars });
+        // Only what the customer typed in the step (not data flowing in from earlier steps) can mention library images.
+        params = resolveParams(def.fields, await resolveMediaMentions(node.params ?? {}, workflow.userId), { outputs: scope, vars });
         const result = await def.run({
           params,
           credential: await resolveCredential(def, node, workflow.userId),
@@ -166,13 +168,18 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
         }
         if (result.fanOut) {
           const children = nextNodes(graph, node.id, result.branch);
-          result.fanOut.forEach((item, index) => {
-            pending.push(...queued(children, { ...scope, [node.id]: { ...(item && typeof item === "object" && !Array.isArray(item) ? item : { value: item }), _index: index + 1, _total: result.fanOut!.length } }));
-          });
+          // Depth-first: item 1 runs all its following steps before item 2 starts.
+          const perItem = result.fanOut.flatMap((item, index) =>
+            queued(children, {
+              ...scope,
+              [node.id]: { ...(item && typeof item === "object" && !Array.isArray(item) ? item : { value: item }), _index: index + 1, _total: result.fanOut!.length },
+            }),
+          );
+          pending.unshift(...perItem);
           continue;
         }
         scope[node.id] = result.output;
-        pending.push(...queued(nextNodes(graph, node.id, result.branch), scope));
+        pending.unshift(...queued(nextNodes(graph, node.id, result.branch), scope));
       } catch (err) {
         const message = errorMessage(err);
         steps.push({ ...base, status: "error", durationMs: Date.now() - stepStart, input: compact(params), error: message });
@@ -181,7 +188,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
           break;
         }
         scope[node.id] = { error: message };
-        pending.push(...queued(nextNodes(graph, node.id, def?.outputs ? def.outputs[def.outputs.length - 1].key : undefined), scope));
+        pending.unshift(...queued(nextNodes(graph, node.id, def?.outputs ? def.outputs[def.outputs.length - 1].key : undefined), scope));
       }
     }
   } catch (err) {

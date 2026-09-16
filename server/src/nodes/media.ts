@@ -89,6 +89,39 @@ export const storeMedia = (
   options: { name?: string; folder?: string; source?: "generated" | "upload" } = {},
 ) => storeFile(userId, Buffer.from(base64, "base64"), mimeType, options);
 
+/** "@{اسم الصورة}" in any step field = that image from the customer's library. */
+export const MEDIA_MENTION = /@\{([^{}\n]{1,120})\}/g;
+
+export async function resolveMediaMentions<T>(value: T, userId: string): Promise<T> {
+  const text = JSON.stringify(value);
+  if (!text || !text.includes("@{")) return value;
+  const names = new Set([...text.matchAll(MEDIA_MENTION)].map((m) => m[1].trim()));
+  if (!names.size) return value;
+  const found = new Map<string, string>();
+  for (const name of names) {
+    const row = await one<{ id: string; url: string }>(
+      "SELECT id, url FROM media WHERE user_id = $1 AND lower(name) = lower($2) ORDER BY created_at DESC LIMIT 1",
+      [userId, name],
+    );
+    if (!row) throw new Error(`مفيش صورة اسمها «${name}» في مكتبة الصور - اكتب @ واختار الصورة من القايمة`);
+    found.set(name, mediaUrlFor(row));
+  }
+  const replace = (input: unknown): unknown => {
+    if (typeof input === "string") return input.replace(MEDIA_MENTION, (_m, name: string) => found.get(name.trim()) ?? _m);
+    if (Array.isArray(input)) return input.map(replace);
+    if (input && typeof input === "object") return Object.fromEntries(Object.entries(input).map(([k, v]) => [k, replace(v)]));
+    return input;
+  };
+  return replace(value) as T;
+}
+
+/** Several URLs in one field (comma, new line or space separated). */
+export const urlList = (value: unknown) =>
+  String(value ?? "")
+    .split(/[\s,،]+/)
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item));
+
 export const loadMedia = (id: string) =>
   one<{ mime_type: string; data: string; url: string }>("SELECT mime_type, data, url FROM media WHERE id = $1", [id]);
 
@@ -157,8 +190,8 @@ export const mediaNodes: NodeDefinition[] = [
         key: "referenceImage",
         label: "صورة مرجعية (اختياري)",
         type: "text",
-        placeholder: "{{2.url}}",
-        help: "مثلاً صورة منتجك من المكتبة: الـ AI هيعمل منها صورة إعلانية. مدعومة مع Gemini.",
+        placeholder: "اكتب @ واختار صورة من مكتبتك",
+        help: "اكتب @ واختار صورة منتجك من المكتبة (ممكن أكتر من صورة يتدمجوا في صورة واحدة). عايز كل صورة لوحدها؟ استخدم خطوة «صور محددة من المكتبة» قبل الخطوة دي. مدعومة مع Gemini.",
       },
       { key: "size", label: "المقاس", type: "select", default: "1024x1024", options: SIZES },
       { key: "folder", label: "يتحفظ في فولدر", type: "text", default: "مولّدة" },
@@ -191,8 +224,8 @@ export const mediaNodes: NodeDefinition[] = [
         base64 = data?.data?.[0]?.b64_json ?? "";
       } else if (credential?.type === "geminiApi") {
         const parts: unknown[] = [];
-        if (reference) {
-          const image = await imageAsBase64(reference, signal);
+        for (const url of urlList(reference).slice(0, 6)) {
+          const image = await imageAsBase64(url, signal);
           parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
         }
         parts.push({ text: prompt });
@@ -238,6 +271,66 @@ export const mediaNodes: NodeDefinition[] = [
         source: "generated",
       });
       return { output: { ...stored, prompt, provider: credential.type === "openaiApi" ? "openai" : credential.type === "customAiApi" ? "custom" : "gemini" } };
+    },
+  },
+  {
+    type: "media.select",
+    name: "صور محددة من المكتبة",
+    description:
+      "اختار صور بعينها بـ @ (ولكل صورة فكرتها): الخطوات اللي بعدها بتشتغل على كل صورة لوحدها بالترتيب - صورة تخلص كل خطواتها وبعدين اللي بعدها. أو صورة واحدة كل تشغيل.",
+    app: "media",
+    appName: "مكتبة الصور",
+    color: "#0ea5e9",
+    group: "data",
+    kind: "action",
+    fields: [
+      {
+        key: "images",
+        label: "الصور",
+        type: "textarea",
+        required: true,
+        placeholder: "@{تيشيرت أبيض}\n@{كوباية قهوة}",
+        help: "اكتب @ واختار كل صورة (كل صورة في سطر).",
+      },
+      {
+        key: "ideas",
+        label: "فكرة كل صورة (اختياري)",
+        type: "textarea",
+        placeholder: "عرض خصم 20%\nمنتج جديد وصل",
+        help: "سطر لكل صورة بنفس الترتيب - بتوصل للخطوات اللي بعدها في {{N.idea}}.",
+      },
+      {
+        key: "mode",
+        label: "طريقة الشغل",
+        type: "select",
+        default: "each",
+        options: [
+          { value: "each", label: "كل الصور في نفس التشغيل - واحدة ورا التانية" },
+          { value: "rotate", label: "صورة واحدة كل تشغيل بالترتيب (مثلاً صورة كل يوم)" },
+        ],
+      },
+    ],
+    sampleOutput: { url: "https://your-domain/media/9f1c2d34-...", name: "تيشيرت أبيض", idea: "عرض خصم 20%", index: 1, total: 3 },
+    async run({ params, workflow }) {
+      const urls = urlList(params.images);
+      if (!urls.length) throw new Error("اختار صورة واحدة على الأقل - اكتب @ واختار من مكتبة الصور");
+      const ideas = String(params.ideas ?? "")
+        .split("\n")
+        .map((line) => line.trim());
+      const items = [];
+      for (const [i, url] of urls.entries()) {
+        const id = url.match(/\/media\/([0-9a-f-]{36})/i)?.[1] ?? url.match(/\/([0-9a-f-]{36})\.[a-z0-9]+$/i)?.[1];
+        const row = id ? await one<{ name: string; mime_type: string }>("SELECT name, mime_type FROM media WHERE id = $1 AND user_id = $2", [id, workflow.userId]) : undefined;
+        items.push({ url, name: row?.name ?? `صورة ${i + 1}`, mimeType: row?.mime_type ?? "", idea: ideas[i] ?? "", index: i + 1, total: urls.length });
+      }
+      if (params.mode === "rotate") {
+        const cursorKey = `${workflow.id}:select`;
+        const previous = (await datastoreRead(workflow.userId, CURSOR_STORE, cursorKey)).value;
+        const index = ((typeof previous === "number" ? previous : -1) + 1) % items.length;
+        await datastoreWrite(workflow.userId, CURSOR_STORE, cursorKey, index);
+        return { output: items[index] };
+      }
+      return { output: { total: items.length, names: items.map((item) => item.name) }, fanOut: items };
     },
   },
   {
@@ -393,8 +486,8 @@ export const videoNode: NodeDefinition = {
       key: "referenceImage",
       label: "صورة المنتج (اختياري)",
       type: "text",
-      placeholder: "{{2.url}}",
-      help: "الفيديو هيتعمل من صورة منتجك. مدعومة مع Gemini Veo.",
+      placeholder: "اكتب @ واختار صورة من مكتبتك",
+      help: "الفيديو هيتعمل من صورة منتجك - اكتب @ واختارها. مدعومة مع Gemini Veo.",
     },
     { key: "aspect", label: "الاتجاه", type: "select", default: "9:16", options: VIDEO_ASPECTS },
     { key: "seconds", label: "المدة بالثواني", type: "number", default: 8 },
@@ -407,7 +500,7 @@ export const videoNode: NodeDefinition = {
     if (!prompt) throw new Error("وصف الفيديو فاضي");
     const aspect = params.aspect === "16:9" ? "16:9" : "9:16";
     const seconds = Math.min(Math.max(Math.round(Number(params.seconds) || 8), 4), 12);
-    const reference = String(params.referenceImage ?? "").trim();
+    const reference = urlList(params.referenceImage)[0] ?? "";
     const model = String(params.model ?? "").trim();
     let video: Buffer;
     let note: string | undefined;
