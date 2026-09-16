@@ -215,8 +215,6 @@ h3 {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(1200px 600px at 80% -10%, rgba(124, 92, 255, 0.12), transparent 60%),
-    radial-gradient(900px 500px at 0% 0%, rgba(34, 211, 238, 0.08), transparent 55%), var(--bg);
 }
 
 .topbar {
@@ -311,13 +309,6 @@ h3 {
   display: none;
 }
 
-.nav-backdrop {
-  display: none;
-}
-
-.drawer-actions {
-  display: none;
-}
 
 .menu-wrap {
   position: relative;
@@ -868,7 +859,6 @@ h3 {
 
 /* ---------- landing ---------- */
 .landing {
-  background: var(--bg);
   overflow-x: hidden;
 }
 
@@ -957,12 +947,20 @@ h3 {
 
 .hero {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 50px;
-  align-items: center;
-  padding: 70px 22px 60px;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 54px;
+  padding: 80px 22px 60px;
   max-width: 1160px;
   margin: 0 auto;
+  text-align: center;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 820px;
 }
 
 .hero h1 {
@@ -979,16 +977,17 @@ h3 {
 }
 
 .hero p.lead {
-  font-size: 17.5px;
+  font-size: 18px;
   color: var(--text-2);
-  margin: 0 0 28px;
-  max-width: 540px;
+  margin: 0 auto 30px;
+  max-width: 640px;
 }
 
 .hero-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: center;
   margin-bottom: 26px;
 }
 
@@ -996,6 +995,7 @@ h3 {
   display: flex;
   gap: 18px;
   flex-wrap: wrap;
+  justify-content: center;
   color: var(--text-2);
   font-size: 13.5px;
 }
@@ -1007,6 +1007,7 @@ h3 {
 }
 
 .flow-preview {
+  width: min(820px, 100%);
   position: relative;
   background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
   border: 1px solid var(--border);
@@ -1044,10 +1045,45 @@ h3 {
 }
 
 .flow-line {
-  flex: 0 0 34px;
+  position: relative;
+  flex: 1 1 40px;
+  max-width: 110px;
   height: 2px;
+  margin-bottom: 30px;
   background: repeating-linear-gradient(90deg, var(--text-3) 0 4px, transparent 4px 10px);
-  opacity: 0.7;
+}
+
+/* A data packet travelling along each connection (RTL: right to left). */
+.flow-line::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 12px var(--accent-2);
+  animation: packet 2.4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes packet {
+  0% {
+    right: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    right: calc(100% - 9px);
+    opacity: 0;
+  }
 }
 
 .flow-preview .result {
@@ -1201,8 +1237,6 @@ h3 {
   display: grid;
   place-items: center;
   padding: 26px;
-  background: radial-gradient(900px 500px at 20% 0%, rgba(124, 92, 255, 0.18), transparent 60%),
-    radial-gradient(700px 400px at 90% 100%, rgba(34, 211, 238, 0.14), transparent 60%), var(--bg);
 }
 
 .auth-card {
@@ -1481,9 +1515,9 @@ h3 {
 .editor {
   position: relative;
   height: calc(100vh - var(--nav-h));
+  height: calc(100dvh - var(--nav-h));
   display: flex;
   flex-direction: column;
-  background: var(--bg-2);
 }
 
 .editor-top {
@@ -1539,7 +1573,7 @@ h3 {
 }
 
 .react-flow__background {
-  background: var(--bg-2);
+  background: transparent;
 }
 
 .react-flow__controls {
@@ -2375,7 +2409,7 @@ h3 {
 /* ---------- in-app assistant ---------- */
 .assistant-fab {
   position: fixed;
-  right: 18px;
+  left: 18px;
   bottom: 22px;
   z-index: 40;
   display: flex;
@@ -2405,7 +2439,7 @@ h3 {
 .assistant-panel {
   position: fixed;
   top: calc(var(--nav-h) + 10px);
-  right: 12px;
+  left: 12px;
   bottom: 12px;
   width: 420px;
   max-width: calc(100vw - 24px);
@@ -2560,13 +2594,24 @@ h3 {
   .assistant-fab {
     padding: 14px;
   }
+  .assistant-fab {
+    left: 14px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
   .assistant-panel {
-    inset: 0;
-    top: 0;
+    top: var(--vv-top, 0px);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: var(--vv-height, 100dvh);
     width: 100%;
     max-width: 100%;
+    border: 0;
     border-radius: 0;
-    z-index: 70;
+    z-index: 90;
+  }
+  .assistant-input {
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
   }
 }
 
@@ -2699,47 +2744,17 @@ h3 {
     gap: 10px;
   }
   .nav-links {
-    position: fixed;
-    top: var(--nav-h);
-    inset-inline: 0;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-    padding: 14px;
-    background: var(--bg-2);
-    border-bottom: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-10px);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
-    z-index: 55;
-    max-height: calc(100vh - var(--nav-h));
-    overflow-y: auto;
+    display: none;
   }
-  .nav-links.open {
-    transform: none;
-    opacity: 1;
-    visibility: visible;
-  }
-  .nav-link {
-    padding: 13px 14px;
-    font-size: 15px;
-  }
-  .nav-backdrop {
-    display: block;
-    position: fixed;
-    inset: var(--nav-h) 0 0 0;
-    background: rgba(4, 6, 14, 0.55);
-    z-index: 45;
-  }
-  .drawer-actions {
+  .topbar {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-soft);
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .topbar .brand {
+    justify-self: start;
+  }
+  .nav-side {
+    justify-self: end;
   }
   .hide-sm {
     display: none !important;
@@ -2906,5 +2921,232 @@ h3 {
   }
   .auth-card {
     padding: 24px 18px;
+  }
+}
+
+/* ---------- animated site background ---------- */
+.net-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(1100px 620px at 85% -10%, rgba(124, 92, 255, 0.14), transparent 60%),
+    radial-gradient(900px 520px at 0% 100%, rgba(34, 211, 238, 0.09), transparent 60%), var(--bg);
+}
+
+:root[data-theme="light"] .net-bg {
+  background: radial-gradient(1100px 620px at 85% -10%, rgba(124, 92, 255, 0.1), transparent 60%),
+    radial-gradient(900px 520px at 0% 100%, rgba(34, 211, 238, 0.08), transparent 60%), var(--bg);
+}
+
+#root > :not(.net-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Editor grid: faint lines that pan with the canvas instead of static dots. */
+.canvas .react-flow__background-pattern.lines {
+  stroke: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* ---------- top bar center + theme toggle ---------- */
+.nav-center {
+  display: flex;
+  align-items: center;
+}
+
+.theme-toggle svg {
+  animation: theme-spin 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes theme-spin {
+  from {
+    transform: rotate(-120deg) scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.btn.block {
+  width: 100%;
+}
+
+/* ---------- side drawer (phones + tablets) ---------- */
+.drawer,
+.drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(4, 6, 14, 0.55);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+  }
+  .drawer-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+  }
+  .drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 85;
+    width: min(300px, 84vw);
+    height: 100dvh;
+    padding: 14px 14px max(16px, env(safe-area-inset-bottom));
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    box-shadow: 30px 0 60px rgba(0, 0, 0, 0.35);
+    transform: translateX(-104%);
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow-y: auto;
+  }
+  .drawer.open {
+    transform: none;
+  }
+  .drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 2px 14px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .drawer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+  .drawer-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+    font-size: 15px;
+    opacity: 0;
+    transform: translateX(-14px);
+    transition: opacity 0.3s, transform 0.3s, background 0.15s, color 0.15s;
+  }
+  .drawer.open .drawer-link {
+    opacity: 1;
+    transform: none;
+  }
+  .drawer-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .drawer-link.active {
+    color: var(--text);
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px rgba(124, 92, 255, 0.3);
+  }
+  .drawer-link-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--surface-2);
+    color: var(--accent-2);
+    flex-shrink: 0;
+  }
+  .drawer-link.active .drawer-link-icon {
+    background: var(--grad);
+    color: #fff;
+  }
+  .drawer-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .drawer-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  body.drawer-lock {
+    overflow: hidden;
+  }
+}
+
+/* Centered animated day/night switch used in the drawer. */
+.theme-switch {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.theme-switch-track {
+  position: relative;
+  width: 54px;
+  height: 28px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #1e1b4b, #4338ca);
+  transition: background 0.4s;
+  direction: ltr;
+}
+
+.theme-switch.light .theme-switch-track {
+  background: linear-gradient(135deg, #7dd3fc, #fcd34d);
+}
+
+.theme-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #4338ca;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s;
+}
+
+.theme-switch.light .theme-switch-thumb {
+  transform: translateX(26px) rotate(180deg);
+  color: #d97706;
+}
+
+@media (max-width: 640px) {
+  .flow-preview .flow-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+  .flow-toolbar-safe,
+  .toolbar {
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
   }
 }

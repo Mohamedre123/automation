@@ -66,6 +66,28 @@ function AssistantPanel({
       .catch(() => setStatus({ available: false, reason: "error" }));
   }, []);
 
+  // Phones: size the panel to the *visible* viewport so the input stays above browser bars and the keyboard.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const sync = () => {
+      root.style.setProperty("--vv-height", `${vv.height}px`);
+      root.style.setProperty("--vv-top", `${vv.offsetTop}px`);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    document.body.classList.add("assistant-open");
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+      root.style.removeProperty("--vv-height");
+      root.style.removeProperty("--vv-top");
+      document.body.classList.remove("assistant-open");
+    };
+  }, []);
+
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);

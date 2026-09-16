@@ -1,6 +1,7 @@
 import { createContext, Fragment, useContext } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useMeta } from "../context";
+import { brandBackground } from "../brands";
 import { AppGlyph, Icon } from "../icons";
 import type { StepLog } from "../types";
 import type { FlowNodeType } from "./graph";
@@ -39,7 +40,7 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
       {!isTrigger && (
         <Handle type="target" position={Position.Left} className="fhandle" style={{ top: CIRCLE_CENTER, left: HANDLE_INSET }} />
       )}
-      <div className="fnode-circle" style={{ background: def?.color ?? "#94a3b8" }}>
+      <div className="fnode-circle" style={{ background: brandBackground(def?.app ?? "", def?.color ?? "#94a3b8") }}>
         <AppGlyph app={def?.app ?? ""} size={42} />
         {isTrigger && (
           <span className="fnode-trigger" title="المحفّز">

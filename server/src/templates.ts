@@ -566,6 +566,155 @@ export const templates: Template[] = [
     },
   },
 
+  {
+    id: "ai-blog-wordpress-social",
+    name: "مقال أسبوعي بالذكاء الاصطناعي ← WordPress ← LinkedIn و X و فيسبوك",
+    description: "كل أسبوع: الذكاء الاصطناعي يكتب مقال عن مجالك بصورة بارزة، ينزل على موقعك، ويتشارك رابطه على LinkedIn و X وفيسبوك.",
+    category: "المحتوى",
+    requires: [AI_ACCOUNT, "موقع WordPress (Application Password)", "LinkedIn", "X (تويتر)", "صفحة فيسبوك"],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 10 * * 0", timezone: "Africa/Cairo" } },
+        {
+          id: "2",
+          type: "ai.generate",
+          position: at(1),
+          params: {
+            system:
+              'أنت كاتب محتوى محترف لشركة في مجال: (اكتب مجالك هنا). اكتب مقال عربي مفيد 600 كلمة. رد بـ JSON فقط بالشكل: {"title":"...","content":"مقال بفقرات HTML","excerpt":"سطرين","social":"بوست قصير يشوّق للمقال","image":"وصف صورة بالإنجليزي بدون كتابة"}',
+            prompt: "اكتب مقال الأسبوع بموضوع جديد ومختلف. تاريخ النهاردة: {{$today}}",
+            parseJson: true,
+            maxTokens: 6000,
+          },
+        },
+        { id: "3", type: "ai.image", position: at(2), params: { prompt: "{{2.json.image}}", size: "1536x1024" } },
+        {
+          id: "4",
+          type: "wordpress.createPost",
+          position: at(3),
+          params: {
+            title: "{{2.json.title}}",
+            content: "{{2.json.content}}",
+            excerpt: "{{2.json.excerpt}}",
+            status: "publish",
+            imageUrl: "{{3.url}}",
+          },
+        },
+        { id: "5", type: "linkedin.post", position: at(4, -150), params: { text: "{{2.json.social}}", link: "{{4.link}}", linkTitle: "{{4.title}}" } },
+        { id: "6", type: "x.post", position: at(4, 0), params: { text: "{{2.json.social}}\n{{4.link}}" } },
+        { id: "7", type: "facebook.post", position: at(4, 150), params: { message: "{{2.json.social}}", link: "{{4.link}}" } },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5"), edge("4", "6"), edge("4", "7")],
+    },
+  },
+  {
+    id: "wordpress-post-everywhere",
+    name: "مقال جديد على WordPress ← انشره على كل المنصات",
+    description: "أول ما تنشر مقال على موقعك، الذكاء الاصطناعي يكتب له بوست مناسب وينزل على تيليجرام و LinkedIn و Bluesky و Threads.",
+    category: "سوشيال ميديا",
+    requires: ["موقع WordPress", AI_ACCOUNT, "بوت تيليجرام (أدمن في القناة)", "LinkedIn", "Bluesky", "Threads"],
+    graph: {
+      nodes: [
+        { id: "1", type: "wordpress.postTrigger", position: at(0), params: { minutes: 15 } },
+        {
+          id: "2",
+          type: "ai.generate",
+          position: at(1),
+          params: {
+            system: "اكتب بوست سوشيال ميديا قصير (أقل من 250 حرف) بالعربي يشوّق لقراءة المقال، بدون روابط وبدون مقدمات.",
+            prompt: "عنوان المقال: {{1.title}}\nملخص: {{1.excerpt}}",
+            maxTokens: 800,
+          },
+        },
+        { id: "3", type: "telegram.sendMessage", position: at(2, -225), params: { chatId: "@your_channel", text: "📝 {{1.title}}\n\n{{2.text}}\n\n🔗 {{1.link}}" } },
+        { id: "4", type: "linkedin.post", position: at(2, -75), params: { text: "{{2.text}}", link: "{{1.link}}", linkTitle: "{{1.title}}" } },
+        { id: "5", type: "bluesky.post", position: at(2, 75), params: { text: "{{2.text}}\n{{1.link}}" } },
+        { id: "6", type: "threads.post", position: at(2, 225), params: { text: "{{2.text}}\n{{1.link}}" } },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("2", "4"), edge("2", "5"), edge("2", "6")],
+    },
+  },
+  {
+    id: "salla-order-whatsapp",
+    name: "طلب جديد في سلة ← تأكيد واتساب للعميل + تحديث الحالة",
+    description: "مع كل طلب في متجرك على سلة: العميل يستلم رسالة تأكيد على واتساب، والطلب يتحوّل لـ «قيد التنفيذ» تلقائياً.",
+    category: "المتاجر الإلكترونية",
+    requires: ["متجر سلة (Access Token)", "حساب WasenderAPI"],
+    graph: {
+      nodes: [
+        { id: "1", type: "salla.orderTrigger", position: at(0), params: { minutes: 5 } },
+        {
+          id: "2",
+          type: "wasender.send",
+          position: at(1),
+          params: {
+            to: "{{1.customer.phone}}",
+            messageType: "text",
+            text: "أهلاً {{1.customer.name}} 👋\nاستلمنا طلبك رقم {{1.reference}} بإجمالي {{1.total}} {{1.currency}}، وبدأنا نجهّزه.\nشكراً لثقتك 🌷",
+          },
+        },
+        { id: "3", type: "salla.updateOrderStatus", position: at(2), params: { orderId: "{{1.id}}", slug: "in_progress" } },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+  {
+    id: "zid-order-telegram",
+    name: "طلب جديد في زد ← إشعار تيليجرام + واتساب للعميل",
+    description: "كل طلب في متجر زد يوصلك على تيليجرام، والعميل يستلم رسالة شكر على واتساب.",
+    category: "المتاجر الإلكترونية",
+    requires: ["متجر زد", "بوت تيليجرام", "حساب WasenderAPI"],
+    graph: {
+      nodes: [
+        { id: "1", type: "zid.orderTrigger", position: at(0), params: { minutes: 5 } },
+        {
+          id: "2",
+          type: "telegram.sendMessage",
+          position: at(1, -90),
+          params: { chatId: "", text: "🛒 طلب زد جديد {{1.code}}\nالعميل: {{1.customer.name}} - {{1.customer.phone}}\nالإجمالي: {{1.total}} {{1.currency}}" },
+        },
+        {
+          id: "3",
+          type: "wasender.send",
+          position: at(1, 90),
+          params: { to: "{{1.customer.phone}}", messageType: "text", text: "شكراً {{1.customer.name}} 🌷 طلبك {{1.code}} وصلنا وهنبدأ نجهّزه فوراً." },
+        },
+      ],
+      edges: [edge("1", "2"), edge("1", "3")],
+    },
+  },
+  {
+    id: "product-image-pinterest",
+    name: "صورة منتج من مكتبتك ← Pin يومي على Pinterest",
+    description: "كل يوم بياخد صورة منتج من مكتبة صورك، يكتب لها عنوان ووصف بالذكاء الاصطناعي، وينشرها Pin برابط متجرك.",
+    category: "سوشيال ميديا",
+    requires: ["صور منتجات في مكتبة الصور", AI_ACCOUNT, "Pinterest"],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 18 * * *", timezone: "Africa/Cairo" } },
+        { id: "2", type: "media.pick", position: at(1), params: { folder: "منتجات", mode: "sequential" } },
+        {
+          id: "3",
+          type: "ai.generate",
+          position: at(2),
+          params: {
+            system: 'اكتب لـ Pinterest. رد بـ JSON فقط: {"title":"عنوان جذاب أقل من 90 حرف","description":"وصف تسويقي بكلمات مفتاحية"}',
+            prompt: "اسم المنتج / الصورة: {{2.name}}",
+            parseJson: true,
+            maxTokens: 800,
+          },
+        },
+        {
+          id: "4",
+          type: "pinterest.createPin",
+          position: at(3),
+          params: { boardId: "", imageUrl: "{{2.url}}", title: "{{3.json.title}}", description: "{{3.json.description}}", link: "https://mystore.com" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4")],
+    },
+  },
+
   /* ---------- المبيعات وخدمة العملاء ---------- */
   {
     id: "contact-form-telegram",

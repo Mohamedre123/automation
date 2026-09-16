@@ -10,8 +10,10 @@ import { marketingCredentials, marketingNodes } from "./marketing.js";
 import { mediaNodes } from "./media.js";
 import { messagingCredentials, messagingNodes } from "./messaging.js";
 import { productivityCredentials, productivityNodes } from "./productivity.js";
+import { publishingCredentials, publishingNodes } from "./publishing.js";
 import { facebookCredential, instagramCredential, socialNodes } from "./social.js";
 import { telegramCredential, telegramNodes } from "./telegram.js";
+import { storeCredentials, storeNodes } from "./stores.js";
 import { toolNodes } from "./tools.js";
 import { wasenderCredential, wasenderNodes, whatsappCloudCredential, whatsappCloudNodes } from "./whatsapp.js";
 
@@ -25,10 +27,12 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...whatsappCloudNodes,
   ...telegramNodes,
   ...socialNodes,
+  ...publishingNodes,
   ...messagingNodes,
   ...googleNodes,
   ...productivityNodes,
   ...commerceNodes,
+  ...storeNodes,
   ...marketingNodes,
   ...feedNodes,
   httpRequest,
@@ -42,10 +46,12 @@ export const credentialTypes: CredentialType[] = [
   telegramCredential,
   facebookCredential,
   instagramCredential,
+  ...publishingCredentials,
   ...messagingCredentials,
   googleCredential,
   ...productivityCredentials,
   ...commerceCredentials,
+  ...storeCredentials,
   ...marketingCredentials,
   ...httpCredentials,
 ];

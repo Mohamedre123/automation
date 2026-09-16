@@ -29,7 +29,7 @@ export const loadMedia = (id: string) =>
   one<{ mime_type: string; data: string }>("SELECT mime_type, data FROM media WHERE id = $1", [id]);
 
 /** Fetches an image as base64, reading our own /media files straight from the database. */
-async function imageAsBase64(url: string, signal: AbortSignal): Promise<{ data: string; mimeType: string }> {
+export async function imageAsBase64(url: string, signal: AbortSignal): Promise<{ data: string; mimeType: string }> {
   const own = url.match(/\/media\/([0-9a-f-]{36})(?:[?#]|$)/i);
   if (own) {
     const file = await loadMedia(own[1]);

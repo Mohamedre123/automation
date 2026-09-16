@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Icon } from "../icons";
 import { AssistantLauncher } from "./Assistant";
+import { BurgerButton, NavDrawer, type NavItem } from "./NavDrawer";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
-const links = [
+const links: NavItem[] = [
   { to: "/app", icon: "flows", label: "السيناريوهات", end: true },
   { to: "/app/templates", icon: "templates", label: "التيمبلت" },
   { to: "/app/credentials", icon: "key", label: "الحسابات" },
@@ -16,6 +17,7 @@ const links = [
 export function Layout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
@@ -29,7 +31,7 @@ export function Layout() {
           <span className="brand-name">تدفّق</span>
         </Link>
 
-        <nav className={`nav-links ${menuOpen ? "open" : ""}`} aria-label="القائمة الرئيسية">
+        <nav className="nav-links" aria-label="القائمة الرئيسية">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end} className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               <Icon name={link.icon} size={17} />
@@ -38,20 +40,27 @@ export function Layout() {
           ))}
         </nav>
 
-        <div className="nav-side">
+        <div className="nav-center">
           <ThemeToggle />
+        </div>
+
+        <div className="nav-side">
           <UserMenu />
-          <button
-            className="btn ghost icon sm burger"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label="القائمة"
-            aria-expanded={menuOpen}
-          >
-            <Icon name={menuOpen ? "x" : "menu"} size={19} />
-          </button>
+          <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
         </div>
       </header>
-      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} />}
+
+      <NavDrawer
+        open={menuOpen}
+        onClose={closeMenu}
+        links={links}
+        homeTo="/app"
+        footer={
+          <Link className="btn block" to="/" onClick={closeMenu}>
+            <Icon name="home" size={16} /> الصفحة الرئيسية للموقع
+          </Link>
+        }
+      />
 
       <main className="main">
         <Outlet />

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { NetworkBackground } from "./components/NetworkBackground";
 import { PublicLayout } from "./components/PublicLayout";
 import { Spinner, ToastProvider } from "./components/ui";
 import { AuthProvider, MetaProvider, useAuth } from "./context";
@@ -35,6 +36,7 @@ function Protected({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <NetworkBackground />
       <ToastProvider>
         <AuthProvider>
           <Routes>

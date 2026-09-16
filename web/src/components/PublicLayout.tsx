@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context";
 import { Icon } from "../icons";
+import { BurgerButton, NavDrawer } from "./NavDrawer";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
 export const PUBLIC_LINKS = [
@@ -16,6 +17,7 @@ export function PublicLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -39,30 +41,23 @@ export function PublicLayout() {
             <span className="brand-name">تدفّق</span>
           </Link>
 
-          <nav className={`nav-links ${menuOpen ? "open" : ""}`} aria-label="أقسام الموقع">
+          <nav className="nav-links" aria-label="أقسام الموقع">
             {PUBLIC_LINKS.map((link) => (
               <NavLink key={link.to} to={link.to} className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
                 <Icon name={link.icon} size={16} />
                 {link.label}
               </NavLink>
             ))}
-            {!loading && !user && (
-              <div className="drawer-actions">
-                <Link className="btn" to="/login">
-                  تسجيل الدخول
-                </Link>
-                <Link className="btn primary" to="/register">
-                  ابدأ مجاناً
-                </Link>
-              </div>
-            )}
           </nav>
 
-          <div className="nav-side">
+          <div className="nav-center">
             <ThemeToggle />
+          </div>
+
+          <div className="nav-side">
             {loading ? null : user ? (
               <>
-                <Link className="btn primary sm hide-xs" to="/app">
+                <Link className="btn primary sm hide-sm" to="/app">
                   لوحة التحكم
                 </Link>
                 <UserMenu />
@@ -77,17 +72,32 @@ export function PublicLayout() {
                 </Link>
               </>
             )}
-            <button
-              className="btn ghost icon sm burger"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-label="القائمة"
-              aria-expanded={menuOpen}
-            >
-              <Icon name={menuOpen ? "x" : "menu"} size={19} />
-            </button>
+            <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
           </div>
         </header>
-        {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} />}
+
+        <NavDrawer
+          open={menuOpen}
+          onClose={closeMenu}
+          links={[{ to: "/", label: "الرئيسية", icon: "home", end: true }, ...PUBLIC_LINKS]}
+          homeTo="/"
+          footer={
+            loading ? null : user ? (
+              <Link className="btn primary block" to="/app" onClick={closeMenu}>
+                <Icon name="flows" size={16} /> لوحة التحكم
+              </Link>
+            ) : (
+              <div className="drawer-actions">
+                <Link className="btn" to="/login" onClick={closeMenu}>
+                  تسجيل الدخول
+                </Link>
+                <Link className="btn primary" to="/register" onClick={closeMenu}>
+                  ابدأ مجاناً
+                </Link>
+              </div>
+            )
+          }
+        />
 
         <Outlet />
 

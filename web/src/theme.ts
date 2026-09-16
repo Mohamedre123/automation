@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "dark" | "light";
 
@@ -52,6 +52,12 @@ export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(currentTheme);
+  // Several toggles can be on screen (top bar + drawer): keep them all in sync with the page.
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(currentTheme()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
   const toggle = useCallback(
     (event?: { clientX: number; clientY: number }) => {
       const next: Theme = theme === "dark" ? "light" : "dark";

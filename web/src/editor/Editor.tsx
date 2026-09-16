@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   addEdge,
   Background,
+  BackgroundVariant,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -567,8 +568,8 @@ function EditorCanvas() {
             maxZoom={1.6}
             fitView
           >
-            <Background gap={24} color="#cfd3de" />
-            <Controls position="bottom-left" showInteractive={false} />
+            <Background variant={BackgroundVariant.Lines} gap={32} lineWidth={1} />
+            <Controls position="bottom-right" showInteractive={false} />
           </ReactFlow>
         </div>
 

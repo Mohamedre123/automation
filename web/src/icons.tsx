@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
+import { BRANDS } from "./brands";
 
 const paths: Record<string, ReactElement> = {
   home: (
@@ -48,19 +49,6 @@ const paths: Record<string, ReactElement> = {
     </>
   ),
   zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
-  whatsapp: (
-    <>
-      <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3.5 20.5l1.8-4.8A8.4 8.4 0 1 1 21 11.5z" />
-      <path d="M8.8 9c.2 1.3 2.1 3.2 3.4 3.4l.8-1 1.8.9-.3 1.3c-2.3.4-5.5-2.8-5.1-5.1l1.3-.3z" />
-    </>
-  ),
-  instagram: (
-    <>
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="0.8" />
-    </>
-  ),
   sparkles: (
     <>
       <path d="M12 3.5 13.8 8.2 18.5 10 13.8 11.8 12 16.5 10.2 11.8 5.5 10 10.2 8.2z" />
@@ -209,6 +197,14 @@ const paths: Record<string, ReactElement> = {
 };
 
 export function Icon({ name, size = 18, style }: { name: string; size?: number; style?: CSSProperties }) {
+  const brand = !paths[name] ? BRANDS[name] : undefined;
+  if (brand) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={style} aria-hidden="true">
+        <path d={brand.path} />
+      </svg>
+    );
+  }
   return (
     <svg
       width={size}
@@ -228,7 +224,6 @@ export function Icon({ name, size = 18, style }: { name: string; size?: number; 
 }
 
 const appIcons: Record<string, string> = {
-  telegram: "send",
   webhook: "webhook",
   schedule: "clock",
   manual: "hand",
@@ -238,50 +233,21 @@ const appIcons: Record<string, string> = {
   datastore: "database",
   ai: "sparkles",
   agent: "bot",
-  gemini: "sparkles",
-  whatsapp: "whatsapp",
-  instagram: "instagram",
   form: "form",
   media: "image",
   email: "mail",
-  rss: "rss",
-};
-
-/** Brands without a drawn icon get a short mark on their brand color. */
-const APP_MARKS: Record<string, string> = {
-  slack: "#",
-  discord: "D",
-  sheets: "S",
-  airtable: "A",
-  notion: "N",
-  trello: "T",
-  github: "GH",
-  shopify: "S",
-  woocommerce: "W",
-  stripe: "S",
-  hubspot: "H",
-  mailchimp: "M",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
-  if (app === "anthropic") {
+  const brand = BRANDS[app];
+  if (brand) {
+    // Brand marks are solid shapes: draw them a little smaller than line icons so they breathe inside the tile.
+    const glyph = Math.round(size * 0.86);
     return (
-      <span style={{ fontWeight: 700, fontSize: size * 0.8, fontFamily: "Georgia, serif", letterSpacing: -1, direction: "ltr" }}>
-        A\
-      </span>
+      <svg width={glyph} height={glyph} viewBox="0 0 24 24" fill={brand.fg ?? "#fff"} aria-hidden="true">
+        <path d={brand.path} />
+      </svg>
     );
-  }
-  if (app === "openai") {
-    return <span style={{ fontWeight: 700, fontSize: size * 0.52, direction: "ltr", letterSpacing: 0.5 }}>GPT</span>;
-  }
-  if (APP_MARKS[app]) {
-    const mark = APP_MARKS[app];
-    return (
-      <span style={{ fontWeight: 800, fontSize: size * (mark.length > 1 ? 0.62 : 0.92), direction: "ltr", lineHeight: 1 }}>{mark}</span>
-    );
-  }
-  if (app === "facebook") {
-    return <span style={{ fontWeight: 700, fontSize: size * 1.05, fontFamily: "Georgia, serif", direction: "ltr", lineHeight: 1 }}>f</span>;
   }
   return <Icon name={appIcons[app] ?? "zap"} size={size} />;
 }

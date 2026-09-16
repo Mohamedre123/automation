@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { AppBadge } from "../components/AppBadge";
 import { useReveal } from "../components/PublicLayout";
@@ -69,10 +70,13 @@ export function Landing() {
               ["datastore", "حفظ الطلب"],
               ["telegram", "إشعار ليك"],
             ].map(([app, label], i) => (
-              <div className="flow-step" key={app} style={{ animationDelay: `${i * 0.15}s` }}>
-                <AppBadge app={app} size={54} />
-                <span>{label}</span>
-              </div>
+              <Fragment key={app}>
+                {i > 0 && <span className="flow-line" style={{ ["--delay" as string]: `${i * 0.8}s` }} />}
+                <div className="flow-step" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <AppBadge app={app} size={54} />
+                  <span>{label}</span>
+                </div>
+              </Fragment>
             ))}
           </div>
           <div className="result">

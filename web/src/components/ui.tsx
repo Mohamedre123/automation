@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { brandBackground } from "../brands";
 import { AppGlyph, Icon } from "../icons";
 import { useMeta } from "../context";
 
@@ -98,7 +99,7 @@ export const Spinner = ({ size = 18 }: { size?: number }) => (
 export function AppIcon({ app, size = 36 }: { app: string; size?: number }) {
   const { appColor } = useMeta();
   return (
-    <span className="app-icon" style={{ width: size, height: size, background: appColor(app) }}>
+    <span className="app-icon" style={{ width: size, height: size, background: brandBackground(app, appColor(app)) }}>
       <AppGlyph app={app} size={Math.round(size * 0.52)} />
     </span>
   );

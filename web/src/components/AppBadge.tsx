@@ -1,3 +1,4 @@
+import { brandBackground } from "../brands";
 import { AppGlyph } from "../icons";
 
 /** Brand colors for pages that render without the logged-in platform catalog (public site). */
@@ -34,11 +35,24 @@ export const APP_COLORS: Record<string, string> = {
   stripe: "#635bff",
   hubspot: "#ff7a59",
   mailchimp: "#d4a300",
+  wordpress: "#21759b",
+  ghost: "#1b1f2e",
+  webflow: "#146ef5",
+  wix: "#1b1f2e",
+  salla: "#004956",
+  zid: "#6d28d9",
+  linkedin: "#0a66c2",
+  x: "#1b1f2e",
+  pinterest: "#e60023",
+  threads: "#1b1f2e",
+  bluesky: "#1185fe",
+  youtube: "#ff0000",
+  gmail: "#ea4335",
 };
 
 export function AppBadge({ app, size = 34, color }: { app: string; size?: number; color?: string }) {
   return (
-    <span className="app-icon" style={{ width: size, height: size, background: color ?? APP_COLORS[app] ?? "#7c5cff" }}>
+    <span className="app-icon" style={{ width: size, height: size, background: brandBackground(app, color ?? APP_COLORS[app] ?? "#7c5cff") }}>
       <AppGlyph app={app} size={Math.round(size * 0.52)} />
     </span>
   );

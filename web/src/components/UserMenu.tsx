@@ -13,7 +13,7 @@ export function ThemeToggle() {
       title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}
       aria-label="تبديل الوضع"
     >
-      <Icon name={theme === "dark" ? "sun" : "moon"} size={17} />
+      <Icon key={theme} name={theme === "dark" ? "sun" : "moon"} size={17} />
     </button>
   );
 }
