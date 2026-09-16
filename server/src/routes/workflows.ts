@@ -142,6 +142,24 @@ export async function insertWorkflow(userId: string, name: string, graph: Workfl
   return id;
 }
 
+/** Saves a new graph for an inactive workflow (used by the platform assistant). */
+export async function updateInactiveWorkflow(userId: string, id: string, graphInput: unknown, name?: string) {
+  const row = await one("SELECT * FROM workflows WHERE id = $1 AND user_id = $2", [id, userId]);
+  if (!row) throw httpError(404, "السيناريو مش موجود");
+  if (row.active) throw httpError(409, "السيناريو مفعّل - لازم يتوقف الأول قبل التعديل");
+  const graph = sanitizeGraph(graphInput);
+  await ensureTriggerPaths(graph, id);
+  const trigger = triggerColumns(graph);
+  await run("UPDATE workflows SET name = $1, graph = $2, trigger_type = $3, trigger_path = $4, updated_at = $5 WHERE id = $6", [
+    name?.trim() ? name.trim().slice(0, 120) : row.name,
+    JSON.stringify(graph),
+    trigger.type,
+    trigger.path,
+    now(),
+    id,
+  ]);
+}
+
 export async function workflowRoutes(app: FastifyInstance) {
   app.get("/api/workflows", async (req) => {
     const rows = await query(

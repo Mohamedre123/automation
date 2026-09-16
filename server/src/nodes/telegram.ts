@@ -51,6 +51,14 @@ const parseModeField: FieldDef = {
   ],
 };
 
+export const skipIfEmptyField: FieldDef = {
+  key: "skipIfEmpty",
+  label: "متبعتش حاجة لو النص فاضي",
+  type: "boolean",
+  default: true,
+  help: "مثلاً لما الـ AI Agent يحوّل العميل لموظف ويسكت.",
+};
+
 const sampleMessage = {
   message_id: 42,
   from: { id: 123456789, is_bot: false, first_name: "Ahmed", username: "ahmed" },
@@ -152,11 +160,15 @@ export const telegramNodes: NodeDefinition[] = [
       parseModeField,
       { key: "replyToMessageId", label: "رد على رسالة رقم (اختياري)", type: "text", placeholder: "{{1.message.message_id}}" },
       { key: "disablePreview", label: "إخفاء معاينة الروابط", type: "boolean", default: false },
+      skipIfEmptyField,
     ],
     sampleOutput: { message_id: 43, chat: { id: 123456789 }, text: "أهلاً بيك!" },
     async run({ params, credential, signal }) {
       const text = String(params.text ?? "");
-      if (!text.trim()) throw new Error("نص الرسالة فاضي");
+      if (!text.trim()) {
+        if (params.skipIfEmpty !== false) return { output: { skipped: true, reason: "النص فاضي" } };
+        throw new Error("نص الرسالة فاضي");
+      }
       const token = credential?.data.botToken ?? "";
       const chatId = String(params.chatId ?? "").trim();
       const replyTo = Number(params.replyToMessageId);

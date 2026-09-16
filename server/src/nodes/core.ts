@@ -54,6 +54,46 @@ const webhookTrigger: NodeDefinition = {
   },
 };
 
+const formTrigger: NodeDefinition = {
+  type: "trigger.form",
+  name: "فورم",
+  description: "صفحة فورم جاهزة برابط: أي حد يملاها يشغّل السيناريو، والنتيجة (نص أو صورة) تظهرله فوراً.",
+  app: "form",
+  appName: "فورم",
+  color: "#f59e0b",
+  group: "trigger",
+  kind: "trigger",
+  triggerType: "webhook",
+  fields: [
+    { key: "path", label: "رابط الفورم", type: "readonly", urlKind: "form", help: "افتحه وجرّب بنفسك، أو ابعته لعملاءك." },
+    { key: "title", label: "عنوان الفورم", type: "text", default: "اطلب خدمتك" },
+    { key: "description", label: "وصف قصير", type: "textarea" },
+    {
+      key: "formFields",
+      label: "الحقول",
+      type: "keyvalue",
+      default: [{ key: "name", value: "الاسم" }],
+      help: "المفتاح = اسم الحقل بالإنجليزي، والقيمة = السؤال اللي هيظهر. الإجابة بتوصل في {{1.data.name}}",
+    },
+    { key: "submitLabel", label: "نص زرار الإرسال", type: "text", default: "إرسال" },
+    {
+      key: "successMessage",
+      label: "رسالة بعد الإرسال",
+      type: "text",
+      default: "تم الإرسال بنجاح ✓",
+      help: "لو في آخر السيناريو خطوة «رد على الـ Webhook»، ردها هو اللي هيظهر (نص أو صور).",
+    },
+  ],
+  webhook: {
+    parse(request) {
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const data = body.data && typeof body.data === "object" ? body.data : body;
+      return [{ data, submittedAt: new Date().toISOString() }];
+    },
+  },
+  sampleOutput: { data: { name: "Ahmed" }, submittedAt: "2026-01-01T10:00:00.000Z" },
+};
+
 const scheduleTrigger: NodeDefinition = {
   type: "trigger.schedule",
   name: "جدولة",
@@ -328,6 +368,7 @@ const datastoreDelete: NodeDefinition = {
 };
 
 export const coreNodes: NodeDefinition[] = [
+  formTrigger,
   webhookTrigger,
   scheduleTrigger,
   manualTrigger,

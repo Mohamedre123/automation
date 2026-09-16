@@ -28,6 +28,8 @@ export interface FieldDef {
   modelKind?: "text" | "image";
   /** credential fields: a second account used by the step (e.g. where the agent notifies the owner). */
   credentialTypes?: string[];
+  /** readonly path fields: which public link to show. */
+  urlKind?: "webhook" | "form";
   /** Only show this field when another field has one of these values. */
   showIf?: { field: string; values: unknown[] };
 }

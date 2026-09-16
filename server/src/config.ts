@@ -57,6 +57,13 @@ export const config = {
   cronSecret: process.env.CRON_SECRET || "",
   /** false = only the very first account can register (the owner). */
   allowSignup: process.env.ALLOW_SIGNUP !== "false",
+  /** Platform-owned Claude key for the in-app assistant (a paid-plan feature). */
+  assistantApiKey: process.env.ANTHROPIC_API_KEY || "",
+  /** Accounts that always get paid features (the owner testing before billing exists). */
+  adminEmails: (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
   maxConcurrentExecutions: Number(process.env.MAX_CONCURRENT_EXECUTIONS || 5),
   nodeTimeoutMs: 2 * 60_000,
   executionsKeptPerWorkflow: 100,

@@ -1,5 +1,6 @@
 import type { CredentialType, FieldDef, NodeDefinition, WebhookResponse } from "../engine/types.js";
 import { postJson } from "./llm.js";
+import { skipIfEmptyField } from "./telegram.js";
 
 const WASENDER_BASE = "https://wasenderapi.com/api";
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
@@ -158,6 +159,7 @@ export const wasenderNodes: NodeDefinition[] = [
         showIf: { field: "messageType", values: ["image", "video", "document"] },
       },
       { key: "fileName", label: "اسم الملف", type: "text", showIf: { field: "messageType", values: ["document"] } },
+      skipIfEmptyField,
     ],
     sampleOutput: { success: true, data: { msgId: "3EB0..." } },
     async run({ params, credential, signal }) {
@@ -176,6 +178,7 @@ export const wasenderNodes: NodeDefinition[] = [
           body.fileName = String(params.fileName || "file");
         }
       } else if (!text.trim()) {
+        if (params.skipIfEmpty !== false) return { output: { skipped: true, reason: "النص فاضي" } };
         throw new Error("نص الرسالة فاضي");
       }
       return {
@@ -301,6 +304,7 @@ export const whatsappCloudNodes: NodeDefinition[] = [
       },
       { key: "text", label: "النص / التعليق", type: "textarea", placeholder: "{{3.text}}" },
       { key: "mediaUrl", label: "رابط الملف", type: "text", showIf: { field: "messageType", values: ["image", "document"] } },
+      skipIfEmptyField,
     ],
     sampleOutput: { messaging_product: "whatsapp", messages: [{ id: "wamid.HBgLMTY..." }] },
     async run({ params, credential, signal }) {
@@ -310,7 +314,10 @@ export const whatsappCloudNodes: NodeDefinition[] = [
       const text = String(params.text ?? "");
       const body: Record<string, unknown> = { messaging_product: "whatsapp", recipient_type: "individual", to, type };
       if (type === "text") {
-        if (!text.trim()) throw new Error("نص الرسالة فاضي");
+        if (!text.trim()) {
+          if (params.skipIfEmpty !== false) return { output: { skipped: true, reason: "النص فاضي" } };
+          throw new Error("نص الرسالة فاضي");
+        }
         body.text = { preview_url: true, body: text };
       } else {
         const link = String(params.mediaUrl ?? "").trim();

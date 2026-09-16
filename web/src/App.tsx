@@ -10,7 +10,9 @@ import { Credentials } from "./pages/Credentials";
 import { Dashboard } from "./pages/Dashboard";
 import { DataStore } from "./pages/DataStore";
 import { Executions } from "./pages/Executions";
+import { FormPage } from "./pages/FormPage";
 import { Landing } from "./pages/Landing";
+import { MediaLibrary } from "./pages/MediaLibrary";
 import { Contact } from "./pages/public/Contact";
 import { Features } from "./pages/public/Features";
 import { Integrations } from "./pages/public/Integrations";
@@ -44,6 +46,7 @@ export default function App() {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/contact" element={<Contact />} />
             </Route>
+            <Route path="/form/:path" element={<FormPage />} />
             <Route path="/login" element={<AuthPage mode="login" />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route
@@ -62,6 +65,7 @@ export default function App() {
               <Route path="credentials" element={<Credentials />} />
               <Route path="executions" element={<Executions />} />
               <Route path="datastore" element={<DataStore />} />
+              <Route path="media" element={<MediaLibrary />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -35,7 +35,7 @@ export const templates: Template[] = [
     name: "بوت واتساب ذكي يرد على العملاء",
     description: "أي رسالة واتساب توصل، الـ AI Agent يرد عليها من معلومات شركتك ويفتكر كلام كل عميل لوحده.",
     category: "واتساب",
-    requires: [AI_ACCOUNT, "حساب WasenderAPI (أرخص طريقة لربط واتساب)"],
+    requires: [AI_ACCOUNT, "حساب WasenderAPI (أرخص طريقة لربط واتساب)", "بوت تيليجرام أو واتساب يوصلك عليه إشعار لما عميل يطلب موظف"],
     graph: {
       nodes: [
         { id: "1", type: "wasender.trigger", position: at(0), params: { eventType: "messages.received", ignoreGroups: true } },
@@ -44,13 +44,14 @@ export const templates: Template[] = [
           type: "ai.agent",
           position: at(1),
           params: {
-            system: "أنت موظف خدمة عملاء لطيف. رد باللهجة المصرية وباختصار، واعتمد على المعلومات المرجعية بس.",
+            system: "أنت موظف خدمة عملاء لطيف. رد باللهجة المصرية وباختصار، واعتمد على المعلومات المرجعية بس. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
             knowledge:
               "اسم الشركة: (اكتب اسم شركتك)\nالخدمات والأسعار:\n- خدمة 1: 500 جنيه\n- خدمة 2: 1200 جنيه\nمواعيد العمل: من السبت للخميس 10 ص - 8 م\nطرق الدفع: كاش، فودافون كاش، إنستاباي",
             prompt: "{{1.text}}",
             memoryKey: "{{1.phone}}",
             memoryLength: 14,
-            tools: ["time"],
+            tools: ["handoff", "time"],
+            handoffPauseHours: 24,
           },
         },
         { id: "3", type: "wasender.send", position: at(2), params: { to: "{{1.phone}}", messageType: "text", text: "{{2.text}}" } },
@@ -63,7 +64,7 @@ export const templates: Template[] = [
     name: "بوت واتساب الرسمي (Meta Cloud API)",
     description: "نفس بوت خدمة العملاء بس على رقم واتساب الرسمي المعتمد من Meta.",
     category: "واتساب",
-    requires: [AI_ACCOUNT, "رقم واتساب رسمي على Meta Cloud API"],
+    requires: [AI_ACCOUNT, "رقم واتساب رسمي على Meta Cloud API", "بوت تيليجرام أو واتساب يوصلك عليه إشعار لما عميل يطلب موظف"],
     graph: {
       nodes: [
         { id: "1", type: "whatsapp.trigger", position: at(0), params: {} },
@@ -72,11 +73,13 @@ export const templates: Template[] = [
           type: "ai.agent",
           position: at(1),
           params: {
-            system: "أنت موظف خدمة عملاء محترف. رد باختصار وباللهجة المصرية.",
+            system: "أنت موظف خدمة عملاء محترف. رد باختصار وباللهجة المصرية. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
             knowledge: "اكتب هنا معلومات شركتك: الخدمات، الأسعار، المواعيد، سياسة الاسترجاع.",
             prompt: "{{1.text}}",
             memoryKey: "{{1.phone}}",
             memoryLength: 14,
+            tools: ["handoff"],
+            handoffPauseHours: 24,
           },
         },
         { id: "3", type: "whatsapp.send", position: at(2), params: { to: "{{1.phone}}", messageType: "text", text: "{{2.text}}" } },
@@ -129,19 +132,30 @@ export const templates: Template[] = [
   {
     id: "social-publish-all",
     name: "بوست واحد ينشر على كل المنصات",
-    description: "ابعت الموضوع بس: الذكاء الاصطناعي يكتب البوست ويعمل الصورة، وينشرهم على فيسبوك وإنستجرام وتيليجرام.",
+    description: "اكتب الموضوع في فورم: الذكاء الاصطناعي يكتب البوست ويعمل الصورة، وينشرهم على فيسبوك وإنستجرام وتيليجرام.",
     category: "سوشيال ميديا",
     requires: [AI_ACCOUNT, "صفحة فيسبوك", "حساب إنستجرام بيزنس", "بوت/قناة تيليجرام"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.webhook", position: at(0), params: {} },
+        {
+          id: "1",
+          type: "trigger.form",
+          position: at(0),
+          params: {
+            title: "انشر بوست جديد",
+            description: "اكتب موضوع البوست وهيتنشر على كل المنصات.",
+            formFields: [{ key: "topic", value: "موضوع البوست" }],
+            submitLabel: "انشر",
+            successMessage: "اتنشر ✓",
+          },
+        },
         {
           id: "2",
           type: "ai.generate",
           position: at(1),
           params: {
             system: "أنت كاتب محتوى تسويقي مصري. اكتب بوست قصير وجذاب مع هاشتاجات مناسبة، من غير أي مقدمات أو شرح.",
-            prompt: "اكتب بوست سوشيال ميديا عن: {{1.body.topic}}",
+            prompt: "اكتب بوست سوشيال ميديا عن: {{1.data.topic}}",
             maxTokens: 1500,
           },
         },
@@ -149,7 +163,7 @@ export const templates: Template[] = [
           id: "3",
           type: "ai.image",
           position: at(2),
-          params: { prompt: "صورة احترافية لبوست سوشيال ميديا عن: {{1.body.topic}}، بدون كتابة على الصورة", size: "1024x1024" },
+          params: { prompt: "صورة احترافية لبوست سوشيال ميديا عن: {{1.data.topic}}، بدون كتابة على الصورة", size: "1024x1024" },
         },
         { id: "4", type: "facebook.post", position: at(3, -150), params: { message: "{{2.text}}", imageUrl: "{{3.url}}" } },
         { id: "5", type: "instagram.post", position: at(3, 0), params: { imageUrl: "{{3.url}}", caption: "{{2.text}}" } },
@@ -158,7 +172,7 @@ export const templates: Template[] = [
           id: "7",
           type: "logic.respond",
           position: at(4, 300),
-          params: { status: 200, bodyType: "json", jsonBody: '{ "post": "{{2.text}}", "image": "{{3.url}}" }' },
+          params: { status: 200, bodyType: "json", jsonBody: '{ "text": "{{2.text}}", "image": "{{3.url}}" }' },
         },
       ],
       edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("3", "5"), edge("3", "6"), edge("3", "7")],
@@ -192,18 +206,68 @@ export const templates: Template[] = [
     },
   },
   {
-    id: "ai-image-api",
-    name: "API توليد صور بالذكاء الاصطناعي",
-    description: "ابعت وصف للصورة على Webhook، يرجعلك رابط الصورة جاهز تستخدمه في أي مكان.",
+    id: "ai-image-form",
+    name: "اعمل صورة بالذكاء الاصطناعي من فورم",
+    description: "فورم بسيط تكتب فيه وصف الصورة، والصورة تتعمل وتظهرلك قدامك وتتحفظ في مكتبة الصور.",
     category: "سوشيال ميديا",
-    requires: [AI_ACCOUNT],
+    requires: ["حساب Gemini أو OpenAI"],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.webhook", position: at(0), params: {} },
-        { id: "2", type: "ai.image", position: at(1), params: { prompt: "{{1.body.prompt}}", size: "1024x1024" } },
-        { id: "3", type: "logic.respond", position: at(2), params: { status: 200, bodyType: "json", jsonBody: '{ "url": "{{2.url}}" }' } },
+        {
+          id: "1",
+          type: "trigger.form",
+          position: at(0),
+          params: {
+            title: "اعمل صورتك بالذكاء الاصطناعي",
+            description: "اكتب وصف الصورة اللي في بالك بالتفصيل.",
+            formFields: [{ key: "idea", value: "وصف الصورة" }],
+            submitLabel: "اعمل الصورة",
+            successMessage: "الصورة جاهزة ✓",
+          },
+        },
+        { id: "2", type: "ai.image", position: at(1), params: { prompt: "{{1.data.idea}}", size: "1024x1024", folder: "مولّدة" } },
+        { id: "3", type: "logic.respond", position: at(2), params: { status: 200, bodyType: "json", jsonBody: '{ "text": "الصورة جاهزة ✓", "image": "{{2.url}}" }' } },
       ],
       edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+  {
+    id: "product-posts-daily",
+    name: "انشر منتج كل يوم بصورة إعلانية احترافية",
+    description:
+      "ارفع صور منتجاتك في مكتبة الصور مرة واحدة: كل يوم بياخد منتج بالترتيب، يعمل منه صورة إعلانية بالـ AI، يكتب البوست، وينشر على إنستجرام وفيسبوك.",
+    category: "سوشيال ميديا",
+    requires: ["صور منتجاتك في مكتبة الصور (فولدر «منتجات»)", "حساب Gemini (للصور والكتابة)", "حساب إنستجرام بيزنس", "صفحة فيسبوك"],
+    graph: {
+      nodes: [
+        { id: "1", type: "trigger.schedule", position: at(0), params: { mode: "cron", cron: "0 18 * * *", timezone: "Africa/Cairo" } },
+        { id: "2", type: "media.pick", position: at(1), params: { folder: "منتجات", mode: "sequential" } },
+        {
+          id: "3",
+          type: "ai.image",
+          position: at(2),
+          params: {
+            referenceImage: "{{2.url}}",
+            prompt:
+              "حوّل صورة المنتج دي لصورة إعلانية احترافية لسوشيال ميديا: إضاءة استوديو، خلفية أنيقة مناسبة للمنتج، من غير أي كتابة. المنتج: {{2.name}}",
+            size: "1024x1024",
+            folder: "إعلانات المنتجات",
+          },
+        },
+        {
+          id: "4",
+          type: "ai.generate",
+          position: at(3),
+          params: {
+            system: "أنت مسؤول سوشيال ميديا مصري شاطر. اكتب بوست قصير جذاب مع دعوة للشراء وهاشتاجات، من غير مقدمات.",
+            prompt: "اكتب بوست لمنتج اسمه: {{2.name}}",
+            maxTokens: 1500,
+          },
+        },
+        { id: "5", type: "instagram.post", position: at(4, -90), params: { imageUrl: "{{3.url}}", caption: "{{4.text}}" } },
+        { id: "6", type: "facebook.post", position: at(4, 90), params: { message: "{{4.text}}", imageUrl: "{{3.url}}" } },
+      ],
+      edges: [edge("1", "2"), edge("2", "3"), edge("3", "4"), edge("4", "5"), edge("4", "6")],
     },
   },
   {
@@ -277,13 +341,14 @@ export const templates: Template[] = [
           params: {
             system:
               "أنت موظف خدمة عملاء محترف ولطيف. جاوب من المعلومات المرجعية فقط، ولو السؤال مش موجود فيها قول إنك هتحوّله لزميل. " +
-              "لو العميل عايز يطلب: اجمع اسمه ورقم تليفونه وتفاصيل الطلب، واحفظهم بأداة save_data (المفتاح = رقم التليفون)، وبعدين أكّد له الطلب.",
+              "لو العميل عايز يطلب: اجمع اسمه ورقم تليفونه وتفاصيل الطلب، واحفظهم بأداة save_data (المفتاح = رقم التليفون)، وبعدين أكّد له الطلب. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
             knowledge:
               "اسم الشركة: (اكتب اسم شركتك)\nالخدمات والأسعار:\n- خدمة 1: 500 جنيه\n- خدمة 2: 1200 جنيه\nمواعيد العمل: من السبت للخميس 10 ص - 8 م\nالعنوان: ...",
             prompt: "{{1.message.text}}",
             memoryKey: "{{1.message.chat.id}}",
             memoryLength: 16,
-            tools: ["datastore", "time"],
+            tools: ["handoff", "datastore", "time"],
+            handoffPauseHours: 24,
             dataStore: "طلبات_العملاء",
           },
         },

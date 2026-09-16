@@ -415,10 +415,15 @@ export function FieldInput({
 
   switch (field.type) {
     case "readonly": {
-      const url = `${meta.publicUrl}/webhook/${text}`;
+      const url = `${field.urlKind === "form" ? window.location.origin : meta.publicUrl}/${field.urlKind === "form" ? "form" : "webhook"}/${text}`;
       return (
         <div className="copy-box">
           <input className="input mono" readOnly value={text ? url : "احفظ السيناريو عشان يتعمل الرابط"} onFocus={(e) => e.target.select()} />
+          {field.urlKind === "form" && text && (
+            <a className="btn icon" href={url} target="_blank" rel="noreferrer" title="افتح الفورم">
+              <Icon name="arrowRight" size={16} style={{ transform: "scaleX(-1)" }} />
+            </a>
+          )}
           <button
             type="button"
             className="btn icon"

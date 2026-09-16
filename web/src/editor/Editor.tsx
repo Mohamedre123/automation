@@ -306,7 +306,20 @@ function EditorCanvas() {
       if (!res.sessionId) return void toast(res.message ?? "مفيش نتيجة");
 
       sessionId = res.sessionId;
-      if (res.waitingFor === "webhook") setTestBody(JSON.stringify(sampleWebhookBody(toGraph(nodes, edges), triggerNode.id), null, 2));
+      if (res.waitingFor === "webhook") {
+        const trigger = triggerNode.data.node;
+        const sample =
+          trigger.type === "trigger.form"
+            ? {
+                data: Object.fromEntries(
+                  (Array.isArray(trigger.params.formFields) ? trigger.params.formFields : [])
+                    .filter((row: { key?: string }) => row?.key)
+                    .map((row: { key: string }) => [row.key, ""]),
+                ),
+              }
+            : sampleWebhookBody(toGraph(nodes, edges), triggerNode.id);
+        setTestBody(JSON.stringify(sample, null, 2));
+      }
       setWaiting({ waitingFor: res.waitingFor ?? "webhook", url: res.url });
       for (;;) {
         await sleep(1500, controller.signal);
@@ -472,6 +485,17 @@ function EditorCanvas() {
                 {waiting?.waitingFor === "webhook" ? (
                   <>
                     <strong>مستني بيانات (لحد دقيقتين)...</strong>
+                    {triggerNode?.data.node.type === "trigger.form" && (
+                      <a
+                        className="btn primary sm"
+                        style={{ marginTop: 8 }}
+                        href={`${window.location.origin}/form/${triggerNode.data.node.params.path ?? ""}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Icon name="form" size={14} /> افتح الفورم واملاه
+                      </a>
+                    )}
                     <div className="test-sender">
                       <div className="help" style={{ marginTop: 4 }}>
                         جرّب من هنا مباشرة: عدّل البيانات ودوس «ابعت»، والنتيجة هتظهر على الخطوات.

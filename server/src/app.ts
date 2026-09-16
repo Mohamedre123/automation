@@ -3,11 +3,12 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import formbody from "@fastify/formbody";
 import fastifyStatic from "@fastify/static";
+import { assistantRoutes } from "./assistant.js";
 import { authenticate, authRoutes } from "./auth.js";
 import { config } from "./config.js";
 import { ensureDatabase } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
-import { mediaRoutes } from "./routes/media.js";
+import { mediaLibraryRoutes, mediaRoutes } from "./routes/media.js";
 import { cronRoutes, miscRoutes, publicRoutes } from "./routes/misc.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { workflowRoutes } from "./routes/workflows.js";
@@ -64,6 +65,8 @@ export async function buildApp() {
     await api.register(workflowRoutes);
     await api.register(credentialRoutes);
     await api.register(miscRoutes);
+    await api.register(mediaLibraryRoutes);
+    await api.register(assistantRoutes);
   });
 
   // Local production build serves the frontend itself; on Vercel the CDN does.

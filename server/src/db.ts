@@ -97,6 +97,10 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_media_user ON media(user_id, created_at);
+  ALTER TABLE media ADD COLUMN IF NOT EXISTS folder TEXT NOT NULL DEFAULT '';
+  ALTER TABLE media ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'generated';
+  CREATE INDEX IF NOT EXISTS idx_media_folder ON media(user_id, folder);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
 
   CREATE TABLE IF NOT EXISTS test_sessions (
     id TEXT PRIMARY KEY,

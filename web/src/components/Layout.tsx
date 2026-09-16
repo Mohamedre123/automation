@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Icon } from "../icons";
+import { AssistantLauncher } from "./Assistant";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
 const links = [
   { to: "/app", icon: "flows", label: "السيناريوهات", end: true },
   { to: "/app/templates", icon: "templates", label: "التيمبلت" },
   { to: "/app/credentials", icon: "key", label: "الحسابات" },
+  { to: "/app/media", icon: "image", label: "الصور" },
   { to: "/app/executions", icon: "history", label: "التشغيلات" },
   { to: "/app/datastore", icon: "database", label: "البيانات" },
 ];
@@ -54,6 +56,7 @@ export function Layout() {
       <main className="main">
         <Outlet />
       </main>
+      <AssistantLauncher />
     </div>
   );
 }

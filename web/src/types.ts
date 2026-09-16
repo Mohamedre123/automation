@@ -25,6 +25,7 @@ export interface FieldDef {
   suggestFromCredential?: boolean;
   modelKind?: "text" | "image";
   credentialTypes?: string[];
+  urlKind?: "webhook" | "form";
   showIf?: { field: string; values: unknown[] };
 }
 

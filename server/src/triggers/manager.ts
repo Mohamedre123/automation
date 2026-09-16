@@ -441,7 +441,8 @@ export async function runDueSchedules(limit = 25): Promise<number> {
   }
   await markStaleExecutions(20 * 60_000);
   await run("DELETE FROM test_sessions WHERE created_at < $1", [new Date(Date.now() - 86_400_000).toISOString()]);
-  await run("DELETE FROM media WHERE created_at < $1", [new Date(Date.now() - 30 * 86_400_000).toISOString()]);
+  // Generated images expire; images the customer uploaded stay until they delete them.
+  await run("DELETE FROM media WHERE source = 'generated' AND created_at < $1", [new Date(Date.now() - 30 * 86_400_000).toISOString()]);
   return ran;
 }
 

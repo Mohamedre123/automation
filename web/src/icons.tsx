@@ -116,6 +116,18 @@ const paths: Record<string, ReactElement> = {
   plus: <path d="M12 5v14M5 12h14" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  form: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m17 8-5-5-5 5M12 3v12" />
+    </>
+  ),
   image: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="3" />
@@ -217,6 +229,8 @@ const appIcons: Record<string, string> = {
   gemini: "sparkles",
   whatsapp: "whatsapp",
   instagram: "instagram",
+  form: "form",
+  media: "image",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {

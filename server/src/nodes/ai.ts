@@ -1,12 +1,16 @@
-import type { CredentialType, NodeDefinition } from "../engine/types.js";
+import { loadCredential } from "../engine/executor.js";
+import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
 import { anthropicCredential } from "./anthropic.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
 import { AI_CREDENTIAL_TYPES, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec } from "./llm.js";
+import { NOTIFY_CREDENTIAL_TYPES, sendNotification } from "./notify.js";
 import { assertPublicUrl, parseBody, toNumber, withTimeout } from "./util.js";
 
 export const aiCredentialTypes: CredentialType[] = [geminiCredential, openaiCredential, anthropicCredential];
 
 const MEMORY_STORE = "ذاكرة_المحادثات";
+/** Conversations handed to a human: the agent stays silent with that customer until this expires. */
+export const HANDOFF_STORE = "تحويلات_للموظف";
 
 const modelField = {
   key: "model",
@@ -17,14 +21,71 @@ const modelField = {
 } as const;
 
 const TOOL_OPTIONS = [
-  { value: "http", label: "طلبات HTTP (يكلم أي API أو موقع عام)" },
+  { value: "handoff", label: "تحويل العميل لموظف وإشعارك فوراً" },
   { value: "datastore", label: "حفظ وقراءة من مخزن البيانات" },
+  { value: "http", label: "طلبات HTTP (يكلم أي API أو موقع عام)" },
   { value: "time", label: "معرفة الوقت والتاريخ الحالي" },
 ];
 
-function buildTools(selected: string[], userId: string, store: string, signal: AbortSignal) {
+// Without this the model happily tells customers it "sent" or "saved" things no tool ever did.
+const HONESTY_RULES =
+  "# قواعد مهمة\n" +
+  "- متقولش أبداً إنك بعتّ أو حفظت أو حوّلت أو سجّلت أي حاجة إلا لو الأداة المناسبة اتنفذت ورجعت نجاح.\n" +
+  "- لو الأداة فشلت أو مش متاحة، قول للعميل الحقيقة بلطف ومتألّفش.";
+
+interface HandoffConfig {
+  credential?: CredentialValue;
+  target: string;
+  pauseHours: number;
+  memoryId: string;
+  conversation: string;
+}
+
+function buildTools(selected: string[], userId: string, store: string, signal: AbortSignal, handoff: HandoffConfig) {
   const specs: ToolSpec[] = [];
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
+
+  if (selected.includes("handoff")) {
+    specs.push({
+      name: "handoff_to_human",
+      description:
+        "Notify the business owner that this customer wants a human (customer service, a complaint, or anything outside your knowledge), " +
+        "then stop auto-replying to this customer. Ask for the customer's name and contact first if you don't have them.",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_name: { type: "string", description: "Customer name" },
+          customer_contact: { type: "string", description: "Phone number, username or any way to reach the customer" },
+          reason: { type: "string", description: "Short summary of what the customer needs" },
+        },
+        required: ["reason"],
+      },
+    });
+    handlers.handoff_to_human = async (args) => {
+      if (!handoff.credential || !handoff.target) {
+        throw new Error("Handoff is not configured on this step (no notification account or recipient). Do not claim anything was sent.");
+      }
+      const text = [
+        "🙋 عميل عايز يكلم موظف",
+        `الاسم: ${String(args.customer_name || "غير معروف")}`,
+        `التواصل: ${String(args.customer_contact || "غير معروف")}`,
+        handoff.conversation ? `معرّف المحادثة: ${handoff.conversation}` : "",
+        `الطلب: ${String(args.reason ?? "")}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      await sendNotification(handoff.credential, handoff.target, text, signal);
+      const paused = handoff.pauseHours > 0 && Boolean(handoff.memoryId);
+      if (paused) {
+        await datastoreWrite(userId, HANDOFF_STORE, handoff.memoryId, {
+          until: new Date(Date.now() + handoff.pauseHours * 3_600_000).toISOString(),
+          reason: args.reason ?? "",
+          customer: args.customer_name ?? "",
+        });
+      }
+      return { sent: true, bot_paused_for_this_customer: paused };
+    };
+  }
 
   if (selected.includes("http")) {
     specs.push({
@@ -163,7 +224,7 @@ export const aiNodes: NodeDefinition[] = [
   {
     type: "ai.agent",
     name: "AI Agent",
-    description: "مساعد ذكي بيفكر ويستخدم أدوات (APIs، مخزن البيانات...) وبيفتكر المحادثة. شغال بأي مزوّد.",
+    description: "مساعد ذكي بيفكر ويستخدم أدوات، بيفتكر المحادثة، وبيحوّل العميل ليك لما يحتاج موظف. شغال بأي مزوّد.",
     app: "agent",
     appName: "AI Agent",
     color: "#9333ea",
@@ -195,15 +256,37 @@ export const aiNodes: NodeDefinition[] = [
       },
       { key: "memoryLength", label: "عدد الرسائل اللي يفتكرها", type: "number", default: 12 },
       { key: "tools", label: "الأدوات المتاحة للـ Agent", type: "multiselect", default: [], options: TOOL_OPTIONS },
+      {
+        key: "handoffCredentialId",
+        label: "التحويل لموظف: يتبعتلك الإشعار من حساب",
+        type: "credential",
+        credentialTypes: NOTIFY_CREDENTIAL_TYPES,
+        help: "مطلوب لو فعّلت أداة «تحويل العميل لموظف». اختار بوت تيليجرام أو حساب واتساب.",
+      },
+      {
+        key: "handoffTarget",
+        label: "التحويل لموظف: يتبعت لمين",
+        type: "text",
+        placeholder: "الـ Chat ID بتاعك في تيليجرام أو رقم واتساب",
+        help: "عشان تعرف الـ Chat ID بتاعك في تيليجرام ابعت أي رسالة لـ @userinfobot",
+      },
+      {
+        key: "handoffPauseHours",
+        label: "التحويل لموظف: يسكت البوت مع العميل كام ساعة",
+        type: "number",
+        default: 24,
+        help: "0 = البوت يكمّل يرد عادي بعد التحويل. تقدر ترجّعه قبل كده بمسح العميل من مخزن «تحويلات_للموظف».",
+      },
       { key: "dataStore", label: "مخزن البيانات الخاص بالأدوات", type: "text", default: "agent" },
       { key: "maxSteps", label: "أقصى عدد استخدام للأدوات", type: "number", default: 5 },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false },
     ],
     sampleOutput: {
-      text: "تمام يا أحمد، سجلت طلبك وهنتواصل معاك خلال ساعة.",
+      text: "تمام يا أحمد، بلّغت خدمة العملاء وهيتواصلوا معاك حالاً.",
       json: null,
-      toolCalls: [{ name: "save_data", args: { key: "01000000000", value: "طلب: 2 تيشيرت" }, result: { saved: true } }],
+      handedOff: false,
+      toolCalls: [{ name: "handoff_to_human", args: { customer_name: "Ahmed", reason: "استفسار عن طلب" }, result: { sent: true } }],
       provider: "gemini",
       model: "gemini-3.8-flash",
       usage: { inputTokens: 900, outputTokens: 60 },
@@ -214,18 +297,42 @@ export const aiNodes: NodeDefinition[] = [
 
       const memoryKey = String(params.memoryKey ?? "").trim();
       const memoryId = memoryKey ? `${workflow.id}:${memoryKey}` : "";
+
+      // A human took over this conversation: stay silent until the pause ends.
+      if (memoryId) {
+        const handoffState = (await datastoreRead(workflow.userId, HANDOFF_STORE, memoryId)).value as { until?: string } | null;
+        if (handoffState?.until && handoffState.until > new Date().toISOString()) {
+          return { output: { text: "", json: null, handedOff: true, handedOffUntil: handoffState.until, toolCalls: [] } };
+        }
+      }
+
       const memoryLength = Math.min(Math.max(Math.floor(toNumber(params.memoryLength, 12)), 2), 50);
       const history: Memory = memoryId ? (((await datastoreRead(workflow.userId, MEMORY_STORE, memoryId)).value as Memory) ?? []) : [];
 
+      const selectedTools: string[] = Array.isArray(params.tools) ? params.tools : [];
+      const handoffCredentialId = String(params.handoffCredentialId ?? "").trim();
+      const handoff: HandoffConfig = {
+        credential:
+          selectedTools.includes("handoff") && handoffCredentialId ? await loadCredential(workflow.userId, handoffCredentialId) : undefined,
+        target: String(params.handoffTarget ?? ""),
+        pauseHours: Math.max(0, toNumber(params.handoffPauseHours, 24)),
+        memoryId,
+        conversation: memoryKey,
+      };
+
       const knowledge = String(params.knowledge ?? "").trim();
-      const system = [String(params.system ?? "").trim(), knowledge && `# معلومات مرجعية (اعتمد عليها فقط)\n${knowledge}`]
+      const system = [
+        String(params.system ?? "").trim(),
+        knowledge && `# معلومات مرجعية (اعتمد عليها فقط)\n${knowledge}`,
+        HONESTY_RULES,
+      ]
         .filter(Boolean)
         .join("\n\n");
 
-      const tools = buildTools(Array.isArray(params.tools) ? params.tools : [], workflow.userId, String(params.dataStore || "agent"), signal);
+      const tools = buildTools(selectedTools, workflow.userId, String(params.dataStore || "agent"), signal, handoff);
       const out = await runModel(credential, aiCredentialTypes, {
         model: params.model,
-        system: system || undefined,
+        system,
         history: history.slice(-memoryLength),
         prompt,
         tools: tools.specs,
@@ -244,6 +351,7 @@ export const aiNodes: NodeDefinition[] = [
         output: {
           text: out.text,
           json: params.parseJson ? extractJson(out.text) : null,
+          handedOff: out.toolCalls.some((c) => c.name === "handoff_to_human" && (c.result as { sent?: boolean })?.sent),
           toolCalls: out.toolCalls,
           provider: providerLabel[credential!.type],
           model: out.model,
