@@ -2952,7 +2952,7 @@ h3 {
 
 /* Editor grid: faint lines that pan with the canvas instead of static dots. */
 .canvas .react-flow__background-pattern.lines {
-  stroke: color-mix(in srgb, var(--accent) 14%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 
 /* ---------- theme toggle ---------- */
@@ -3277,4 +3277,17 @@ h3 {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Theme switch fallback (browsers without View Transitions). */
+.theme-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  will-change: clip-path, opacity;
+}
+
+::view-transition-group(root) {
+  animation-duration: 0.5s;
 }

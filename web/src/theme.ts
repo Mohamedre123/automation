@@ -14,8 +14,10 @@ function apply(theme: Theme) {
 }
 
 /**
- * Switches theme with a circular reveal from where the user clicked (View Transitions API),
- * falling back to a soft color cross-fade in browsers without it.
+ * Switches theme with a circular reveal from where the user clicked - on phones too.
+ * Browsers with View Transitions reveal the new page; others (older iOS Safari) get a
+ * single GPU-animated circle in the new background color. The animated background pauses
+ * meanwhile so the device only animates one thing.
  */
 export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
   try {
@@ -25,32 +27,56 @@ export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
   }
 
   const root = document.documentElement;
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const startViewTransition = (document as any).startViewTransition?.bind(document) as
-    | ((update: () => void) => { ready: Promise<void> })
-    | undefined;
-
-  // Phones and low-end devices: a full-page animation costs more than it gives. Switch instantly.
-  const lightweight =
-    window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900 || (navigator.hardwareConcurrency ?? 8) <= 4;
-  if (!startViewTransition || reducedMotion || lightweight) {
-    root.classList.add("theme-instant");
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     apply(theme);
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-instant")));
     return;
   }
 
+  const phone = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900;
+  const duration = phone ? 480 : 650;
   const x = origin?.x ?? window.innerWidth / 2;
   const y = origin?.y ?? 0;
   const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-  startViewTransition(() => apply(theme))
-    .ready.then(() => {
-      root.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-        { duration: 650, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)" },
-      );
+  const done = () => root.classList.remove("theme-switching", "theme-instant");
+  root.classList.add("theme-switching", "theme-instant");
+
+  const startViewTransition = (document as any).startViewTransition?.bind(document) as
+    | ((update: () => void) => { ready: Promise<void>; finished: Promise<void> })
+    | undefined;
+
+  if (startViewTransition) {
+    const transition = startViewTransition(() => apply(theme));
+    transition.ready
+      .then(() => {
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)" },
+        );
+      })
+      .catch(() => {});
+    transition.finished.then(done, done);
+    return;
+  }
+
+  // Fallback: one circle in the new background grows over the page, then fades away.
+  const veil = document.createElement("div");
+  veil.className = "theme-veil";
+  veil.style.background = THEME_COLORS[theme];
+  document.body.appendChild(veil);
+  const grow = veil.animate(
+    { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+    { duration: duration * 0.8, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
+  );
+  grow.finished
+    .then(() => {
+      apply(theme);
+      return veil.animate({ opacity: [1, 0] }, { duration: 220, easing: "ease-out", fill: "forwards" }).finished;
     })
-    .catch(() => {});
+    .catch(() => apply(theme))
+    .finally(() => {
+      veil.remove();
+      done();
+    });
 }
 
 export function useTheme() {
