@@ -60,6 +60,13 @@ export const skipIfEmptyField: FieldDef = {
   help: "مثلاً لما الـ AI Agent يحوّل العميل لموظف ويسكت.",
 };
 
+const plainText = (text: string) =>
+  text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/`([^`\n]+)`/g, "$1");
+
 const sampleMessage = {
   message_id: 42,
   from: { id: 123456789, is_bot: false, first_name: "Ahmed", username: "ahmed" },
@@ -166,7 +173,9 @@ export const telegramNodes: NodeDefinition[] = [
     ],
     sampleOutput: { message_id: 43, chat: { id: 123456789 }, text: "أهلاً بيك!" },
     async run({ params, credential, signal }) {
-      const text = String(params.text ?? "");
+      // Without a parse mode Telegram shows Markdown literally: AI replies often carry **bold** and ### headings.
+      const raw = String(params.text ?? "");
+      const text = params.parseMode ? raw : plainText(raw);
       if (!text.trim()) {
         if (params.skipIfEmpty !== false) return { output: { skipped: true, reason: "النص فاضي" } };
         throw new Error("نص الرسالة فاضي");
