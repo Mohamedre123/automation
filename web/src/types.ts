@@ -5,6 +5,8 @@ export type FieldType =
   | "select"
   | "multiselect"
   | "combo"
+  | "model"
+  | "credential"
   | "boolean"
   | "json"
   | "keyvalue"
@@ -21,6 +23,8 @@ export interface FieldDef {
   default?: unknown;
   options?: { value: string; label: string }[];
   suggestFromCredential?: boolean;
+  modelKind?: "text" | "image";
+  credentialTypes?: string[];
   showIf?: { field: string; values: unknown[] };
 }
 

@@ -11,9 +11,9 @@ const MEMORY_STORE = "ذاكرة_المحادثات";
 const modelField = {
   key: "model",
   label: "الموديل",
-  type: "combo",
-  suggestFromCredential: true,
-  placeholder: "سيبه فاضي = الموديل الافتراضي للحساب",
+  type: "model",
+  modelKind: "text",
+  help: "اختار من موديلات حسابك، أو سيبه على الافتراضي.",
 } as const;
 
 const TOOL_OPTIONS = [

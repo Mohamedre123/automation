@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { api } from "../api";
 import { AppIcon, Toggle, copyText, useToast } from "../components/ui";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
-import type { FieldDef } from "../types";
+import type { Credential, FieldDef } from "../types";
 import { useEditor } from "./FlowNode";
 import { pathSegment } from "./graph";
 
@@ -280,12 +281,123 @@ function ConditionsInput({ value, onChange, nodeId }: { value: unknown; onChange
   );
 }
 
+// Provider model lists mix chat, image, audio and embedding models: keep the ones a step can use.
+const NON_TEXT_MODEL = /image|embedding|tts|audio|transcri|realtime|whisper|dall-e|moderation|computer-use|live|veo|imagen|robotics|aqa/i;
+
+function ModelSelect({
+  value,
+  onChange,
+  credentialId,
+  kind,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  credentialId?: string | null;
+  kind: "text" | "image";
+}) {
+  const [state, setState] = useState<{ models: string[]; defaultModel: string | null; error?: string; loading: boolean }>({
+    models: [],
+    defaultModel: null,
+    loading: false,
+  });
+  const [custom, setCustom] = useState(false);
+
+  useEffect(() => {
+    if (!credentialId) return;
+    let alive = true;
+    setState((s) => ({ ...s, loading: true, error: undefined }));
+    api<{ models: string[]; defaultModel: string | null; error?: string }>(`/credentials/${credentialId}/models`)
+      .then((res) => alive && setState({ ...res, loading: false }))
+      .catch((e: Error) => alive && setState({ models: [], defaultModel: null, error: e.message, loading: false }));
+    return () => {
+      alive = false;
+    };
+  }, [credentialId]);
+
+  if (!credentialId) return <div className="help">اختار الحساب الأول عشان تظهر الموديلات المتاحة فيه.</div>;
+
+  const available = state.models.filter((m) => (kind === "image" ? /image/i.test(m) : !NON_TEXT_MODEL.test(m)));
+  const options = value && !available.includes(value) ? [value, ...available] : available;
+
+  return (
+    <div>
+      {custom ? (
+        <div className="row">
+          <input className="input mono" autoFocus value={value} placeholder="model-id" onChange={(e) => onChange(e.target.value)} />
+          <button type="button" className="btn sm" onClick={() => setCustom(false)}>
+            القايمة
+          </button>
+        </div>
+      ) : (
+        <select
+          className="select"
+          value={value}
+          disabled={state.loading}
+          onChange={(e) => (e.target.value === "__custom" ? setCustom(true) : onChange(e.target.value))}
+        >
+          <option value="">
+            {state.loading ? "جاري تحميل الموديلات..." : `الافتراضي${state.defaultModel ? ` (${state.defaultModel})` : ""}`}
+          </option>
+          {options.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+          <option value="__custom">✏️ اكتب اسم موديل تاني...</option>
+        </select>
+      )}
+      {state.error && (
+        <div className="help" style={{ color: "var(--warning)" }}>
+          مقدرتش أجيب القايمة من حسابك ({state.error}) - بعرض الموديلات المقترحة.
+        </div>
+      )}
+      {!state.loading && !state.error && options.length > 0 && (
+        <div className="help">{options.length} موديل متاح في حسابك</div>
+      )}
+    </div>
+  );
+}
+
+function CredentialSelect({
+  value,
+  onChange,
+  types,
+  credentials,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  types?: string[];
+  credentials: Credential[];
+}) {
+  const { credType } = useMeta();
+  const matching = credentials.filter((c) => !types?.length || types.includes(c.type));
+  return (
+    <>
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">— اختار حساب —</option>
+        {matching.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name} · {credType(c.type)?.name ?? c.type}
+          </option>
+        ))}
+      </select>
+      {matching.length === 0 && (
+        <div className="help">
+          مفيش حساب مناسب - ضيف {types?.map((t) => credType(t)?.name ?? t).join(" أو ")} من صفحة «الحسابات».
+        </div>
+      )}
+    </>
+  );
+}
+
 export function FieldInput({
   field,
   value,
   onChange,
   nodeId,
   models = [],
+  credentialId,
+  credentials = [],
 }: {
   field: FieldDef;
   value: unknown;
@@ -293,6 +405,9 @@ export function FieldInput({
   nodeId: string;
   /** Model suggestions of the selected credential (for combo fields). */
   models?: string[];
+  /** The step's selected account (model fields load that account's models). */
+  credentialId?: string | null;
+  credentials?: Credential[];
 }) {
   const { meta } = useMeta();
   const toast = useToast();
@@ -327,6 +442,10 @@ export function FieldInput({
           ))}
         </select>
       );
+    case "model":
+      return <ModelSelect value={text} onChange={onChange} credentialId={credentialId} kind={field.modelKind ?? "text"} />;
+    case "credential":
+      return <CredentialSelect value={text} onChange={onChange} types={field.credentialTypes} credentials={credentials} />;
     case "combo": {
       const listId = `models-${nodeId}-${field.key}`;
       return (

@@ -113,7 +113,7 @@ export const anthropicNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["anthropicApi"],
     fields: [
-      { key: "model", label: "الموديل", type: "combo", suggestFromCredential: true, placeholder: "claude-opus-5" },
+      { key: "model", label: "الموديل", type: "model", modelKind: "text" },
       { key: "system", label: "تعليمات النظام (System prompt)", type: "textarea", placeholder: "أنت موظف خدمة عملاء لشركة ..." },
       { key: "prompt", label: "البرومبت", type: "textarea", required: true, placeholder: "{{1.message.text}}" },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },

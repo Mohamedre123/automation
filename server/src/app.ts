@@ -8,7 +8,7 @@ import { config } from "./config.js";
 import { ensureDatabase } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
 import { mediaRoutes } from "./routes/media.js";
-import { cronRoutes, miscRoutes } from "./routes/misc.js";
+import { cronRoutes, miscRoutes, publicRoutes } from "./routes/misc.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { workflowRoutes } from "./routes/workflows.js";
 
@@ -56,6 +56,7 @@ export async function buildApp() {
   await app.register(webhookRoutes);
   await app.register(cronRoutes);
   await app.register(mediaRoutes);
+  await app.register(publicRoutes);
   await app.register(async (api) => {
     api.addHook("onRequest", async (req) => {
       req.user = await authenticate(req);

@@ -201,10 +201,10 @@ export function Dashboard() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="مفعّل">
                       <Toggle on={wf.active} onChange={(v) => setActive(wf, v)} title={wf.active ? "إيقاف" : "تفعيل"} />
                     </td>
-                    <td>
+                    <td data-label="آخر تشغيل">
                       {wf.lastStatus ? (
                         <div className="row">
                           <StatusBadge status={wf.lastStatus} />
@@ -216,8 +216,8 @@ export function Dashboard() {
                         <span className="faint">لسه متشغلش</span>
                       )}
                     </td>
-                    <td>{wf.runs ?? 0}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td data-label="التشغيلات">{wf.runs ?? 0}</td>
+                    <td data-label="" onClick={(e) => e.stopPropagation()}>
                       <div className="row" style={{ gap: 2 }}>
                         <button className="btn ghost icon sm" title="نسخ" onClick={() => duplicate(wf)}>
                           <Icon name="copy" size={15} />

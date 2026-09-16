@@ -4,6 +4,7 @@ import { newId, now, one, query, run } from "../db.js";
 import type { CredentialType } from "../engine/types.js";
 import { httpError, requireString } from "../errors.js";
 import { getCredentialType } from "../nodes/index.js";
+import { listModels } from "../nodes/models.js";
 import { errorMessage } from "../nodes/util.js";
 
 const mask = (value: string | undefined) => (!value ? "" : value.length <= 8 ? "••••••" : `••••••${value.slice(-4)}`);
@@ -99,6 +100,19 @@ export async function credentialRoutes(app: FastifyInstance) {
     await getOwned(req, id);
     await run("DELETE FROM credentials WHERE id = $1", [id]);
     return { ok: true };
+  });
+
+  app.get("/api/credentials/:id/models", async (req) => {
+    const { id } = req.params as { id: string };
+    const row = await getOwned(req, id);
+    const type = requireType(row.type);
+    try {
+      const models = await listModels({ id: row.id, type: row.type, data: decrypt(row.data) });
+      return { models, defaultModel: type.defaultModel ?? null };
+    } catch (error) {
+      // Still usable offline: the static suggestions come back with the error.
+      return { models: type.models ?? [], defaultModel: type.defaultModel ?? null, error: errorMessage(error) };
+    }
   });
 
   app.post("/api/credentials/:id/test", async (req) => {

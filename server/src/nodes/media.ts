@@ -40,7 +40,7 @@ export const mediaNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["geminiApi", "openaiApi"],
     fields: [
-      { key: "model", label: "الموديل", type: "text", placeholder: "سيبه فاضي = الموديل الافتراضي", help: "Gemini: gemini-3.1-flash-image · OpenAI: gpt-image-2.5-flare" },
+      { key: "model", label: "الموديل", type: "model", modelKind: "image", help: "اختار موديل صور من حسابك، أو سيبه على الافتراضي." },
       {
         key: "prompt",
         label: "وصف الصورة",

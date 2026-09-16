@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Spinner } from "../components/ui";
+import { ThemeToggle } from "../components/UserMenu";
 import { useAuth } from "../context";
 import { Icon } from "../icons";
 import type { User } from "../types";
@@ -35,6 +36,12 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
 
   return (
     <div className="auth-wrap">
+      <div className="auth-top">
+        <Link to="/" className="btn ghost sm">
+          <Icon name="arrowRight" size={16} /> الصفحة الرئيسية
+        </Link>
+        <ThemeToggle />
+      </div>
       <form className="card auth-card" onSubmit={submit}>
         <Link to="/" className="auth-brand" style={{ color: "inherit" }}>
           <span className="brand-mark" style={{ width: 44, height: 44, borderRadius: 14 }}>

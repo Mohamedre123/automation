@@ -19,7 +19,7 @@ import { Modal, Spinner, StatusBadge, Toggle, copyText, formatDuration, modeLabe
 import { useMeta } from "../context";
 import { Icon } from "../icons";
 import { ExecutionSteps } from "../pages/Executions";
-import type { Credential, Execution, NodeDefinition, StepLog, Workflow, WorkflowNode } from "../types";
+import type { Credential, Execution, NodeDefinition, StepLog, Workflow, WorkflowGraph, WorkflowNode } from "../types";
 import { EditorContext, FlowNode, type EditorContextValue, type VariableSource } from "./FlowNode";
 import { defaultParams, nextNodeId, toFlow, toGraph, upstreamIds, type FlowNodeType } from "./graph";
 import { NodePanel } from "./NodePanel";
@@ -40,6 +40,15 @@ interface TestSession {
   status: "waiting" | "running" | "done" | "error" | "expired" | "cancelled";
   message: string | null;
   execution: Execution | null;
+}
+
+/** Test payload with every {{<trigger>.body.x}} field the workflow reads, so the test covers what it uses. */
+function sampleWebhookBody(graph: WorkflowGraph, triggerId: string): Record<string, string> {
+  const text = JSON.stringify(graph.nodes.map((n) => n.params));
+  const pattern = new RegExp(`\\{\\{\\s*${triggerId}\\.body\\.([A-Za-z_][\\w]*)`, "g");
+  const keys = new Set<string>();
+  for (let match = pattern.exec(text); match; match = pattern.exec(text)) keys.add(match[1]);
+  return keys.size ? Object.fromEntries([...keys].map((key) => [key, ""])) : { message: "تجربة" };
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -86,6 +95,8 @@ function EditorCanvas() {
   const runController = useRef<AbortController | null>(null);
   const [execution, setExecution] = useState<Execution | null>(null);
   const [waiting, setWaiting] = useState<{ waitingFor: "webhook" | "app"; url?: string } | null>(null);
+  const [testBody, setTestBody] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [picker, setPicker] = useState<{ after?: string; handle?: string } | null>(null);
 
@@ -295,6 +306,7 @@ function EditorCanvas() {
       if (!res.sessionId) return void toast(res.message ?? "مفيش نتيجة");
 
       sessionId = res.sessionId;
+      if (res.waitingFor === "webhook") setTestBody(JSON.stringify(sampleWebhookBody(toGraph(nodes, edges), triggerNode.id), null, 2));
       setWaiting({ waitingFor: res.waitingFor ?? "webhook", url: res.url });
       for (;;) {
         await sleep(1500, controller.signal);
@@ -315,6 +327,26 @@ function EditorCanvas() {
       setRunning(false);
       setWaiting(null);
       runController.current = null;
+    }
+  };
+
+  /** Lets the user feed the waiting webhook from the editor instead of an external tool. */
+  const sendTestData = async () => {
+    if (!waiting?.url) return;
+    const body = testBody.trim() || "{}";
+    try {
+      JSON.parse(body);
+    } catch {
+      toast("البيانات لازم تكون JSON صحيح", "error");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      await fetch(waiting.url, { method: "POST", headers: { "content-type": "application/json" }, body });
+    } catch (e) {
+      toast(`مقدرتش أبعت البيانات: ${(e as Error).message}`, "error");
+    } finally {
+      setSendingTest(false);
     }
   };
 
@@ -439,7 +471,25 @@ function EditorCanvas() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 {waiting?.waitingFor === "webhook" ? (
                   <>
-                    <strong>مستني طلب يوصل على الـ Webhook (لحد دقيقتين)...</strong>
+                    <strong>مستني بيانات (لحد دقيقتين)...</strong>
+                    <div className="test-sender">
+                      <div className="help" style={{ marginTop: 4 }}>
+                        جرّب من هنا مباشرة: عدّل البيانات ودوس «ابعت»، والنتيجة هتظهر على الخطوات.
+                      </div>
+                      <textarea
+                        className="textarea mono"
+                        rows={4}
+                        value={testBody}
+                        onChange={(e) => setTestBody(e.target.value)}
+                        aria-label="بيانات التجربة"
+                      />
+                      <button className="btn primary sm" onClick={sendTestData} disabled={sendingTest}>
+                        {sendingTest ? <Spinner size={13} /> : <Icon name="send" size={14} />} ابعت البيانات دي
+                      </button>
+                    </div>
+                    <div className="help" style={{ marginTop: 8 }}>
+                      أو ابعت من موقعك / نظامك على الرابط ده:
+                    </div>
                     <div className="copy-box" style={{ marginTop: 6 }}>
                       <input className="input mono" readOnly value={waiting.url ?? webhookUrl} onFocus={(e) => e.target.select()} />
                       <button

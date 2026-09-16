@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../context";
 import { Icon } from "../icons";
+import { ThemeToggle, UserMenu } from "./UserMenu";
 
 const links = [
   { to: "/app", icon: "flows", label: "السيناريوهات", end: true },
@@ -11,35 +11,11 @@ const links = [
   { to: "/app/datastore", icon: "database", label: "البيانات" },
 ];
 
-const THEME_KEY = "tadfuq_theme";
-
-export function applyStoredTheme() {
-  try {
-    const stored = localStorage.getItem(THEME_KEY);
-    if (stored === "light") document.documentElement.dataset.theme = "light";
-  } catch {
-    /* private mode: stay on the default dark theme */
-  }
-}
-
 export function Layout() {
-  const { user, signOut } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [light, setLight] = useState(() => document.documentElement.dataset.theme === "light");
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
-
-  const toggleTheme = () => {
-    const next = !light;
-    setLight(next);
-    document.documentElement.dataset.theme = next ? "light" : "dark";
-    try {
-      localStorage.setItem(THEME_KEY, next ? "light" : "dark");
-    } catch {
-      /* ignore */
-    }
-  };
 
   return (
     <div className="shell">
@@ -48,7 +24,7 @@ export function Layout() {
           <span className="brand-mark">
             <Icon name="zap" size={19} />
           </span>
-          تدفّق
+          <span className="brand-name">تدفّق</span>
         </Link>
 
         <nav className={`nav-links ${menuOpen ? "open" : ""}`} aria-label="القائمة الرئيسية">
@@ -61,25 +37,19 @@ export function Layout() {
         </nav>
 
         <div className="nav-side">
-          <button className="btn ghost icon sm" onClick={toggleTheme} title={light ? "الوضع الليلي" : "الوضع النهاري"}>
-            <Icon name={light ? "moon" : "sun"} size={17} />
-          </button>
-          <button className="btn ghost icon sm" onClick={signOut} title={`خروج (${user?.email ?? ""})`}>
-            <Icon name="logout" size={17} />
-          </button>
-          <span className="avatar" title={user?.name}>
-            {user?.name?.trim().charAt(0).toUpperCase() || "?"}
-          </span>
+          <ThemeToggle />
+          <UserMenu />
           <button
             className="btn ghost icon sm burger"
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="القائمة"
             aria-expanded={menuOpen}
           >
-            <Icon name={menuOpen ? "x" : "menu"} size={18} />
+            <Icon name={menuOpen ? "x" : "menu"} size={19} />
           </button>
         </div>
       </header>
+      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} />}
 
       <main className="main">
         <Outlet />

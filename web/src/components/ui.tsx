@@ -127,7 +127,19 @@ export function Empty({ icon, title, text, action }: { icon: string; title: stri
 }
 
 /* ---------- json viewer ---------- */
+const IMAGE_URL = /^https?:\/\/\S+(\/media\/[\w-]+|\.(png|jpe?g|webp|gif))(\?\S*)?$/i;
+
 function JsonPrimitive({ value }: { value: unknown }) {
+  if (typeof value === "string" && IMAGE_URL.test(value)) {
+    return (
+      <>
+        <span className="s">{JSON.stringify(value)}</span>
+        <a href={value} target="_blank" rel="noreferrer" className="json-image">
+          <img src={value} alt="معاينة الصورة" loading="lazy" />
+        </a>
+      </>
+    );
+  }
   if (typeof value === "string") return <span className="s">{JSON.stringify(value)}</span>;
   if (typeof value === "number") return <span className="n">{value}</span>;
   if (typeof value === "boolean" || value === null || value === undefined) return <span className="b">{String(value ?? null)}</span>;

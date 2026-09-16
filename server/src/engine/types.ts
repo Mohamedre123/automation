@@ -5,6 +5,8 @@ export type FieldType =
   | "select"
   | "multiselect"
   | "combo"
+  | "model"
+  | "credential"
   | "boolean"
   | "json"
   | "keyvalue"
@@ -22,6 +24,10 @@ export interface FieldDef {
   options?: { value: string; label: string }[];
   /** combo fields: suggest the model list of the selected credential type. */
   suggestFromCredential?: boolean;
+  /** model fields: which models to offer from the provider's live list. */
+  modelKind?: "text" | "image";
+  /** credential fields: a second account used by the step (e.g. where the agent notifies the owner). */
+  credentialTypes?: string[];
   /** Only show this field when another field has one of these values. */
   showIf?: { field: string; values: unknown[] };
 }

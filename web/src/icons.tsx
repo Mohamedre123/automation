@@ -115,6 +115,14 @@ const paths: Record<string, ReactElement> = {
   ),
   plus: <path d="M12 5v14M5 12h14" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  image: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-5-5L5 21" />
+    </>
+  ),
   sun: (
     <>
       <circle cx="12" cy="12" r="4" />

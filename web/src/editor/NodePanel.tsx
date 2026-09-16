@@ -127,6 +127,8 @@ export function NodePanel({
                       onChange={(v) => setParam(field.key, v)}
                       nodeId={node.id}
                       models={models}
+                      credentialId={node.credentialId}
+                      credentials={credentials}
                     />
                   </div>
                 ) : (
@@ -140,6 +142,8 @@ export function NodePanel({
                       onChange={(v) => setParam(field.key, v)}
                       nodeId={node.id}
                       models={models}
+                      credentialId={node.credentialId}
+                      credentials={credentials}
                     />
                     {field.help && <div className="help">{field.help}</div>}
                   </div>

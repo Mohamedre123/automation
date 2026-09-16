@@ -46,16 +46,7 @@ export async function miscRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/api/templates", async () =>
-    templates.map((t) => {
-      const apps = new Map<string, string>();
-      for (const node of t.graph.nodes) {
-        const def = getNode(node.type);
-        if (def && !apps.has(def.app)) apps.set(def.app, def.appName);
-      }
-      return { ...t, apps: [...apps].map(([key, name]) => ({ key, name })), steps: t.graph.nodes.length };
-    }),
-  );
+  app.get("/api/templates", async () => templateSummaries());
 
   app.post("/api/templates/:id/use", async (req) => {
     const { id } = req.params as { id: string };
@@ -87,6 +78,34 @@ export async function miscRoutes(app: FastifyInstance) {
     await run("DELETE FROM datastore WHERE user_id = $1 AND store = $2 AND key = $3", [req.user.id, store, key]);
     return { ok: true };
   });
+}
+
+function templateSummaries() {
+  return templates.map((t) => {
+    const apps = new Map<string, string>();
+    for (const node of t.graph.nodes) {
+      const def = getNode(node.type);
+      if (def && !apps.has(def.app)) apps.set(def.app, def.appName);
+    }
+    return { ...t, apps: [...apps].map(([key, name]) => ({ key, name })), steps: t.graph.nodes.length };
+  });
+}
+
+/** Marketing pages (no login): the integration directory and the template gallery. */
+export async function publicRoutes(app: FastifyInstance) {
+  app.get("/api/public/catalog", async () => {
+    const apps = new Map<string, { key: string; name: string; color: string; group: string; triggers: string[]; actions: string[] }>();
+    for (const def of nodeDefinitions) {
+      // Several providers can share one app (WasenderAPI + official WhatsApp): show the app's plain name.
+      const name = def.app === "whatsapp" ? "واتساب" : def.appName;
+      const entry = apps.get(def.app) ?? { key: def.app, name, color: def.color, group: def.group, triggers: [], actions: [] };
+      (def.kind === "trigger" ? entry.triggers : entry.actions).push(def.name);
+      apps.set(def.app, entry);
+    }
+    return [...apps.values()];
+  });
+
+  app.get("/api/public/templates", async () => templateSummaries().map(({ graph, ...summary }) => summary));
 }
 
 /** Fires due schedules. Called by Vercel Cron / cron-job.org (or the local ticker). */

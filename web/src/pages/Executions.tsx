@@ -174,13 +174,13 @@ export function Executions() {
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="الحالة">
                       <StatusBadge status={e.status} />
                     </td>
-                    <td className="muted">{modeLabels[e.mode]}</td>
-                    <td>{e.stepCount}</td>
-                    <td className="muted">{formatDuration(e.durationMs)}</td>
-                    <td className="muted" title={formatDateTime(e.startedAt)}>
+                    <td data-label="المصدر" className="muted">{modeLabels[e.mode]}</td>
+                    <td data-label="الخطوات">{e.stepCount}</td>
+                    <td data-label="المدة" className="muted">{formatDuration(e.durationMs)}</td>
+                    <td data-label="الوقت" className="muted" title={formatDateTime(e.startedAt)}>
                       {timeAgo(e.startedAt)}
                     </td>
                   </tr>
