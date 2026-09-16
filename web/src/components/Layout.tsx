@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Icon } from "../icons";
 import { AssistantLauncher } from "./Assistant";
 import { BurgerButton, NavDrawer, type NavItem } from "./NavDrawer";
+import { useAutoHideHeader } from "./useAutoHideHeader";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
 const links: NavItem[] = [
@@ -20,10 +21,11 @@ export function Layout() {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
+  const bar = useAutoHideHeader(menuOpen);
 
   return (
     <div className="shell">
-      <header className="topbar">
+      <header className={`topbar ${bar.hidden ? "is-hidden" : ""} ${bar.scrolled ? "is-scrolled" : ""}`}>
         <Link to="/app" className="brand">
           <img className="brand-logo" src="/logo.png" alt="تدفّق" />
           <span className="brand-name">تدفّق</span>
@@ -38,11 +40,8 @@ export function Layout() {
           ))}
         </nav>
 
-        <div className="nav-center">
-          <ThemeToggle />
-        </div>
-
         <div className="nav-side">
+          <ThemeToggle />
           <UserMenu />
           <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
         </div>

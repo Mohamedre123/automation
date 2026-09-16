@@ -30,10 +30,13 @@ export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
     | ((update: () => void) => { ready: Promise<void> })
     | undefined;
 
-  if (!startViewTransition || reducedMotion) {
-    root.classList.add("theme-fade");
+  // Phones and low-end devices: a full-page animation costs more than it gives. Switch instantly.
+  const lightweight =
+    window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900 || (navigator.hardwareConcurrency ?? 8) <= 4;
+  if (!startViewTransition || reducedMotion || lightweight) {
+    root.classList.add("theme-instant");
     apply(theme);
-    window.setTimeout(() => root.classList.remove("theme-fade"), 500);
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-instant")));
     return;
   }
 

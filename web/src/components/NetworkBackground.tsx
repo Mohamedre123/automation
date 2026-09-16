@@ -33,6 +33,10 @@ function NetworkCanvas() {
     if (!canvas || !ctx) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const lowPower =
+      window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768 || (navigator.hardwareConcurrency ?? 8) <= 4;
+    const frameGap = lowPower ? 1000 / 30 : 0;
+    let lastFrame = 0;
     const pointer = { x: -9999, y: -9999, active: false };
     let points: Point[] = [];
     let width = 0;
@@ -43,14 +47,16 @@ function NetworkCanvas() {
     let light = document.documentElement.dataset.theme === "light";
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = lowPower ? 1 : Math.min(window.devicePixelRatio || 1, 2);
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       // Density scales with the screen so phones stay light and wide monitors don't look empty.
-      const target = Math.max(26, Math.min(95, Math.round((width * height) / 15000)));
+      const target = lowPower
+        ? Math.max(16, Math.min(30, Math.round((width * height) / 24000)))
+        : Math.max(26, Math.min(95, Math.round((width * height) / 15000)));
       while (points.length < target) {
         points.push({
           x: Math.random() * width,
@@ -109,7 +115,13 @@ function NetworkCanvas() {
       }
     };
 
-    const step = () => {
+    const step = (time = 0) => {
+      // Phones: 30fps is plenty for a slow drift and halves the work.
+      if (frameGap && time - lastFrame < frameGap) {
+        frame = requestAnimationFrame(step);
+        return;
+      }
+      lastFrame = time;
       scrollDrift *= 0.92;
       for (const p of points) {
         // Gentle pull toward the pointer so the network visibly "notices" it.

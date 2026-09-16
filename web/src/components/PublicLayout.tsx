@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context";
 import { Icon } from "../icons";
 import { BurgerButton, NavDrawer } from "./NavDrawer";
+import { useAutoHideHeader } from "./useAutoHideHeader";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
 export const PUBLIC_LINKS = [
@@ -18,6 +19,7 @@ export function PublicLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const bar = useAutoHideHeader(menuOpen);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -33,7 +35,7 @@ export function PublicLayout() {
       </div>
 
       <div className="landing-inner">
-        <header className="topbar">
+        <header className={`topbar ${bar.hidden ? "is-hidden" : ""} ${bar.scrolled ? "is-scrolled" : ""}`}>
           <Link to="/" className="brand">
             <img className="brand-logo" src="/logo.png" alt="تدفّق" />
             <span className="brand-name">تدفّق</span>
@@ -48,11 +50,8 @@ export function PublicLayout() {
             ))}
           </nav>
 
-          <div className="nav-center">
-            <ThemeToggle />
-          </div>
-
           <div className="nav-side">
+            <ThemeToggle />
             {loading ? null : user ? (
               <>
                 <Link className="btn primary sm hide-sm" to="/app">

@@ -1,25 +1,32 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { NetworkBackground } from "./components/NetworkBackground";
 import { PublicLayout } from "./components/PublicLayout";
 import { Spinner, ToastProvider } from "./components/ui";
 import { AuthProvider, MetaProvider, useAuth } from "./context";
-import { Editor } from "./editor/Editor";
 import { AuthPage } from "./pages/AuthPage";
-import { Credentials } from "./pages/Credentials";
-import { Dashboard } from "./pages/Dashboard";
-import { DataStore } from "./pages/DataStore";
-import { Executions } from "./pages/Executions";
-import { FormPage } from "./pages/FormPage";
 import { Landing } from "./pages/Landing";
-import { MediaLibrary } from "./pages/MediaLibrary";
-import { Contact } from "./pages/public/Contact";
-import { Features } from "./pages/public/Features";
-import { Integrations } from "./pages/public/Integrations";
-import { Pricing } from "./pages/public/Pricing";
-import { PublicTemplates } from "./pages/public/PublicTemplates";
-import { Templates } from "./pages/Templates";
+
+const Editor = lazy(() => import("./editor/Editor").then((m) => ({ default: m.Editor })));
+const Credentials = lazy(() => import("./pages/Credentials").then((m) => ({ default: m.Credentials })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const DataStore = lazy(() => import("./pages/DataStore").then((m) => ({ default: m.DataStore })));
+const Executions = lazy(() => import("./pages/Executions").then((m) => ({ default: m.Executions })));
+const FormPage = lazy(() => import("./pages/FormPage").then((m) => ({ default: m.FormPage })));
+const MediaLibrary = lazy(() => import("./pages/MediaLibrary").then((m) => ({ default: m.MediaLibrary })));
+const Contact = lazy(() => import("./pages/public/Contact").then((m) => ({ default: m.Contact })));
+const Features = lazy(() => import("./pages/public/Features").then((m) => ({ default: m.Features })));
+const Integrations = lazy(() => import("./pages/public/Integrations").then((m) => ({ default: m.Integrations })));
+const Pricing = lazy(() => import("./pages/public/Pricing").then((m) => ({ default: m.Pricing })));
+const PublicTemplates = lazy(() => import("./pages/public/PublicTemplates").then((m) => ({ default: m.PublicTemplates })));
+const Templates = lazy(() => import("./pages/Templates").then((m) => ({ default: m.Templates })));
+
+const PageLoading = () => (
+  <div className="empty" style={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
+    <Spinner size={26} />
+  </div>
+);
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -39,6 +46,7 @@ export default function App() {
       <NetworkBackground />
       <ToastProvider>
         <AuthProvider>
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Landing />} />
@@ -71,6 +79,7 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
