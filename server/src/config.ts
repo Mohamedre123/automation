@@ -34,7 +34,11 @@ const portArg = process.argv.indexOf("--port");
 const port = Number((portArg !== -1 && process.argv[portArg + 1]) || process.env.PORT || 3000);
 
 const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
-const publicUrl = (process.env.PUBLIC_URL || (vercelUrl ? `https://${vercelUrl}` : `http://localhost:${port}`)).replace(/\/+$/, "");
+// APP_URL is an alias: Vercel treats keys starting with PUBLIC_ as public-only variables.
+const publicUrl = (process.env.PUBLIC_URL || process.env.APP_URL || (vercelUrl ? `https://${vercelUrl}` : `http://localhost:${port}`)).replace(
+  /\/+$/,
+  "",
+);
 
 export const config = {
   appName: "Tadfuq",

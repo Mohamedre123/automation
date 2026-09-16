@@ -30,10 +30,27 @@ export async function buildApp() {
   });
 
   app.addHook("onRequest", async (req) => {
+    if (req.url.startsWith("/api/health")) return;
     if (req.url.startsWith("/api") || req.url.startsWith("/webhook")) await ensureDatabase();
   });
 
-  app.get("/api/health", async () => ({ ok: true }));
+  // Always answers, so a broken database or missing env var is visible instead of a blank 500.
+  app.get("/api/health", async () => {
+    const health: Record<string, unknown> = {
+      ok: true,
+      publicUrl: config.publicUrl,
+      webhooksReachable: config.receivesWebhooks,
+      scheduler: config.cronSecret ? "ready" : "CRON_SECRET مش متضبط",
+    };
+    try {
+      await ensureDatabase();
+      health.database = "connected";
+    } catch (error) {
+      health.ok = false;
+      health.database = error instanceof Error ? error.message : String(error);
+    }
+    return health;
+  });
   await app.register(authRoutes);
   await app.register(webhookRoutes);
   await app.register(cronRoutes);

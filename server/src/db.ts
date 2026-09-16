@@ -103,12 +103,27 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_test_sessions_path ON test_sessions(trigger_path, status);
 `;
 
+function assertDatabaseUrl(url: string) {
+  if (/\[|\]|YOUR-PASSWORD/i.test(url)) {
+    throw new Error("DATABASE_URL لسه فيه [YOUR-PASSWORD] - بدّله بكلمة سر قاعدة البيانات الحقيقية");
+  }
+  if (!/^postgres(ql)?:\/\//.test(url.trim())) {
+    throw new Error("DATABASE_URL لازم يبدأ بـ postgresql:// - انسخه من Supabase ← Connect ← Transaction pooler");
+  }
+  try {
+    new URL(url.trim());
+  } catch {
+    throw new Error("DATABASE_URL مش صحيح - غالباً كلمة السر فيها رموز زي @ أو # أو / ، غيّرها لحروف وأرقام بس");
+  }
+}
+
 async function createDriver(): Promise<Driver> {
   if (config.databaseUrl) {
+    assertDatabaseUrl(config.databaseUrl);
     const { default: postgres } = await import("postgres");
     const local = /localhost|127\.0\.0\.1/.test(config.databaseUrl);
     // Supabase transaction pooler (port 6543) does not support prepared statements.
-    const sql = postgres(config.databaseUrl, {
+    const sql = postgres(config.databaseUrl.trim(), {
       prepare: false,
       max: config.isVercel ? 1 : 5,
       idle_timeout: 20,
