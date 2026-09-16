@@ -55,6 +55,7 @@ export interface CredentialTypeDef {
   description?: string;
   docsUrl?: string;
   steps?: string[];
+  oauth?: { provider: string; scopes: string[]; creates?: string[] };
   hasTest: boolean;
   models?: string[];
   defaultModel?: string;
@@ -67,6 +68,7 @@ export interface Meta {
   platform: { isVercel: boolean; receivesWebhooks: boolean; backgroundWorkers: boolean };
   nodes: NodeDefinition[];
   credentialTypes: CredentialTypeDef[];
+  oauth?: { providers: Record<string, { name: string; ready: boolean; env: string[] }>; redirectUrl: string };
 }
 
 export interface WorkflowNode {
@@ -143,6 +145,7 @@ export interface Credential {
   createdAt: string;
   updatedAt: string;
   preview: Record<string, string>;
+  oauth?: { account: string; expiresAt: string; refreshable: boolean };
   usedBy: { id: string; name: string }[];
 }
 

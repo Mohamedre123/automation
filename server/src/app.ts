@@ -5,6 +5,8 @@ import formbody from "@fastify/formbody";
 import fastifyStatic from "@fastify/static";
 import { assistantRoutes } from "./assistant.js";
 import { authenticate, authRoutes } from "./auth.js";
+import { registerProtection, rateLimit } from "./protection.js";
+import { oauthCallbackRoutes, oauthRoutes } from "./routes/oauth.js";
 import { config } from "./config.js";
 import { ensureDatabase } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
@@ -28,6 +30,7 @@ export async function buildApp() {
   app.setErrorHandler((error: any, req, reply) => {
     const status = error.statusCode ?? 500;
     if (status >= 500) req.log.error(error);
+    if (error.retryAfter) (reply as any).retryAfter = error.retryAfter;
     reply.status(status).send({ error: error.message || "حصل خطأ في السيرفر" });
   });
 
@@ -35,6 +38,8 @@ export async function buildApp() {
     if (req.url.startsWith("/api/health")) return;
     if (req.url.startsWith("/api") || req.url.startsWith("/webhook") || req.url.startsWith("/media/")) await ensureDatabase();
   });
+
+  registerProtection(app);
 
   // Always answers, so a broken database or missing env var is visible instead of a blank 500.
   app.get("/api/health", async () => {
@@ -58,15 +63,19 @@ export async function buildApp() {
   await app.register(cronRoutes);
   await app.register(mediaRoutes);
   await app.register(publicRoutes);
+  await app.register(oauthCallbackRoutes);
   await app.register(async (api) => {
     api.addHook("onRequest", async (req) => {
       req.user = await authenticate(req);
+      // Per-account ceiling on the whole logged-in API.
+      await rateLimit(`api:${req.user.id}`, 600, 60);
     });
     await api.register(workflowRoutes);
     await api.register(credentialRoutes);
     await api.register(miscRoutes);
     await api.register(mediaLibraryRoutes);
     await api.register(assistantRoutes);
+    await api.register(oauthRoutes);
   });
 
   // Local production build serves the frontend itself; on Vercel the CDN does.

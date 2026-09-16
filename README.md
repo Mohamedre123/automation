@@ -71,6 +71,31 @@ https://YOUR-DOMAIN/api/cron/tick?secret=CRON_SECRET
 
 الصور المتولّدة بتتخزن وبتاخد رابط عام (`/media/:id`) عشان إنستجرام وواتساب يقدروا يجيبوها.
 
+## الربط بضغطة زرار (Google / Facebook / TikTok / LinkedIn / X)
+
+العميل بيدوس «ربط» ويوافق - من غير مفاتيح. صاحب المنصة بيعمل تطبيق واحد عند كل مزوّد مرة واحدة، ويحط **رابط الرجوع** ده في كلهم:
+
+```
+https://<الدومين بتاعك>/api/oauth/callback
+```
+
+| المزوّد | فين تعمل التطبيق | المتغيرات | الخدمات |
+|---|---|---|---|
+| Google | console.cloud.google.com ← APIs & Services ← Credentials ← OAuth client ID (Web application). فعّل Gmail API و Drive API و Sheets API و Calendar API و YouTube Data API v3، واملا OAuth consent screen | `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` | Gmail، Drive، Sheets، Calendar، YouTube |
+| Meta | developers.facebook.com ← Create App (Business) ← Facebook Login for Business ← Valid OAuth Redirect URIs | `META_APP_ID` `META_APP_SECRET` | صفحات فيسبوك + إنستجرام بيزنس |
+| TikTok | developers.tiktok.com ← Manage apps ← Login Kit + Content Posting API ← Redirect URI | `TIKTOK_CLIENT_KEY` `TIKTOK_CLIENT_SECRET` | نشر فيديوهات |
+| LinkedIn | linkedin.com/developers/apps ← Auth ← Authorized redirect URLs + منتجات Share on LinkedIn و Sign In with OpenID | `LINKEDIN_CLIENT_ID` `LINKEDIN_CLIENT_SECRET` | النشر |
+| X | developer.x.com ← App ← User authentication settings (OAuth 2.0، Web App، Read and write) ← Callback URI | `X_CLIENT_ID` `X_CLIENT_SECRET` | التغريدات |
+
+> لحد ما جوجل/ميتا/تيك توك يراجعوا تطبيقك: جوجل بيظهر تحذير «unverified» وحد أقصى 100 مستخدم، وميتا بتشتغل مع الحسابات اللي ليها دور في التطبيق بس، وتيك توك بينشر «خاص». اطلب المراجعة من لوحة كل مزوّد قبل ما تفتح للناس.
+
+## الحماية
+
+- حدود طلبات محفوظة في قاعدة البيانات (شغالة على Vercel): الدخول (8 محاولات لكل حساب / ربع ساعة)، التسجيل (5 لكل جهاز / ساعة)، الـ Webhooks (`WEBHOOK_RATE_PER_MINUTE` لكل رابط)، رفع صور الفورم، المساعد الذكي، اختبار الحسابات، و600 طلب في الدقيقة لكل حساب.
+- حد يومي للتشغيلات (`MAX_EXECUTIONS_PER_DAY`) وحد لعدد السيناريوهات (`MAX_WORKFLOWS_PER_USER`).
+- على Vercel خطوات HTTP والخدمات الخارجية مش مسموح لها تكلم عناوين داخلية (SSRF).
+- Security headers على الـ API والموقع، والمفاتيح متشفّرة AES-256-GCM، والجلسات متخزّنة كـ hash.
+
 ## الذكاء الاصطناعي
 
 في خطوتين:

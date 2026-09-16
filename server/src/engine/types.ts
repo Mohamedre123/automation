@@ -49,6 +49,8 @@ export interface CredentialType {
   app: string;
   description?: string;
   docsUrl?: string;
+  /** "Connect with ..." accounts: no fields to fill, the customer approves on the provider site. */
+  oauth?: { provider: string; scopes: string[]; creates?: string[] };
   /** Step-by-step guide to get the key, shown in the connect dialog. */
   steps?: string[];
   fields: CredentialField[];

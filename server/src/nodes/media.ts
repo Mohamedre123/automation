@@ -93,6 +93,23 @@ export const loadMedia = (id: string) =>
   one<{ mime_type: string; data: string; url: string }>("SELECT mime_type, data, url FROM media WHERE id = $1", [id]);
 
 /** Fetches an image as base64, reading our own /media files straight from the database. */
+/** Any file (video, image, document) as bytes - our own library straight from storage, others over HTTP. */
+export async function fileBytes(url: string, signal: AbortSignal, maxBytes = 250 * 1024 * 1024) {
+  let target = url;
+  const own = url.match(/\/media\/([0-9a-f-]{36})(?:[?#]|$)/i);
+  if (own) {
+    const file = await loadMedia(own[1]);
+    if (file?.data) return { bytes: Buffer.from(file.data, "base64"), mimeType: file.mime_type };
+    if (file?.url) target = file.url;
+  }
+  const response = await fetch(assertPublicUrl(target), { signal: withTimeout(signal, 120_000) });
+  if (!response.ok) throw new Error(`مقدرتش أجيب الملف (HTTP ${response.status})`);
+  const size = Number(response.headers.get("content-length") ?? 0);
+  if (size > maxBytes) throw new Error(`الملف أكبر من ${Math.round(maxBytes / 1048576)} ميجا`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  return { bytes, mimeType: response.headers.get("content-type")?.split(";")[0] || "application/octet-stream" };
+}
+
 export async function imageAsBase64(url: string, signal: AbortSignal): Promise<{ data: string; mimeType: string }> {
   const own = url.match(/\/media\/([0-9a-f-]{36})(?:[?#]|$)/i);
   if (own) {

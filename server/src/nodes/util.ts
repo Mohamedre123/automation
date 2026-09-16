@@ -37,6 +37,14 @@ export const toNumber = (value: unknown, fallback: number) => {
 export const keyValueRows = (value: unknown): { key: string; value: unknown }[] =>
   Array.isArray(value) ? value.filter((row) => row && String(row.key ?? "").trim()) : [];
 
+/** Hosted platform only: user-configured URLs (HTTP step, custom providers) may not target private networks. */
+export function assertAllowedUrl(raw: string, blockPrivate: boolean): URL {
+  if (blockPrivate) return assertPublicUrl(raw);
+  const url = new URL(raw);
+  if (!/^https?:$/.test(url.protocol)) throw new Error("الرابط لازم يبدأ بـ http أو https");
+  return url;
+}
+
 /** Blocks obvious internal targets for URLs chosen at runtime (e.g. by an AI agent). */
 export function assertPublicUrl(raw: string): URL {
   let url: URL;

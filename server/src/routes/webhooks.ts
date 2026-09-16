@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { now, one, parseJson } from "../db.js";
 import { MAX_UPLOAD_BYTES, storeMedia } from "../nodes/media.js";
+import { clientIp, rateLimit } from "../protection.js";
 import type { WorkflowGraph } from "../engine/types.js";
 import { httpError } from "../errors.js";
 import { keyValueRows } from "../nodes/util.js";
@@ -73,6 +74,7 @@ export async function webhookRoutes(app: FastifyInstance) {
   /** Image questions upload first, then the form sends the image's public URL. */
   app.post("/api/forms/:path/upload", async (req) => {
     const { path } = req.params as { path: string };
+    await rateLimit(`form-upload:${clientIp(req)}`, 10, 600, "رفعت صور كتير - استنى شوية وجرّب تاني");
     const { userId } = await findForm(path);
     const body = (req.body ?? {}) as Record<string, unknown>;
     const dataUrl = typeof body.dataUrl === "string" ? body.dataUrl : "";

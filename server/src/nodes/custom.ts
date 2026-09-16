@@ -1,5 +1,6 @@
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
-import { parseBody, withTimeout } from "./util.js";
+import { config } from "../config.js";
+import { assertAllowedUrl, parseBody, withTimeout } from "./util.js";
 
 /**
  * "Bring your own provider": any external service the customer already pays for
@@ -64,6 +65,7 @@ export async function customRequest(c: CredentialValue | undefined, method: stri
   const url = joinUrl(c, path);
   if (!/^https?:\/\//i.test(url)) throw new Error("رابط الخدمة الخارجية مش صحيح - اتأكد من Base URL في الحساب");
   const hasBody = method !== "GET" && body !== undefined && body !== "";
+  assertAllowedUrl(url, config.blockPrivateUrls);
   const response = await fetch(url, {
     method,
     headers: { accept: "application/json", ...customAuthHeaders(c), ...(hasBody ? { "content-type": "application/json" } : {}) },

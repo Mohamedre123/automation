@@ -872,6 +872,86 @@ export const templates: Template[] = [
     },
   },
 
+  {
+    id: "gmail-ai-reply",
+    name: "إيميل عميل جديد في Gmail ← رد ذكي تلقائي",
+    description: "أي إيميل بيوصل لبريدك بعنوان معين، الذكاء الاصطناعي يكتب رد مهذب من معلومات شركتك ويبعته من Gmail.",
+    category: "خدمة العملاء",
+    requires: ["حساب Gmail (ربط بضغطة)", AI_ACCOUNT],
+    graph: {
+      nodes: [
+        { id: "1", type: "gmail.trigger", position: at(0), params: { query: "in:inbox is:unread -category:promotions", minutes: 10 } },
+        {
+          id: "2",
+          type: "ai.generate",
+          position: at(1),
+          params: {
+            system: "أنت مسؤول خدمة عملاء. اكتب رد إيميل قصير ومهذب بنفس لغة العميل، من المعلومات دي بس: (اكتب معلومات شركتك). لو السؤال برّه المعلومات قول إن فريقنا هيرد خلال 24 ساعة. من غير مقدمات.",
+            prompt: "من: {{1.from}}\nالعنوان: {{1.subject}}\n\n{{1.text}}",
+            maxTokens: 1500,
+          },
+        },
+        { id: "3", type: "gmail.send", position: at(2), params: { to: "{{1.fromEmail}}", subject: "Re: {{1.subject}}", body: "{{2.text}}", format: "text" } },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+  {
+    id: "calendar-whatsapp-reminder",
+    name: "ميعاد في Google Calendar ← تذكير واتساب للعميل قبلها بساعة",
+    description: "قبل كل حجز أو مكالمة بساعة، العميل يوصله تذكير على واتساب (رقمه مكتوب في وصف الميعاد).",
+    category: "خدمة العملاء",
+    requires: ["Google Calendar (ربط بضغطة)", "حساب WasenderAPI"],
+    graph: {
+      nodes: [
+        { id: "1", type: "calendar.upcomingTrigger", position: at(0), params: { calendarId: "primary", minutesBefore: 60, minutes: 10 } },
+        {
+          id: "2",
+          type: "tools.text",
+          name: "رقم العميل من الوصف",
+          position: at(1),
+          params: { operation: "extract", text: "{{1.description}}", pattern: "\\d{10,15}" },
+        },
+        {
+          id: "3",
+          type: "wasender.send",
+          position: at(2),
+          params: { to: "{{2.result}}", messageType: "text", text: "تذكير 🔔\nميعادك «{{1.title}}» بعد ساعة.\n{{1.meetLink}}" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+  {
+    id: "drive-video-everywhere",
+    name: "فيديو جديد في فولدر Drive ← YouTube Shorts و TikTok وريلز",
+    description: "ارفع فيديو في فولدر على Google Drive: الذكاء الاصطناعي يكتب كابشن بهاشتاجات، وينزل على يوتيوب شورتس وتيك توك وإنستجرام ريلز. (شارك الفولدر «أي حد معاه الرابط» عشان المنصات تقدر تسحب الفيديو.)",
+    category: "سوشيال ميديا",
+    requires: ["Google Drive (ربط بضغطة)", AI_ACCOUNT, "YouTube / TikTok / إنستجرام (اللي عايزه بس)"],
+    graph: {
+      nodes: [
+        { id: "1", type: "drive.trigger", position: at(0), params: { folderId: "", minutes: 15 } },
+        {
+          id: "2",
+          type: "ai.generate",
+          position: at(1),
+          params: {
+            system: "اكتب كابشن قصير جذاب لفيديو قصير بالعربي مع CTA و8 هاشتاجات. من غير مقدمات.",
+            prompt: "اسم الفيديو: {{1.name}}",
+            maxTokens: 800,
+          },
+        },
+        {
+          id: "3",
+          type: "social.publishAll",
+          position: at(2),
+          params: { caption: "{{2.text}}", videoUrl: "https://drive.google.com/uc?export=download&id={{1.id}}", mediaMode: "video" },
+        },
+      ],
+      edges: [edge("1", "2"), edge("2", "3")],
+    },
+  },
+
   /* ---------- المبيعات وخدمة العملاء ---------- */
   {
     id: "contact-form-telegram",

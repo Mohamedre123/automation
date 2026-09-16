@@ -1,3 +1,4 @@
+import { config } from "../config.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { newId, now, one, parseJson, query, run } from "../db.js";
 import { executionFromRow } from "../engine/executor.js";
@@ -141,6 +142,12 @@ async function getOwned(req: FastifyRequest, id: string) {
 }
 
 export async function insertWorkflow(userId: string, name: string, graph: WorkflowGraph, description = "") {
+  if (config.maxWorkflowsPerUser) {
+    const count = await one<{ n: number }>("SELECT COUNT(*)::int AS n FROM workflows WHERE user_id = $1", [userId]);
+    if ((count?.n ?? 0) >= config.maxWorkflowsPerUser) {
+      throw httpError(403, `وصلت للحد الأقصى لعدد السيناريوهات (${config.maxWorkflowsPerUser}) - امسح سيناريوهات مش محتاجها`);
+    }
+  }
   const id = newId();
   await ensureTriggerPaths(graph, id);
   const trigger = triggerColumns(graph);

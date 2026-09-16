@@ -1,5 +1,6 @@
 import type { CredentialType, NodeDefinition } from "../engine/types.js";
-import { keyValueRows, parseBody, toNumber, withTimeout } from "./util.js";
+import { config } from "../config.js";
+import { assertAllowedUrl, keyValueRows, parseBody, toNumber, withTimeout } from "./util.js";
 
 export const httpCredentials: CredentialType[] = [
   {
@@ -78,7 +79,7 @@ export const httpRequest: NodeDefinition = {
     } catch {
       throw new Error("الرابط مش صحيح");
     }
-    if (!/^https?:$/.test(url.protocol)) throw new Error("الرابط لازم يبدأ بـ http أو https");
+    url = assertAllowedUrl(url.toString(), config.blockPrivateUrls);
     for (const row of keyValueRows(params.query)) url.searchParams.append(row.key, String(row.value ?? ""));
 
     const headers = new Headers();

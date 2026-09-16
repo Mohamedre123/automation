@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
 import { apiRequest, parseJsonParam } from "./api.js";
+import { oauthAccessToken } from "../oauth.js";
 import { checkEveryField } from "./feeds.js";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -8,6 +9,8 @@ const tokenCache = new Map<string, { token: string; expires: number }>();
 
 /** Service-account OAuth: sign a JWT with the account's private key and swap it for an access token. */
 async function googleToken(credential: CredentialValue | undefined, signal: AbortSignal) {
+  // "Connect with Google" accounts carry their own refreshable token.
+  if (credential?.type === "googleSheetsOAuth") return oauthAccessToken(credential, "google", signal);
   let account: { client_email?: string; private_key?: string };
   try {
     account = JSON.parse(credential?.data.serviceAccountJson ?? "");
@@ -87,7 +90,7 @@ export const googleNodes: NodeDefinition[] = [
     color: "#0f9d58",
     group: "apps",
     kind: "action",
-    credentialTypes: ["googleServiceAccount"],
+    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
     fields: [
       spreadsheetField,
       sheetField,
@@ -122,7 +125,7 @@ export const googleNodes: NodeDefinition[] = [
     color: "#0f9d58",
     group: "apps",
     kind: "action",
-    credentialTypes: ["googleServiceAccount"],
+    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
     fields: [spreadsheetField, sheetField, { key: "limit", label: "أقصى عدد صفوف", type: "number", default: 200 }],
     sampleOutput: { rows: [{ الاسم: "Ahmed", التليفون: "010...", _row: 2 }], count: 1 },
     async run({ params, credential, signal }) {
@@ -141,7 +144,7 @@ export const googleNodes: NodeDefinition[] = [
     group: "trigger",
     kind: "trigger",
     triggerType: "schedule",
-    credentialTypes: ["googleServiceAccount"],
+    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
     fields: [spreadsheetField, sheetField, checkEveryField],
     sampleOutput: { الاسم: "Ahmed", التليفون: "010...", _row: 12 },
     async poll({ params, credential, state, signal, testMode }) {

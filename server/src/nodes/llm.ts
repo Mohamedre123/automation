@@ -1,5 +1,7 @@
 import type { CredentialType, CredentialValue } from "../engine/types.js";
+import { config } from "../config.js";
 import { claudeRun } from "./anthropic.js";
+import { assertAllowedUrl } from "./util.js";
 
 /** Provider-neutral chat + tool loop. Each provider keeps its native message format internally. */
 export interface ToolSpec {
@@ -178,6 +180,7 @@ async function compatibleRun(o: LlmRunOptions): Promise<LlmRunResult> {
   for (let step = 0; step <= o.maxSteps; step++) {
     const body: Record<string, unknown> = { model: o.model, messages, max_tokens: o.maxTokens };
     if (tools.length) body.tools = tools;
+    assertAllowedUrl(o.baseUrl, config.blockPrivateUrls);
     const data = await postJson(`${o.baseUrl}/chat/completions`, body, { authorization: `Bearer ${o.apiKey}` }, o.signal, "المزوّد");
     result.model = data.model ?? o.model;
     result.usage.inputTokens += data.usage?.prompt_tokens ?? 0;

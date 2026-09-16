@@ -70,6 +70,13 @@ export const config = {
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
     bucket: process.env.SUPABASE_BUCKET || "media",
   },
+  /** Protection: 0 turns a limit off. */
+  maxExecutionsPerDay: Number(process.env.MAX_EXECUTIONS_PER_DAY ?? 5000),
+  maxWorkflowsPerUser: Number(process.env.MAX_WORKFLOWS_PER_USER ?? 300),
+  webhookRatePerMinute: Number(process.env.WEBHOOK_RATE_PER_MINUTE ?? 120),
+  rateLimitsDisabled: process.env.RATE_LIMITS === "off",
+  /** Hosted platform: steps may not call private network addresses. */
+  blockPrivateUrls: isVercel || process.env.BLOCK_PRIVATE_URLS === "true",
   maxConcurrentExecutions: Number(process.env.MAX_CONCURRENT_EXECUTIONS || 5),
   nodeTimeoutMs: 2 * 60_000,
   executionsKeptPerWorkflow: 100,

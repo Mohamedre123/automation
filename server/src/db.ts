@@ -117,6 +117,22 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_scheduled_posts_due ON scheduled_posts(status, run_at);
 
+  CREATE TABLE IF NOT EXISTS oauth_states (
+    state TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    verifier TEXT NOT NULL DEFAULT '',
+    credential_id TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT PRIMARY KEY,
+    window_start BIGINT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS test_sessions (
     id TEXT PRIMARY KEY,
     workflow_id TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,

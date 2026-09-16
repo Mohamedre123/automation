@@ -6,6 +6,7 @@ import { httpError, requireString } from "../errors.js";
 import { getCredentialType } from "../nodes/index.js";
 import { listModels } from "../nodes/models.js";
 import { errorMessage } from "../nodes/util.js";
+import { rateLimit } from "../protection.js";
 
 const mask = (value: string | undefined) => (!value ? "" : value.length <= 8 ? "••••••" : `••••••${value.slice(-4)}`);
 
@@ -23,6 +24,7 @@ async function toSummary(row: any, userId: string) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     preview: Object.fromEntries((type?.fields ?? []).map((f) => [f.key, f.secret ? mask(data[f.key]) : (data[f.key] ?? "")])),
+    ...(type?.oauth ? { oauth: { account: data.account ?? "", expiresAt: data.expiresAt ?? "", refreshable: Boolean(data.refreshToken) } } : {}),
     usedBy,
   };
 }
@@ -68,6 +70,7 @@ export async function credentialRoutes(app: FastifyInstance) {
   app.post("/api/credentials", async (req) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const type = requireType(body.type);
+    if (type.oauth) throw httpError(400, "الحساب ده بيتربط بزرار «ربط» مش بمفاتيح");
     const name = requireString(body.name, "اسم الحساب", 120);
     const data = cleanData(type, body.data);
     const id = newId();
@@ -117,12 +120,14 @@ export async function credentialRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/credentials/:id/test", async (req) => {
+    await rateLimit(`cred-test:${req.user.id}`, 30, 600);
     const { id } = req.params as { id: string };
     const row = await getOwned(req, id);
     return runTest(requireType(row.type), decrypt(row.data));
   });
 
   app.post("/api/credentials/test", async (req) => {
+    await rateLimit(`cred-test:${req.user.id}`, 30, 600);
     const body = (req.body ?? {}) as Record<string, unknown>;
     const type = requireType(body.type);
     return runTest(type, cleanData(type, body.data));

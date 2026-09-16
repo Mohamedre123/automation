@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
+import { oauthAccessToken } from "../oauth.js";
 import { apiRequest, checkAuth } from "./api.js";
 import { checkEveryField } from "./feeds.js";
 import { imageAsBase64 } from "./media.js";
@@ -546,7 +547,7 @@ export const publishingNodes: NodeDefinition[] = [
     color: "#0a66c2",
     group: "apps",
     kind: "action",
-    credentialTypes: ["linkedinApi"],
+    credentialTypes: ["linkedinOAuth", "linkedinApi"],
     fields: [
       { key: "text", label: "نص البوست", type: "textarea", required: true, placeholder: "{{2.text}}" },
       { key: "link", label: "رابط مقال (اختياري)", type: "text", placeholder: "{{3.link}}" },
@@ -554,12 +555,13 @@ export const publishingNodes: NodeDefinition[] = [
     ],
     sampleOutput: { id: "urn:li:share:7240000000000000000", postUrl: "https://www.linkedin.com/feed/update/urn:li:share:7240000000000000000" },
     async run({ params, credential, signal }) {
+      const token = credential?.type === "linkedinOAuth" ? await oauthAccessToken(credential, "linkedin", signal) : credential?.data.accessToken;
       const headers = {
-        authorization: `Bearer ${credential?.data.accessToken}`,
+        authorization: `Bearer ${token}`,
         "LinkedIn-Version": "202509",
         "X-Restli-Protocol-Version": "2.0.0",
       };
-      let author = str(credential?.data.authorUrn);
+      let author = str(credential?.data.authorUrn) || (credential?.data.memberId ? `urn:li:person:${credential.data.memberId}` : "");
       if (!author) {
         const me = await apiRequest("LinkedIn", "https://api.linkedin.com/v2/userinfo", { headers: { authorization: headers.authorization }, signal });
         author = `urn:li:person:${me.sub}`;
@@ -599,7 +601,7 @@ export const publishingNodes: NodeDefinition[] = [
     color: "#1b1f2e",
     group: "apps",
     kind: "action",
-    credentialTypes: ["xOAuth1"],
+    credentialTypes: ["xOAuth2", "xOAuth1"],
     fields: [
       { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 280 حرف للحسابات العادية." },
       { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", placeholder: "{{3.url}}" },
@@ -608,6 +610,9 @@ export const publishingNodes: NodeDefinition[] = [
     sampleOutput: { id: "1835000000000000000", text: "نص التغريدة", postUrl: "https://x.com/i/web/status/1835000000000000000" },
     async run({ params, credential, signal }) {
       const url = "https://api.x.com/2/tweets";
+      // "Connect with X" accounts use a bearer token; key-based accounts sign every request (OAuth 1.0a).
+      const bearer = credential?.type === "xOAuth2" ? `Bearer ${await oauthAccessToken(credential, "x", signal)}` : "";
+      const authFor = (method: string, target: string) => bearer || oauth1Header(method, target, credential);
       const body: Record<string, unknown> = { text: String(params.text ?? "") };
       if (str(params.replyTo)) body.reply = { in_reply_to_tweet_id: str(params.replyTo) };
       let mediaNote: string | undefined;
@@ -620,7 +625,7 @@ export const publishingNodes: NodeDefinition[] = [
           form.set("media_category", "tweet_image");
           const response = await fetch(uploadUrl, {
             method: "POST",
-            headers: { authorization: oauth1Header("POST", uploadUrl, credential) },
+            headers: { authorization: authFor("POST", uploadUrl) },
             body: form,
             signal: withTimeout(signal, 60_000),
           });
@@ -633,7 +638,7 @@ export const publishingNodes: NodeDefinition[] = [
           mediaNote = `الصورة مترفعتش على X (${(e as Error).message}) - اتنشرت التغريدة نص بس`;
         }
       }
-      const res = await apiRequest("X", url, { headers: { authorization: oauth1Header("POST", url, credential) }, json: body, signal });
+      const res = await apiRequest("X", url, { headers: { authorization: authFor("POST", url) }, json: body, signal });
       return {
         output: { ...res.data, postUrl: res.data?.id ? `https://x.com/i/web/status/${res.data.id}` : undefined, ...(mediaNote ? { note: mediaNote } : {}) },
       };

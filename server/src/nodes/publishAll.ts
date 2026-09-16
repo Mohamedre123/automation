@@ -1,6 +1,7 @@
 import { decrypt } from "../crypto.js";
 import { newId, now, one, parseJson, query, run } from "../db.js";
 import type { CredentialValue, FieldDef, NodeContext, NodeDefinition, StepLog } from "../engine/types.js";
+import { connectedNodes } from "./connected.js";
 import { publishingNodes } from "./publishing.js";
 import { socialNodes } from "./social.js";
 import { telegramNodes } from "./telegram.js";
@@ -87,36 +88,40 @@ export function parsePublishAt(value: unknown, timeZone: string, from = Date.now
 interface PlatformDef {
   key: string;
   label: string;
-  credentialType: string;
+  credentialTypes: string[];
   node: string;
+  /** Video-only platforms skip posts without a video. */
+  videoOnly?: boolean;
   targetField?: FieldDef;
 }
 
 const PLATFORMS: PlatformDef[] = [
-  { key: "facebook", label: "فيسبوك", credentialType: "facebookPage", node: "facebook.post" },
-  { key: "instagram", label: "إنستجرام", credentialType: "instagramBusiness", node: "instagram.post" },
+  { key: "facebook", label: "فيسبوك", credentialTypes: ["facebookPage"], node: "facebook.post" },
+  { key: "instagram", label: "إنستجرام", credentialTypes: ["instagramBusiness"], node: "instagram.post" },
   {
     key: "telegram",
     label: "تيليجرام",
-    credentialType: "telegramBot",
+    credentialTypes: ["telegramBot"],
     node: "telegram.sendPhoto",
     targetField: { key: "telegramChatId", label: "تيليجرام: القناة أو الجروب", type: "text", placeholder: "@my_channel", help: "البوت لازم يكون أدمن في القناة." },
   },
-  { key: "x", label: "X (تويتر)", credentialType: "xOAuth1", node: "x.post" },
-  { key: "linkedin", label: "LinkedIn", credentialType: "linkedinApi", node: "linkedin.post" },
-  { key: "threads", label: "Threads", credentialType: "threadsApi", node: "threads.post" },
-  { key: "bluesky", label: "Bluesky", credentialType: "blueskyApi", node: "bluesky.post" },
+  { key: "x", label: "X (تويتر)", credentialTypes: ["xOAuth2", "xOAuth1"], node: "x.post" },
+  { key: "youtube", label: "YouTube", credentialTypes: ["youtubeOAuth"], node: "youtube.upload", videoOnly: true },
+  { key: "tiktok", label: "TikTok", credentialTypes: ["tiktokOAuth"], node: "tiktok.postVideo", videoOnly: true },
+  { key: "linkedin", label: "LinkedIn", credentialTypes: ["linkedinOAuth", "linkedinApi"], node: "linkedin.post" },
+  { key: "threads", label: "Threads", credentialTypes: ["threadsApi"], node: "threads.post" },
+  { key: "bluesky", label: "Bluesky", credentialTypes: ["blueskyApi"], node: "bluesky.post" },
   {
     key: "pinterest",
     label: "Pinterest",
-    credentialType: "pinterestApi",
+    credentialTypes: ["pinterestApi"],
     node: "pinterest.createPin",
     targetField: { key: "pinterestBoardId", label: "Pinterest: رقم اللوحة (Board ID)", type: "text" },
   },
   {
     key: "custom",
     label: "خدمة نشر خارجية",
-    credentialType: "customApi",
+    credentialTypes: ["customApi"],
     node: "custom.request",
     targetField: {
       key: "customPath",
@@ -128,7 +133,7 @@ const PLATFORMS: PlatformDef[] = [
   },
 ];
 
-const nodesByType = new Map([...socialNodes, ...publishingNodes, ...telegramNodes].map((n) => [n.type, n]));
+const nodesByType = new Map([...socialNodes, ...publishingNodes, ...telegramNodes, ...connectedNodes].map((n) => [n.type, n]));
 
 export interface PublishPayload {
   caption: string;
@@ -186,6 +191,14 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       if (!target) throw new Error("اكتب مسار الخدمة الخارجية");
       return [{ _custom: true, path: target }];
     }
+    case "youtube": {
+      if (!p.videoUrl) throw new Error("YouTube محتاج فيديو - اتخطّى");
+      const firstLine = p.caption.split("\n").find((line) => line.trim()) ?? "فيديو جديد";
+      return [{ videoUrl: p.videoUrl, title: clip(firstLine.replace(/#\S+/g, "").trim() || "فيديو جديد", 90), description: withLink, privacy: "public", short: true }];
+    }
+    case "tiktok":
+      if (!p.videoUrl) throw new Error("TikTok محتاج فيديو - اتخطّى");
+      return [{ videoUrl: p.videoUrl, caption: clip(p.caption, 2200), privacy: "auto" }];
     case "pinterest": {
       if (!target) throw new Error("اكتب رقم لوحة Pinterest (Board ID)");
       if (!p.imageUrl) throw new Error("Pinterest محتاج صورة - اتخطّى");
@@ -250,7 +263,7 @@ const credentialFields: FieldDef[] = PLATFORMS.flatMap((platform) => [
     key: `${platform.key}CredentialId`,
     label: `${platform.label}: الحساب`,
     type: "credential" as const,
-    credentialTypes: [platform.credentialType],
+    credentialTypes: platform.credentialTypes,
   },
   ...(platform.targetField ? [platform.targetField] : []),
 ]);

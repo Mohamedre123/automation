@@ -50,6 +50,9 @@ export const APP_COLORS: Record<string, string> = {
   gmail: "#ea4335",
   social: "#ec4899",
   customai: "#0f766e",
+  drive: "#1a73e8",
+  gcalendar: "#4285f4",
+  tiktok: "#1b1f2e",
   customapi: "#475569",
 };
 

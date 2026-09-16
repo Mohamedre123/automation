@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { hashPassword, randomToken, sha256, verifyPassword } from "./crypto.js";
 import { newId, now, one, run } from "./db.js";
+import { clientIp, rateLimit } from "./protection.js";
 import { httpError, requireString } from "./errors.js";
 
 export interface AuthUser {
@@ -43,6 +44,7 @@ export async function authenticate(req: FastifyRequest): Promise<AuthUser> {
 
 export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/register", async (req) => {
+    await rateLimit(`register:${clientIp(req)}`, 5, 3600, "اتعمل حسابات كتير من نفس الجهاز - جرّب بعد ساعة");
     const body = (req.body ?? {}) as Record<string, unknown>;
     const name = requireString(body.name, "الاسم", 100);
     const email = requireString(body.email, "الإيميل", 200).toLowerCase();
@@ -70,6 +72,9 @@ export async function authRoutes(app: FastifyInstance) {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
+    // Brute force: limit attempts per account and per device.
+    await rateLimit(`login:${email}`, 8, 900, "محاولات دخول كتير على الحساب ده - استنى ربع ساعة وجرّب تاني");
+    await rateLimit(`login-ip:${clientIp(req)}`, 30, 900, "محاولات دخول كتير - استنى ربع ساعة وجرّب تاني");
     const user = await one<AuthUser & { password_hash: string }>("SELECT id, email, name, password_hash FROM users WHERE email = $1", [email]);
     if (!user || !verifyPassword(password, user.password_hash)) throw httpError(401, "الإيميل أو كلمة السر غلط");
     return { token: await createSession(user.id), user: { id: user.id, email: user.email, name: user.name } };

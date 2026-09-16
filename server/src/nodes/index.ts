@@ -4,6 +4,7 @@ import { anthropicNodes } from "./anthropic.js";
 import { commerceCredentials, commerceNodes } from "./commerce.js";
 import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
+import { connectedCredentials, connectedNodes } from "./connected.js";
 import { customApiCredential, customApiNode } from "./custom.js";
 import { credentialGuides } from "./guides.js";
 import { googleCredential, googleNodes } from "./google.js";
@@ -39,6 +40,7 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...commerceNodes,
   ...storeNodes,
   ...marketingNodes,
+  ...connectedNodes,
   ...feedNodes,
   httpRequest,
   customApiNode,
@@ -47,6 +49,7 @@ export const nodeDefinitions: NodeDefinition[] = [
 
 export const credentialTypes: CredentialType[] = [
   ...aiCredentialTypes,
+  ...connectedCredentials,
   wasenderCredential,
   whatsappCloudCredential,
   telegramCredential,

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
+import { rateLimit } from "./protection.js";
 import { one, parseJson, query } from "./db.js";
 import { executionFromRow } from "./engine/executor.js";
 import type { WorkflowGraph } from "./engine/types.js";
@@ -285,6 +286,7 @@ export async function assistantRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/assistant/chat", async (req) => {
+    await rateLimit(`assistant:${req.user.id}`, 40, 3600, "استخدمت المساعد كتير في الساعة دي - جرّب بعد شوية");
     const access = await assistantAccess(req);
     if (!access.ok) {
       throw httpError(403, access.reason === "plan" ? "المساعد الذكي متاح في الباقة الاحترافية" : "المساعد الذكي مش متضبط على المنصة");

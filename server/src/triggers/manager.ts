@@ -23,6 +23,7 @@ import type {
 } from "../engine/types.js";
 import { getNode } from "../nodes/index.js";
 import { runScheduledPosts } from "../nodes/publishAll.js";
+import { cleanupRateLimits } from "../protection.js";
 import { errorMessage, sleep, toNumber } from "../nodes/util.js";
 
 /*
@@ -462,6 +463,7 @@ export async function runDueSchedules(limit = 25): Promise<number> {
     return 0;
   });
   await markStaleExecutions(20 * 60_000);
+  await cleanupRateLimits().catch(() => undefined);
   await run("DELETE FROM test_sessions WHERE created_at < $1", [new Date(Date.now() - 86_400_000).toISOString()]);
   // Generated images expire; images the customer uploaded stay until they delete them.
   await run("DELETE FROM media WHERE source = 'generated' AND created_at < $1", [new Date(Date.now() - 30 * 86_400_000).toISOString()]);

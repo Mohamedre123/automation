@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { decrypt } from "../crypto.js";
 import { newId, now, one, parseJson, run } from "../db.js";
 import { getNode } from "../nodes/index.js";
+import { assertExecutionQuota } from "../protection.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
 import { ExecutionQueue } from "./queue.js";
@@ -95,6 +96,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
   );
 
   try {
+    await assertExecutionQuota(workflow.userId);
     const trigger = findTrigger(graph);
     if (!trigger) throw new Error("السيناريو محتاج محفّز (Trigger) في البداية");
     const outputs: Record<string, unknown> = { [trigger.id]: triggerOutput };
