@@ -7,6 +7,7 @@ import { authenticate, authRoutes } from "./auth.js";
 import { config } from "./config.js";
 import { ensureDatabase } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
+import { mediaRoutes } from "./routes/media.js";
 import { cronRoutes, miscRoutes } from "./routes/misc.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { workflowRoutes } from "./routes/workflows.js";
@@ -31,7 +32,7 @@ export async function buildApp() {
 
   app.addHook("onRequest", async (req) => {
     if (req.url.startsWith("/api/health")) return;
-    if (req.url.startsWith("/api") || req.url.startsWith("/webhook")) await ensureDatabase();
+    if (req.url.startsWith("/api") || req.url.startsWith("/webhook") || req.url.startsWith("/media/")) await ensureDatabase();
   });
 
   // Always answers, so a broken database or missing env var is visible instead of a blank 500.
@@ -54,6 +55,7 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(webhookRoutes);
   await app.register(cronRoutes);
+  await app.register(mediaRoutes);
   await app.register(async (api) => {
     api.addHook("onRequest", async (req) => {
       req.user = await authenticate(req);

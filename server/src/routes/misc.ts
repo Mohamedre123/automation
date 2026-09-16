@@ -47,10 +47,14 @@ export async function miscRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/templates", async () =>
-    templates.map((t) => ({
-      ...t,
-      apps: [...new Set(t.graph.nodes.map((n) => getNode(n.type)?.app).filter(Boolean))],
-    })),
+    templates.map((t) => {
+      const apps = new Map<string, string>();
+      for (const node of t.graph.nodes) {
+        const def = getNode(node.type);
+        if (def && !apps.has(def.app)) apps.set(def.app, def.appName);
+      }
+      return { ...t, apps: [...apps].map(([key, name]) => ({ key, name })), steps: t.graph.nodes.length };
+    }),
   );
 
   app.post("/api/templates/:id/use", async (req) => {

@@ -124,9 +124,16 @@ export async function deactivateTrigger(workflow: RuntimeWorkflow) {
 }
 
 /* ---------- incoming webhooks ---------- */
-function parseItems(info: TriggerInfo, request: WebhookRequest, path: string): unknown[] {
-  if (!info.def.webhook) return [request];
-  return info.def.webhook.parse(request, { params: triggerParams(info.def, info.node), secretToken: secretTokenFor(path) });
+async function webhookContext(workflow: RuntimeWorkflow, info: TriggerInfo, path: string) {
+  return {
+    params: triggerParams(info.def, info.node),
+    secretToken: secretTokenFor(path),
+    credential: info.def.credentialTypes?.length ? await credentialFor(workflow, info).catch(() => undefined) : undefined,
+  };
+}
+
+function parseItems(info: TriggerInfo, request: WebhookRequest, ctx: Awaited<ReturnType<typeof webhookContext>>): unknown[] {
+  return info.def.webhook ? info.def.webhook.parse(request, ctx) : [request];
 }
 
 async function runItems(workflow: RuntimeWorkflow, items: unknown[], mode: ExecutionMode) {
@@ -180,7 +187,11 @@ export async function handleWebhook(path: string, request: WebhookRequest): Prom
 
   let items: unknown[];
   try {
-    items = parseItems(info, request, path);
+    const ctx = await webhookContext(workflow, info, path);
+    // Platform handshakes (Meta's hub.challenge) answer before any execution.
+    const verified = info.def.webhook?.verify?.(request, ctx);
+    if (verified) return verified;
+    items = parseItems(info, request, ctx);
   } catch (e: any) {
     return { status: e.statusCode ?? 400, headers: {}, body: { error: errorMessage(e) } };
   }
@@ -202,7 +213,7 @@ async function deliverToTestSession(session: any, request: WebhookRequest): Prom
 
   let items: unknown[];
   try {
-    items = parseItems(info, request, session.trigger_path);
+    items = parseItems(info, request, await webhookContext(workflow, info, session.trigger_path));
   } catch (e: any) {
     await run("UPDATE test_sessions SET status = 'waiting' WHERE id = $1", [session.id]);
     return { status: e.statusCode ?? 400, headers: {}, body: { error: errorMessage(e) } };
@@ -430,6 +441,7 @@ export async function runDueSchedules(limit = 25): Promise<number> {
   }
   await markStaleExecutions(20 * 60_000);
   await run("DELETE FROM test_sessions WHERE created_at < $1", [new Date(Date.now() - 86_400_000).toISOString()]);
+  await run("DELETE FROM media WHERE created_at < $1", [new Date(Date.now() - 30 * 86_400_000).toISOString()]);
   return ran;
 }
 

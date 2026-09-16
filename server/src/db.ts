@@ -88,6 +88,16 @@ const SCHEMA = `
     PRIMARY KEY (user_id, store, key)
   );
 
+  CREATE TABLE IF NOT EXISTS media (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    mime_type TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_media_user ON media(user_id, created_at);
+
   CREATE TABLE IF NOT EXISTS test_sessions (
     id TEXT PRIMARY KEY,
     workflow_id TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,

@@ -94,6 +94,12 @@ export interface PollContext {
   testMode: boolean;
 }
 
+export interface WebhookContext {
+  params: Record<string, any>;
+  secretToken: string;
+  credential?: CredentialValue;
+}
+
 export interface TriggerWebhook {
   /** Point the external service at our URL (on activation or a test run). */
   register?: (ctx: {
@@ -104,8 +110,10 @@ export interface TriggerWebhook {
     signal: AbortSignal;
   }) => Promise<void>;
   unregister?: (ctx: { params: Record<string, any>; credential?: CredentialValue; signal: AbortSignal }) => Promise<void>;
+  /** Answer a platform's subscription handshake (e.g. Meta's hub.challenge) before parsing. */
+  verify?: (request: WebhookRequest, ctx: WebhookContext) => WebhookResponse | undefined;
   /** Incoming request -> trigger items (one execution each). Return [] to ignore. */
-  parse: (request: WebhookRequest, ctx: { params: Record<string, any>; secretToken: string }) => unknown[];
+  parse: (request: WebhookRequest, ctx: WebhookContext) => unknown[];
 }
 
 export type NodeGroup = "trigger" | "ai" | "apps" | "logic" | "data";

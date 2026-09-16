@@ -145,7 +145,9 @@ export interface Template {
   name: string;
   description: string;
   category: string;
-  apps: string[];
+  requires: string[];
+  steps: number;
+  apps: { key: string; name: string }[];
   graph: WorkflowGraph;
 }
 

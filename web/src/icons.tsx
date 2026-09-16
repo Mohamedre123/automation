@@ -48,6 +48,19 @@ const paths: Record<string, ReactElement> = {
     </>
   ),
   zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
+  whatsapp: (
+    <>
+      <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3.5 20.5l1.8-4.8A8.4 8.4 0 1 1 21 11.5z" />
+      <path d="M8.8 9c.2 1.3 2.1 3.2 3.4 3.4l.8-1 1.8.9-.3 1.3c-2.3.4-5.5-2.8-5.1-5.1l1.3-.3z" />
+    </>
+  ),
+  instagram: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.8" />
+    </>
+  ),
   sparkles: (
     <>
       <path d="M12 3.5 13.8 8.2 18.5 10 13.8 11.8 12 16.5 10.2 11.8 5.5 10 10.2 8.2z" />
@@ -186,6 +199,8 @@ const appIcons: Record<string, string> = {
   ai: "sparkles",
   agent: "bot",
   gemini: "sparkles",
+  whatsapp: "whatsapp",
+  instagram: "instagram",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
@@ -198,6 +213,9 @@ export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {
   }
   if (app === "openai") {
     return <span style={{ fontWeight: 700, fontSize: size * 0.52, direction: "ltr", letterSpacing: 0.5 }}>GPT</span>;
+  }
+  if (app === "facebook") {
+    return <span style={{ fontWeight: 700, fontSize: size * 1.05, fontFamily: "Georgia, serif", direction: "ltr", lineHeight: 1 }}>f</span>;
   }
   return <Icon name={appIcons[app] ?? "zap"} size={size} />;
 }

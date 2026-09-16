@@ -41,7 +41,7 @@ export async function callTool(options: LlmRunOptions, result: LlmRunResult, nam
 
 export const tooManySteps = () => new Error("الـ AI Agent عدّى الحد الأقصى لعدد الخطوات من غير ما يوصل لرد نهائي");
 
-async function postJson(url: string, body: unknown, headers: Record<string, string>, signal: AbortSignal, label: string) {
+export async function postJson(url: string, body: unknown, headers: Record<string, string>, signal: AbortSignal, label: string) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },

@@ -58,6 +58,9 @@ const fallbackColors: Record<string, string> = {
   gemini: "#4285f4",
   ai: "#7c3aed",
   agent: "#9333ea",
+  whatsapp: "#25d366",
+  facebook: "#1877f2",
+  instagram: "#e1306c",
 };
 
 export function MetaProvider({ children }: { children: ReactNode }) {
