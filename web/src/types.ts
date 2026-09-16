@@ -26,6 +26,7 @@ export interface FieldDef {
   modelKind?: "text" | "image";
   credentialTypes?: string[];
   urlKind?: "webhook" | "form";
+  autoFill?: "caption" | "image" | "images" | "video" | "sourceImage";
   showIf?: { field: string; values: unknown[] };
 }
 

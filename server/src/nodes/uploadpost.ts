@@ -21,6 +21,9 @@ export const UPLOAD_POST_PLATFORMS = [
   { value: "reddit", label: "Reddit" },
 ];
 
+/** Networks that can't take a text-only post. */
+const MEDIA_ONLY = ["instagram", "tiktok", "youtube", "pinterest"];
+
 const auth = (c?: CredentialValue) => ({ authorization: `Apikey ${String(c?.data.apiKey ?? "").trim()}` });
 const list = (value: unknown) =>
   (Array.isArray(value) ? value : String(value ?? "").split(/[,،\n]/))
@@ -66,6 +69,13 @@ export async function uploadPostPublish(
   signal: AbortSignal,
 ) {
   if (!post.platforms.length) throw new Error("Upload-Post: اختار منصة واحدة على الأقل");
+  if (!post.title.trim()) throw new Error("Upload-Post: الكابشن فاضي - اربطه بخطوة كتابة المحتوى");
+  const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
+  if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
+    throw new Error(
+      `Upload-Post: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - خانة الصورة والفيديو فاضية. اربط «روابط الصور» بخطوة التصميم (مثلاً {{4.url}}) أو دوس «ربط تلقائي بالخطوات اللي قبلها».`,
+    );
+  }
   const form = new FormData();
   form.set("user", String(credential?.data.user ?? "").trim());
   for (const platform of post.platforms) form.append("platform[]", platform);

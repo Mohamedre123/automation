@@ -22,7 +22,7 @@ import { Icon } from "../icons";
 import { ExecutionSteps } from "../pages/Executions";
 import type { Credential, Execution, NodeDefinition, StepLog, Workflow, WorkflowGraph, WorkflowNode } from "../types";
 import { EditorContext, FlowNode, type EditorContextValue, type VariableSource } from "./FlowNode";
-import { defaultParams, nextNodeId, toFlow, toGraph, upstreamIds, type FlowNodeType } from "./graph";
+import { autoFillParams, defaultParams, nextNodeId, toFlow, toGraph, upstreamIds, type FlowNodeType } from "./graph";
 import { NodePanel } from "./NodePanel";
 import { NodePicker } from "./NodePicker";
 
@@ -210,7 +210,9 @@ function EditorCanvas() {
     const credentialId = def.credentialTypes?.length
       ? (credentials.find((c) => def.credentialTypes!.includes(c.type))?.id ?? null)
       : null;
-    const node: WorkflowNode = { id: newId, type: def.type, position, params: defaultParams(def), credentialId };
+    // New step after others: wire the caption / image / video from the steps before it automatically.
+    const upstream = anchor ? [anchor.id, ...upstreamIds(anchor.id, edges)].map((uid) => nodes.find((n) => n.id === uid)?.data.node).filter(Boolean) as WorkflowNode[] : [];
+    const node: WorkflowNode = { id: newId, type: def.type, position, params: autoFillParams(def, defaultParams(def), upstream, nodeDef), credentialId };
     setNodes((list) => [
       ...list.map((n) => ({ ...n, selected: false })),
       { id: newId, type: "app", position, data: { node }, selected: true },
@@ -650,6 +652,20 @@ function EditorCanvas() {
             tab={panelTab}
             setTab={setPanelTab}
             onChange={(patch) => updateNode(selectedNode.id, patch)}
+            onAutoFill={() => {
+              const def = nodeDef(selectedNode.type);
+              if (!def) return 0;
+              const upstream = upstreamIds(selectedNode.id, edges)
+                .map((uid) => nodes.find((n) => n.id === uid)?.data.node)
+                .filter(Boolean) as WorkflowNode[];
+              const cleared = Object.fromEntries(def.fields.filter((f) => f.autoFill).map((f) => [f.key, ""]));
+              const filled = autoFillParams(def, { ...selectedNode.params, ...cleared }, upstream, nodeDef);
+              const changed = def.fields.filter((f) => f.autoFill && filled[f.key]).length;
+              const params = { ...selectedNode.params };
+              for (const f of def.fields) if (f.autoFill && filled[f.key]) params[f.key] = filled[f.key];
+              updateNode(selectedNode.id, { params });
+              return changed;
+            }}
             onDelete={() => deleteNode(selectedNode.id)}
             onClose={() => setSelectedId(null)}
             onCredentialCreated={(credential) => setCredentials((list) => [credential, ...list])}

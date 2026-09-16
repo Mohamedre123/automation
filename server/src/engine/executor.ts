@@ -149,6 +149,16 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
       let params: Record<string, any> | undefined;
       try {
         if (!def?.run) throw new Error(`نوع خطوة غير معروف: ${node.type}`);
+        // A required box left empty (never filled or wired) is a setup mistake: say which one instead of calling the service.
+        // Steps set to "skip when empty" handle an empty message themselves.
+        const skipsEmpty = def.fields.some((f) => f.key === "skipIfEmpty") && (node.params?.skipIfEmpty ?? true) !== false;
+        for (const field of skipsEmpty ? [] : def.fields) {
+          const raw = node.params?.[field.key] ?? field.default;
+          const visible = !field.showIf || field.showIf.values.includes(node.params?.[field.showIf.field] ?? def.fields.find((f) => f.key === field.showIf!.field)?.default);
+          if (field.required && visible && (raw === undefined || raw === null || (typeof raw === "string" && !raw.trim()))) {
+            throw new Error(`حقل «${field.label}» فاضي - املاه أو دوس «ربط تلقائي بالخطوات اللي قبلها» في إعدادات الخطوة`);
+          }
+        }
         // Only what the customer typed in the step (not data flowing in from earlier steps) can mention library images.
         params = resolveParams(def.fields, await resolveMediaMentions(node.params ?? {}, workflow.userId), { outputs: scope, vars });
         const result = await def.run({

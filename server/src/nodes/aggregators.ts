@@ -115,10 +115,22 @@ async function blotato(credential: CredentialValue | undefined, post: Aggregator
   return results;
 }
 
+const MEDIA_ONLY = ["instagram", "tiktok", "youtube", "pinterest"];
+
+/** Clear setup errors before calling the service. */
+function checkPost(label: string, post: AggregatorPost) {
+  if (!post.platforms.length) throw new Error(`${label}: اختار منصة واحدة على الأقل`);
+  if (!post.text.trim()) throw new Error(`${label}: النص فاضي - اربطه بخطوة كتابة المحتوى`);
+  const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
+  if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
+    throw new Error(`${label}: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - اربط خانة الصور أو الفيديو بخطوة التصميم أو دوس «ربط تلقائي بالخطوات اللي قبلها».`);
+  }
+}
+
 export const AGGREGATORS = {
-  ayrshare: { label: "Ayrshare", credentialType: "ayrshareApi", publish: ayrshare },
-  zernio: { label: "Zernio (Late)", credentialType: "zernioApi", publish: zernio },
-  blotato: { label: "Blotato", credentialType: "blotatoApi", publish: blotato },
+  ayrshare: { label: "Ayrshare", credentialType: "ayrshareApi", publish: (c: CredentialValue | undefined, p: AggregatorPost, s: AbortSignal) => (checkPost("Ayrshare", p), ayrshare(c, p, s)) },
+  zernio: { label: "Zernio (Late)", credentialType: "zernioApi", publish: (c: CredentialValue | undefined, p: AggregatorPost, s: AbortSignal) => (checkPost("Zernio", p), zernio(c, p, s)) },
+  blotato: { label: "Blotato", credentialType: "blotatoApi", publish: (c: CredentialValue | undefined, p: AggregatorPost, s: AbortSignal) => (checkPost("Blotato", p), blotato(c, p, s)) },
 } as const;
 
 export type AggregatorKey = keyof typeof AGGREGATORS;

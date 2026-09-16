@@ -1,4 +1,4 @@
-import type { CredentialType, NodeDefinition } from "../engine/types.js";
+import type { CredentialType, FieldDef, NodeDefinition } from "../engine/types.js";
 import { aiCredentialTypes, aiNodes } from "./ai.js";
 import { anthropicNodes } from "./anthropic.js";
 import { commerceCredentials, commerceNodes } from "./commerce.js";
@@ -73,6 +73,34 @@ export const credentialTypes: CredentialType[] = [
 ];
 
 for (const type of credentialTypes) type.steps ??= credentialGuides[type.key];
+
+// Publishing steps pick up the caption and media from the steps before them, so nobody wires them by hand.
+const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>>> = {
+  "social.publishAll": { caption: "caption", imageUrl: "image", videoUrl: "video" },
+  "uploadpost.post": { title: "caption", imageUrls: "images", videoUrl: "video" },
+  "ayrshare.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
+  "zernio.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
+  "blotato.post": { text: "caption", imageUrls: "images", videoUrl: "video" },
+  "facebook.post": { message: "caption", imageUrl: "image", videoUrl: "video" },
+  "instagram.post": { caption: "caption", imageUrl: "image", videoUrl: "video" },
+  "telegram.sendPhoto": { caption: "caption", photo: "image" },
+  "telegram.sendVideo": { caption: "caption", video: "video" },
+  "x.post": { text: "caption", imageUrl: "image" },
+  "linkedin.post": { text: "caption" },
+  "threads.post": { text: "caption", imageUrl: "image", videoUrl: "video" },
+  "bluesky.post": { text: "caption", imageUrl: "image" },
+  "pinterest.createPin": { description: "caption", imageUrl: "image" },
+  "youtube.upload": { description: "caption", videoUrl: "video" },
+  "tiktok.postVideo": { caption: "caption", videoUrl: "video" },
+  "wordpress.createPost": { content: "caption", imageUrl: "image" },
+  "drive.upload": { fileUrl: "image" },
+  "ai.image": { referenceImage: "sourceImage" },
+  "ai.video": { referenceImage: "sourceImage" },
+};
+for (const def of nodeDefinitions) {
+  const map = AUTO_FILL[def.type];
+  if (map) for (const field of def.fields) if (map[field.key]) field.autoFill = map[field.key];
+}
 
 const nodesByType = new Map(nodeDefinitions.map((n) => [n.type, n]));
 const credentialsByKey = new Map(credentialTypes.map((c) => [c.key, c]));

@@ -3565,3 +3565,22 @@ h3 {
     transform: rotate(360deg);
   }
 }
+
+.autofill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: var(--grad-soft);
+  border: 1px solid var(--border-soft);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.autofill-bar .help {
+  flex-basis: 100%;
+  margin: 0;
+}
