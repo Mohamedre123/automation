@@ -13,11 +13,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const app = await appPromise;
 
     const url = new URL(req.url ?? "/", "http://localhost");
-    const route = url.searchParams.get("__route");
+    const route = url.searchParams.get("__route")?.trim();
     if (route) {
       url.searchParams.delete("__route");
       const search = url.searchParams.toString();
-      req.url = `${route}${search ? `?${search}` : ""}`;
+      req.url = `${route.replace(/\s+/g, "")}${search ? `?${search}` : ""}`;
     }
     app.server.emit("request", req, res);
   } catch (error) {
