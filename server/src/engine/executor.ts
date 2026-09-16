@@ -4,6 +4,7 @@ import { newId, now, one, parseJson, run } from "../db.js";
 import { getNode } from "../nodes/index.js";
 import { resolveMediaMentions } from "../nodes/media.js";
 import { assertExecutionQuota } from "../protection.js";
+import { autoFillFromRun } from "./autofill.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
 import { ExecutionQueue } from "./queue.js";
@@ -149,18 +150,22 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
       let params: Record<string, any> | undefined;
       try {
         if (!def?.run) throw new Error(`نوع خطوة غير معروف: ${node.type}`);
-        // A required box left empty (never filled or wired) is a setup mistake: say which one instead of calling the service.
+        // Only what the customer typed in the step (not data flowing in from earlier steps) can mention library images.
+        params = resolveParams(def.fields, await resolveMediaMentions(node.params ?? {}, workflow.userId), { outputs: scope, vars });
+        // Empty caption / image / video boxes take what the earlier steps produced.
+        params = autoFillFromRun(def, node, params, graph, scope);
+        // A required box still empty after auto-filling is a setup mistake: say which one instead of calling the service.
         // Steps set to "skip when empty" handle an empty message themselves.
         const skipsEmpty = def.fields.some((f) => f.key === "skipIfEmpty") && (node.params?.skipIfEmpty ?? true) !== false;
         for (const field of skipsEmpty ? [] : def.fields) {
           const raw = node.params?.[field.key] ?? field.default;
           const visible = !field.showIf || field.showIf.values.includes(node.params?.[field.showIf.field] ?? def.fields.find((f) => f.key === field.showIf!.field)?.default);
-          if (field.required && visible && (raw === undefined || raw === null || (typeof raw === "string" && !raw.trim()))) {
-            throw new Error(`حقل «${field.label}» فاضي - املاه أو دوس «ربط تلقائي بالخطوات اللي قبلها» في إعدادات الخطوة`);
+          const resolved = params[field.key];
+          const isEmpty = (v: unknown) => v === undefined || v === null || (typeof v === "string" && !v.trim());
+          if (field.required && visible && isEmpty(raw) && isEmpty(resolved)) {
+            throw new Error(`حقل «${field.label}» فاضي ومفيش خطوة قبلها يتاخد منها - املاه في إعدادات الخطوة`);
           }
         }
-        // Only what the customer typed in the step (not data flowing in from earlier steps) can mention library images.
-        params = resolveParams(def.fields, await resolveMediaMentions(node.params ?? {}, workflow.userId), { outputs: scope, vars });
         const result = await def.run({
           params,
           credential: await resolveCredential(def, node, workflow.userId),

@@ -41,7 +41,18 @@ export async function claudeRun(o: LlmRunOptions): Promise<LlmRunResult> {
   const client = new Anthropic({ apiKey: o.apiKey, maxRetries: 2 });
   const result: LlmRunResult = { text: "", model: o.model, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
   const history = o.history.slice(o.history.findIndex((h) => h.role === "user") >= 0 ? o.history.findIndex((h) => h.role === "user") : o.history.length);
-  const messages: Anthropic.MessageParam[] = [...history.map((h) => ({ role: h.role, content: h.text })), { role: "user", content: o.prompt }];
+  const supported = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+  const images = (o.images ?? []).filter((img) => supported.has(img.mimeType));
+  const userContent: Anthropic.MessageParam["content"] = images.length
+    ? [
+        ...images.map((img) => ({
+          type: "image" as const,
+          source: { type: "base64" as const, media_type: img.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: img.data },
+        })),
+        { type: "text" as const, text: o.prompt },
+      ]
+    : o.prompt;
+  const messages: Anthropic.MessageParam[] = [...history.map((h) => ({ role: h.role, content: h.text })), { role: "user", content: userContent }];
   const tools: Anthropic.Tool[] = o.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
 
   for (let step = 0; step <= o.maxSteps; step++) {

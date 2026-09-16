@@ -96,6 +96,7 @@ const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>
   "drive.upload": { fileUrl: "image" },
   "ai.image": { referenceImage: "sourceImage" },
   "ai.video": { referenceImage: "sourceImage" },
+  "ai.generate": { images: "sourceImage" },
 };
 for (const def of nodeDefinitions) {
   const map = AUTO_FILL[def.type];

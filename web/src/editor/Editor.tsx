@@ -652,20 +652,6 @@ function EditorCanvas() {
             tab={panelTab}
             setTab={setPanelTab}
             onChange={(patch) => updateNode(selectedNode.id, patch)}
-            onAutoFill={() => {
-              const def = nodeDef(selectedNode.type);
-              if (!def) return 0;
-              const upstream = upstreamIds(selectedNode.id, edges)
-                .map((uid) => nodes.find((n) => n.id === uid)?.data.node)
-                .filter(Boolean) as WorkflowNode[];
-              const cleared = Object.fromEntries(def.fields.filter((f) => f.autoFill).map((f) => [f.key, ""]));
-              const filled = autoFillParams(def, { ...selectedNode.params, ...cleared }, upstream, nodeDef);
-              const changed = def.fields.filter((f) => f.autoFill && filled[f.key]).length;
-              const params = { ...selectedNode.params };
-              for (const f of def.fields) if (f.autoFill && filled[f.key]) params[f.key] = filled[f.key];
-              updateNode(selectedNode.id, { params });
-              return changed;
-            }}
             onDelete={() => deleteNode(selectedNode.id)}
             onClose={() => setSelectedId(null)}
             onCredentialCreated={(credential) => setCredentials((list) => [credential, ...list])}

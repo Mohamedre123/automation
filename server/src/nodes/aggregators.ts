@@ -1,4 +1,5 @@
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
+import { placeLinkUnderCta } from "../engine/autofill.js";
 import { apiRequest, checkAuth } from "./api.js";
 
 /**
@@ -123,7 +124,7 @@ function checkPost(label: string, post: AggregatorPost) {
   if (!post.text.trim()) throw new Error(`${label}: النص فاضي - اربطه بخطوة كتابة المحتوى`);
   const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
   if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
-    throw new Error(`${label}: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - اربط خانة الصور أو الفيديو بخطوة التصميم أو دوس «ربط تلقائي بالخطوات اللي قبلها».`);
+    throw new Error(`${label}: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - اربط خانة الصور أو الفيديو بخطوة التصميم.`);
   }
 }
 
@@ -218,6 +219,7 @@ export const aggregatorNodes: NodeDefinition[] = (Object.entries(AGGREGATORS) as
     fields: [
       { key: "platforms", label: "المنصات", type: "multiselect", default: ["instagram", "facebook"], options: PLATFORM_OPTIONS },
       { key: "text", label: "النص", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
+      { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
       { key: "imageUrls", label: "روابط الصور", type: "text", help: "أكتر من صورة؟ افصل بفاصلة." },
       { key: "videoUrl", label: "رابط الفيديو", type: "text" },
       { key: "scheduledAt", label: "ميعاد النشر عندهم (اختياري)", type: "text", placeholder: "2026-10-01T16:00:00Z" },
@@ -230,7 +232,7 @@ export const aggregatorNodes: NodeDefinition[] = (Object.entries(AGGREGATORS) as
         credential,
         {
           platforms: splitList(params.platforms),
-          text: String(params.text ?? ""),
+          text: placeLinkUnderCta(String(params.text ?? ""), String(params.link ?? "")),
           imageUrls: splitList(params.imageUrls).length ? String(params.imageUrls).split(/[,،\n]/).map((u) => u.trim()).filter(Boolean) : [],
           videoUrl: str(params.videoUrl) || undefined,
           scheduledAt: str(params.scheduledAt) || undefined,

@@ -20,6 +20,8 @@ export interface LlmRunOptions {
   prompt: string;
   tools: ToolSpec[];
   runTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  /** Pictures the model sees with the prompt (product photos). */
+  images?: { mimeType: string; data: string }[];
   maxSteps: number;
   maxTokens: number;
   signal: AbortSignal;
@@ -68,7 +70,10 @@ export async function postJson(url: string, body: unknown, headers: Record<strin
 /* ---------- OpenAI (Responses API) ---------- */
 async function openaiRun(o: LlmRunOptions): Promise<LlmRunResult> {
   const result: LlmRunResult = { text: "", model: o.model, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
-  const input: unknown[] = [...o.history.map((h) => ({ role: h.role, content: h.text })), { role: "user", content: o.prompt }];
+  const userContent = o.images?.length
+    ? [...o.images.map((img) => ({ type: "input_image", image_url: `data:${img.mimeType};base64,${img.data}` })), { type: "input_text", text: o.prompt }]
+    : o.prompt;
+  const input: unknown[] = [...o.history.map((h) => ({ role: h.role, content: h.text })), { role: "user", content: userContent }];
   const tools = o.tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters }));
 
   for (let step = 0; step <= o.maxSteps; step++) {
@@ -112,7 +117,7 @@ async function geminiRun(o: LlmRunOptions): Promise<LlmRunResult> {
   const result: LlmRunResult = { text: "", model: o.model, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
   const contents: any[] = [
     ...o.history.map((h) => ({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: h.text }] })),
-    { role: "user", parts: [{ text: o.prompt }] },
+    { role: "user", parts: [...(o.images ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })), { text: o.prompt }] },
   ];
   const declarations = o.tools.map((t) => ({
     name: t.name,
@@ -173,7 +178,12 @@ async function compatibleRun(o: LlmRunOptions): Promise<LlmRunResult> {
   const messages: any[] = [
     ...(o.system ? [{ role: "system", content: o.system }] : []),
     ...o.history.map((h) => ({ role: h.role, content: h.text })),
-    { role: "user", content: o.prompt },
+    {
+      role: "user",
+      content: o.images?.length
+        ? [{ type: "text", text: o.prompt }, ...o.images.map((img) => ({ type: "image_url", image_url: { url: `data:${img.mimeType};base64,${img.data}` } }))]
+        : o.prompt,
+    },
   ];
   const tools = o.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
 

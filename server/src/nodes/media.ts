@@ -158,12 +158,19 @@ export async function imageAsBase64(url: string, signal: AbortSignal): Promise<{
 }
 
 const SIZES = [
-  { value: "1024x1024", label: "مربعة (بوست إنستجرام)" },
-  { value: "1536x1024", label: "عرضية (فيسبوك / تويتر)" },
-  { value: "1024x1536", label: "طولية (ستوري / ريلز)" },
+  { value: "1024x1280", label: "بوست إنستجرام 4:5 (الأفضل)" },
+  { value: "1024x1024", label: "مربعة 1:1" },
+  { value: "1536x1024", label: "عرضية 16:9 (فيسبوك / X / يوتيوب)" },
+  { value: "1024x1536", label: "طولية 9:16 (ستوري / ريلز)" },
 ];
 
-const ASPECTS: Record<string, string> = { "1024x1024": "1:1", "1536x1024": "16:9", "1024x1536": "9:16" };
+const ASPECTS: Record<string, string> = { "1024x1280": "4:5", "1024x1024": "1:1", "1536x1024": "16:9", "1024x1536": "9:16" };
+/** OpenAI image sizes are fixed: the nearest one for each aspect. */
+const OPENAI_SIZES: Record<string, string> = { "1024x1280": "1024x1536", "1024x1024": "1024x1024", "1536x1024": "1536x1024", "1024x1536": "1024x1536" };
+
+/** Reference photos are the real product: the model must keep it as is, not reinterpret it. */
+const KEEP_PRODUCT =
+  "\n\nIMPORTANT - the attached image shows the exact product. Use that exact product as the hero of the design: keep its packaging, shape, proportions, colors, label, logo and any printed text exactly as they appear. Do not open it, do not show what is inside it, do not replace, redraw or redesign it. Build a professional advertising scene (background, lighting, props, composition) around this exact product.";
 
 export const mediaNodes: NodeDefinition[] = [
   {
@@ -191,9 +198,16 @@ export const mediaNodes: NodeDefinition[] = [
         label: "صورة مرجعية (اختياري)",
         type: "text",
         placeholder: "اكتب @ واختار صورة من مكتبتك",
-        help: "اكتب @ واختار صورة منتجك من المكتبة (ممكن أكتر من صورة يتدمجوا في صورة واحدة). عايز كل صورة لوحدها؟ استخدم خطوة «صور محددة من المكتبة» قبل الخطوة دي. مدعومة مع Gemini.",
+        help: "اكتب @ واختار صورة منتجك - أو سيبها فاضية وهتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها. عايز كل صورة لوحدها؟ استخدم «صور محددة من المكتبة» قبلها.",
       },
-      { key: "size", label: "المقاس", type: "select", default: "1024x1024", options: SIZES },
+      {
+        key: "keepProduct",
+        label: "حافظ على المنتج زي ما هو في الصورة المرجعية",
+        type: "boolean",
+        default: true,
+        help: "المنتج يظهر بنفس شكله وتغليفه ولوجوه (من غير ما يتفتح أو يطلع اللي جواه).",
+      },
+      { key: "size", label: "المقاس", type: "select", default: "1024x1280", options: SIZES },
       { key: "folder", label: "يتحفظ في فولدر", type: "text", default: "مولّدة" },
     ],
     sampleOutput: {
@@ -206,29 +220,52 @@ export const mediaNodes: NodeDefinition[] = [
       if (isSkipped(params.when)) return { output: { skipped: true, url: "" } };
       const prompt = String(params.prompt ?? "").trim();
       if (!prompt) throw new Error("وصف الصورة فاضي");
-      const size = String(params.size || "1024x1024");
+      const size = String(params.size || "1024x1280");
       const model = String(params.model ?? "").trim();
-      const reference = String(params.referenceImage ?? "").trim();
+      const references = urlList(params.referenceImage).slice(0, 6);
+      const reference = references.join(",");
+      const finalPrompt = references.length && params.keepProduct !== false ? `${prompt}${KEEP_PRODUCT}` : prompt;
       let base64 = "";
       let mimeType = "image/png";
 
       if (credential?.type === "openaiApi") {
-        if (reference) throw new Error("الصورة المرجعية مدعومة مع Gemini بس دلوقتي - اختار حساب Gemini أو شيل الصورة المرجعية");
-        const data = await postJson(
-          "https://api.openai.com/v1/images/generations",
-          { model: model || "gpt-image-2.5-flare", prompt, size, n: 1 },
-          { authorization: `Bearer ${credential.data.apiKey}` },
-          signal,
-          "OpenAI",
-        );
-        base64 = data?.data?.[0]?.b64_json ?? "";
+        const openaiSize = OPENAI_SIZES[size] ?? "1024x1024";
+        if (references.length) {
+          // Image edits: the product photos go in as the starting images.
+          const form = new FormData();
+          form.set("model", model || "gpt-image-2.5-flare");
+          form.set("prompt", finalPrompt);
+          form.set("size", openaiSize);
+          for (const [i, url] of references.entries()) {
+            const image = await imageAsBase64(url, signal);
+            form.append("image[]", new Blob([Buffer.from(image.data, "base64")], { type: image.mimeType }), `product-${i + 1}.${image.mimeType.split("/")[1] ?? "png"}`);
+          }
+          const response = await fetch("https://api.openai.com/v1/images/edits", {
+            method: "POST",
+            headers: { authorization: `Bearer ${credential.data.apiKey}` },
+            body: form,
+            signal: withTimeout(signal, 180_000),
+          });
+          const data: any = await response.json().catch(() => null);
+          if (!response.ok) throw new Error(`OpenAI: ${data?.error?.message ?? `HTTP ${response.status}`}`);
+          base64 = data?.data?.[0]?.b64_json ?? "";
+        } else {
+          const data = await postJson(
+            "https://api.openai.com/v1/images/generations",
+            { model: model || "gpt-image-2.5-flare", prompt, size: openaiSize, n: 1 },
+            { authorization: `Bearer ${credential.data.apiKey}` },
+            signal,
+            "OpenAI",
+          );
+          base64 = data?.data?.[0]?.b64_json ?? "";
+        }
       } else if (credential?.type === "geminiApi") {
         const parts: unknown[] = [];
-        for (const url of urlList(reference).slice(0, 6)) {
+        for (const url of references) {
           const image = await imageAsBase64(url, signal);
           parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
         }
-        parts.push({ text: prompt });
+        parts.push({ text: finalPrompt });
         const data = await postJson(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model || "gemini-3.1-flash-image")}:generateContent`,
           {

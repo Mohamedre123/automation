@@ -1,5 +1,6 @@
 import { loadCredential } from "../engine/executor.js";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
+import { imageAsBase64, urlList } from "./media.js";
 import { anthropicCredential } from "./anthropic.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
 import { AI_CREDENTIAL_TYPES, customAiCredential, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec } from "./llm.js";
@@ -177,6 +178,10 @@ function buildTools(selected: string[], userId: string, store: string, signal: A
 
 type Memory = { role: "user" | "assistant"; text: string }[];
 
+/** Added when a product photo is attached: write about what is actually shown. */
+const PRODUCT_CONTEXT =
+  "الصورة المرفقة هي المنتج الحقيقي. اكتب عن المنتج زي ما هو ظاهر في الصورة بالظبط (نوعه وتغليفه وشكله)، ومتفترضش إنه اتفتح أو تتكلم عن حاجة مش باينة. لو بتكتب وصف لتصميم صورة، اطلب إن المنتج يظهر بنفس شكله وتغليفه من غير تعديل.";
+
 export const aiNodes: NodeDefinition[] = [
   {
     type: "ai.generate",
@@ -192,6 +197,13 @@ export const aiNodes: NodeDefinition[] = [
       modelField,
       { key: "system", label: "التعليمات (System)", type: "textarea", placeholder: "أنت كاتب محتوى محترف... رد بالعربي." },
       { key: "prompt", label: "المطلوب", type: "textarea", required: true, placeholder: "{{1.message.text}}" },
+      {
+        key: "images",
+        label: "صورة المنتج يشوفها الذكاء الاصطناعي (اختياري)",
+        type: "text",
+        placeholder: "اكتب @ واختار صورة",
+        help: "بيكتب عن المنتج اللي في الصورة بالظبط. لو فاضية بتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها.",
+      },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false, help: "هيظهر في {{N.json}} - اطلب في التعليمات إن الرد يكون JSON" },
     ],
@@ -205,11 +217,14 @@ export const aiNodes: NodeDefinition[] = [
     async run({ params, credential, signal }) {
       const prompt = String(params.prompt ?? "");
       if (!prompt.trim()) throw new Error("المطلوب فاضي");
+      const images = [];
+      for (const url of urlList(params.images).slice(0, 4)) images.push(await imageAsBase64(url, signal));
       const out = await runModel(credential, aiCredentialTypes, {
         model: params.model,
-        system: String(params.system ?? "").trim() || undefined,
+        system: [String(params.system ?? "").trim(), images.length ? PRODUCT_CONTEXT : ""].filter(Boolean).join("\n\n") || undefined,
         history: [],
         prompt,
+        images: images.map((img) => ({ mimeType: img.data ? img.mimeType : "image/jpeg", data: img.data })),
         tools: [],
         runTool: async () => null,
         maxSteps: 1,

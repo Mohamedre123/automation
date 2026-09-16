@@ -33,7 +33,6 @@ export function NodePanel({
 }) {
   const { nodeDef, credType } = useMeta();
   const [credentialModal, setCredentialModal] = useState(false);
-  const [autoFillNote, setAutoFillNote] = useState("");
   const def = nodeDef(node.type);
   if (!def) return null;
 
@@ -116,19 +115,10 @@ export function NodePanel({
               </div>
             ) : null}
 
-            {onAutoFill && def.fields.some((f) => f.autoFill) && (
+            {def.fields.some((f) => f.autoFill) && (
               <div className="autofill-bar">
-                <span>الكابشن والصورة والفيديو بيتاخدوا من الخطوات اللي قبلها.</span>
-                <button
-                  className="btn sm"
-                  onClick={() => {
-                    const count = onAutoFill();
-                    setAutoFillNote(count ? `اتربط ${count} خانة بالخطوات اللي قبلها ✓` : "مفيش خطوات قبلها فيها كتابة أو صورة أو فيديو - وصّل الخطوة بعدهم الأول");
-                  }}
-                >
-                  <Icon name="zap" size={14} /> ربط تلقائي بالخطوات اللي قبلها
-                </button>
-                {autoFillNote && <div className="help">{autoFillNote}</div>}
+                <Icon name="zap" size={14} />
+                <span>الكابشن والصورة والفيديو بيتربطوا تلقائي بالخطوات اللي قبلها - سيب الخانة فاضية، أو اكتب فيها لو عايز حاجة معينة.</span>
               </div>
             )}
 

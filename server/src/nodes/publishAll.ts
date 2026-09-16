@@ -8,6 +8,7 @@ import { telegramNodes } from "./telegram.js";
 import { customRequest, fillTemplate } from "./custom.js";
 import { AGGREGATORS, splitList, type AggregatorKey } from "./aggregators.js";
 import { uploadPostPublish } from "./uploadpost.js";
+import { placeLinkUnderCta } from "../engine/autofill.js";
 import { errorMessage } from "./util.js";
 
 // Loaded directly (not via the executor) so this module has no import cycle with the node registry.
@@ -187,7 +188,7 @@ const clip = (text: string, max: number) => (text.length <= max ? text : `${text
 function platformPosts(key: string, p: PublishPayload, target: string) {
   const video = p.mediaMode === "image" ? "" : p.videoUrl;
   const image = p.mediaMode === "video" && video ? "" : p.imageUrl;
-  const withLink = p.link ? `${p.caption}\n\n${p.link}` : p.caption;
+  const withLink = p.link ? placeLinkUnderCta(p.caption, p.link) : p.caption;
   const both = (make: (media: { imageUrl?: string; videoUrl?: string }) => Record<string, unknown>) =>
     video && image ? [make({ videoUrl: video }), make({ imageUrl: image })] : [make({ videoUrl: video || undefined, imageUrl: image || undefined })];
 
@@ -334,7 +335,7 @@ export const publishAllNode: NodeDefinition = {
     { key: "caption", label: "نص البوست", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
     { key: "imageUrl", label: "رابط الصورة", type: "text", placeholder: "{{4.url}}" },
     { key: "videoUrl", label: "رابط الفيديو", type: "text", placeholder: "{{5.url}}" },
-    { key: "link", label: "رابط (منتج / موقع) - اختياري", type: "text" },
+    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
     {
       key: "mediaMode",
       label: "لو فيه صورة وفيديو",

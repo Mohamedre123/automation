@@ -1,4 +1,5 @@
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
+import { placeLinkUnderCta } from "../engine/autofill.js";
 import { parseBody, withTimeout } from "./util.js";
 
 /**
@@ -73,7 +74,7 @@ export async function uploadPostPublish(
   const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
   if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
     throw new Error(
-      `Upload-Post: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - خانة الصورة والفيديو فاضية. اربط «روابط الصور» بخطوة التصميم (مثلاً {{4.url}}) أو دوس «ربط تلقائي بالخطوات اللي قبلها».`,
+      `Upload-Post: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - خانة الصورة والفيديو فاضية. اربط «روابط الصور» بخطوة التصميم (مثلاً {{4.url}}).`,
     );
   }
   const form = new FormData();
@@ -118,6 +119,7 @@ export const uploadPostNode: NodeDefinition = {
   fields: [
     { key: "platforms", label: "المنصات", type: "multiselect", default: ["instagram", "tiktok"], options: UPLOAD_POST_PLATFORMS },
     { key: "title", label: "الكابشن / العنوان", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
+    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
     { key: "description", label: "وصف إضافي (يوتيوب / LinkedIn)", type: "textarea" },
     { key: "videoUrl", label: "رابط الفيديو", type: "text", placeholder: "{{5.url}}", help: "لو فيه فيديو بيتنشر الفيديو، وإلا الصور، وإلا النص بس." },
     { key: "imageUrls", label: "روابط الصور", type: "text", placeholder: "{{4.url}}", help: "أكتر من صورة؟ افصل بينهم بفاصلة." },
@@ -131,7 +133,7 @@ export const uploadPostNode: NodeDefinition = {
       credential,
       {
         platforms: list(params.platforms),
-        title: String(params.title ?? ""),
+        title: placeLinkUnderCta(String(params.title ?? ""), String(params.link ?? "")),
         description: String(params.description ?? "").trim() || undefined,
         videoUrl: String(params.videoUrl ?? "").trim() || undefined,
         imageUrls: list(params.imageUrls),
