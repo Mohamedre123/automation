@@ -282,10 +282,10 @@ export async function workflowRoutes(app: FastifyInstance) {
   app.post("/api/workflows/:id/run", async (req) => {
     const { id } = req.params as { id: string };
     const row = await getOwned(req, id);
-    const body = (req.body ?? {}) as { graph?: unknown };
+    const body = (req.body ?? {}) as { graph?: unknown; live?: boolean };
     const graph = body.graph ? sanitizeGraph(body.graph) : parseJson<WorkflowGraph>(row.graph, { nodes: [], edges: [] });
     try {
-      return await startTestRun({ id, name: row.name, userId: req.user.id, active: Boolean(row.active), graph });
+      return await startTestRun({ id, name: row.name, userId: req.user.id, active: Boolean(row.active), graph }, body.live === true);
     } catch (error) {
       throw httpError(400, errorMessage(error));
     }

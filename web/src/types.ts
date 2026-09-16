@@ -115,7 +115,7 @@ export interface StepLog {
   nodeId: string;
   type: string;
   name: string;
-  status: "success" | "error" | "skipped";
+  status: "success" | "error" | "skipped" | "running";
   startedAt: string;
   durationMs: number;
   input?: unknown;
@@ -136,6 +136,8 @@ export interface Execution {
   error: string | null;
   steps: StepLog[];
   stepCount?: number;
+  /** The step running right now (live runs). */
+  currentNode?: string | null;
 }
 
 export interface Credential {

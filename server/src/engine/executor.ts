@@ -34,6 +34,8 @@ export interface RunOptions {
   mode: ExecutionMode;
   respond?: (response: WebhookResponse) => void;
   signal?: AbortSignal;
+  /** Called with the execution id as soon as the run is recorded (for live progress in the editor). */
+  onStart?: (executionId: string) => void;
 }
 
 const MAX_STEPS = 500;
@@ -82,7 +84,7 @@ export function executeWorkflow(options: RunOptions): Promise<ExecutionRecord> {
   return executionQueue.run(() => execute(options));
 }
 
-async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOptions): Promise<ExecutionRecord> {
+async function execute({ workflow, triggerOutput, mode, respond, signal, onStart }: RunOptions): Promise<ExecutionRecord> {
   const { graph } = workflow;
   const id = newId();
   const startedAt = now();
@@ -95,6 +97,11 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
     "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES ($1, $2, $3, 'running', $4, $5, '[]')",
     [id, workflow.id, workflow.userId, mode, startedAt],
   );
+  onStart?.(id);
+
+  // Editors watching this run see each step light up as it starts and finishes.
+  const progress = (currentNode: string | null) =>
+    run("UPDATE executions SET steps = $1, current_node = $2 WHERE id = $3", [JSON.stringify(steps), currentNode, id]).catch(() => undefined);
 
   try {
     await assertExecutionQuota(workflow.userId);
@@ -137,6 +144,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
         steps.push({ ...base, status: "skipped", durationMs: 0 });
         continue;
       }
+      await progress(node.id);
 
       let params: Record<string, any> | undefined;
       try {
@@ -161,6 +169,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
           output: compact(result.fanOut ? { items: result.fanOut.length, ...(result.output as object) } : result.output),
           branch: result.branch,
         });
+        void progress(null);
 
         if (result.stop) {
           if (result.stop.status === "error") error = `${base.name} (${node.id}): ${result.stop.message}`;
@@ -183,6 +192,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
       } catch (err) {
         const message = errorMessage(err);
         steps.push({ ...base, status: "error", durationMs: Date.now() - stepStart, input: compact(params), error: message });
+        void progress(null);
         if (!node.continueOnFail) {
           error = `${base.name} (${node.id}): ${message}`;
           break;
@@ -207,7 +217,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
     steps,
   };
 
-  await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5 WHERE id = $6", [
+  await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5, current_node = NULL WHERE id = $6", [
     record.status,
     record.finishedAt,
     record.durationMs,
@@ -224,8 +234,9 @@ async function execute({ workflow, triggerOutput, mode, respond, signal }: RunOp
   return record;
 }
 
-export function executionFromRow(row: any, withSteps = true): ExecutionRecord & { workflowName?: string } {
+export function executionFromRow(row: any, withSteps = true): ExecutionRecord & { workflowName?: string; currentNode?: string | null } {
   return {
+    currentNode: row.current_node ?? null,
     id: row.id,
     workflowId: row.workflow_id,
     workflowName: row.workflow_name ?? undefined,

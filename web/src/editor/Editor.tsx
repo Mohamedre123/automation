@@ -30,6 +30,8 @@ const nodeTypes = { app: FlowNode };
 
 interface RunResponse {
   execution?: Execution;
+  /** Live run started: follow it step by step. */
+  executionId?: string;
   /** Waiting for real trigger data: poll the test session until it resolves. */
   sessionId?: string;
   waitingFor?: "webhook" | "app";
@@ -174,6 +176,14 @@ function EditorCanvas() {
   const steps = useMemo(() => {
     const map: Record<string, StepLog> = {};
     for (const step of execution?.steps ?? []) map[step.nodeId] = step;
+    // Live run: the step working right now shows a spinner (like n8n).
+    if (execution?.status === "running" && execution.currentNode) {
+      map[execution.currentNode] = {
+        ...(map[execution.currentNode] ?? { type: "", name: "", startedAt: "", durationMs: 0 }),
+        nodeId: execution.currentNode,
+        status: "running",
+      } as StepLog;
+    }
     return map;
   }, [execution]);
 
@@ -300,10 +310,18 @@ function EditorCanvas() {
     let sessionId = "";
     try {
       const res = await api<RunResponse>(`/workflows/${id}/run`, {
-        body: { graph: toGraph(nodes, edges) },
+        body: { graph: toGraph(nodes, edges), live: true },
         signal: controller.signal,
       });
       if (res.execution) return showExecution(res.execution);
+      if (res.executionId) {
+        for (;;) {
+          const live = await api<Execution>(`/executions/${res.executionId}`, { signal: controller.signal });
+          if (live.status !== "running") return showExecution(live);
+          setExecution(live);
+          await sleep(650, controller.signal);
+        }
+      }
       if (!res.sessionId) return void toast(res.message ?? "مفيش نتيجة");
 
       sessionId = res.sessionId;
@@ -322,10 +340,19 @@ function EditorCanvas() {
         setTestBody(JSON.stringify(sample, null, 2));
       }
       setWaiting({ waitingFor: res.waitingFor ?? "webhook", url: res.url });
+      let following = false;
+      const session0Delay = () => (following ? 650 : 1500);
       for (;;) {
-        await sleep(1500, controller.signal);
+        await sleep(session0Delay(), controller.signal);
         const session = await api<TestSession>(`/workflows/${id}/test/${sessionId}`, { signal: controller.signal });
-        if (session.execution) return showExecution(session.execution);
+        if (session.execution && session.execution.status !== "running") return showExecution(session.execution);
+        if (session.execution) {
+          // Data arrived: stop showing the "waiting" banner and follow the run live.
+          following = true;
+          setWaiting(null);
+          setExecution(session.execution);
+          continue;
+        }
         if (session.status !== "waiting" && session.status !== "running") {
           return void toast(session.message ?? "التجربة اتوقفت", session.status === "error" ? "error" : "info");
         }

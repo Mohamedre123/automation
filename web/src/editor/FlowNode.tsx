@@ -36,7 +36,7 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
   const isTrigger = def?.kind === "trigger";
 
   return (
-    <div className={`fnode ${selected ? "selected" : ""} ${node.disabled ? "disabled" : ""}`}>
+    <div className={`fnode ${selected ? "selected" : ""} ${node.disabled ? "disabled" : ""} ${step?.status === "running" ? "running" : ""}`}>
       {!isTrigger && (
         <Handle type="target" position={Position.Left} className="fhandle" style={{ top: CIRCLE_CENTER, left: HANDLE_INSET }} />
       )}
@@ -57,7 +57,7 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeType>) {
             onOpenStep(id);
           }}
         >
-          {step.status === "success" ? "✓" : step.status === "error" ? "!" : "–"}
+          {step.status === "running" ? <span className="fnode-spinner" /> : step.status === "success" ? "✓" : step.status === "error" ? "!" : "–"}
         </span>
       )}
       <div className="fnode-title">{node.name || def?.appName || node.type}</div>

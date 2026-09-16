@@ -145,7 +145,7 @@ async function runItems(workflow: RuntimeWorkflow, items: unknown[], mode: Execu
 }
 
 /** Starts the execution; the response resolves from a respond node, the end of the run, or a timeout. */
-function dispatchWebhook(workflow: RuntimeWorkflow, payload: unknown, mode: ExecutionMode) {
+function dispatchWebhook(workflow: RuntimeWorkflow, payload: unknown, mode: ExecutionMode, onStart?: (executionId: string) => void) {
   const waitsForRespond = workflow.graph.nodes.some((n) => n.type === "logic.respond" && !n.disabled);
   let resolveResponse!: (response: WebhookResponse) => void;
   const response = new Promise<WebhookResponse>((resolve) => (resolveResponse = resolve));
@@ -154,6 +154,7 @@ function dispatchWebhook(workflow: RuntimeWorkflow, payload: unknown, mode: Exec
     triggerOutput: payload,
     mode,
     respond: waitsForRespond ? resolveResponse : undefined,
+    onStart,
   });
   if (!waitsForRespond) resolveResponse({ status: 200, headers: {}, body: { accepted: true } });
   execution.then(
@@ -235,11 +236,19 @@ async function deliverToTestSession(session: any, request: WebhookRequest): Prom
     await cleanupTestTrigger(workflow);
   };
 
+  const linkExecution = (executionId: string) =>
+    void run("UPDATE test_sessions SET execution_id = $1 WHERE id = $2 AND status = 'running'", [executionId, session.id]).catch(() => undefined);
+
   if (info.def.triggerType === "app") {
-    runInBackground(runItems(workflow, items, "manual").then((r) => finish(r), (e) => finish(undefined, errorMessage(e))));
+    runInBackground(
+      executeWorkflow({ workflow, triggerOutput: items[0], mode: "manual", onStart: linkExecution }).then(
+        (r) => finish(r),
+        (e) => finish(undefined, errorMessage(e)),
+      ),
+    );
     return { status: 200, headers: {}, body: { ok: true } };
   }
-  const dispatched = dispatchWebhook(workflow, items[0], "manual");
+  const dispatched = dispatchWebhook(workflow, items[0], "manual", linkExecution);
   runInBackground(dispatched.execution.then((r) => finish(r), (e) => finish(undefined, errorMessage(e))));
   return dispatched.response;
 }
@@ -247,6 +256,7 @@ async function deliverToTestSession(session: any, request: WebhookRequest): Prom
 /* ---------- «تشغيل مرة» ---------- */
 export interface TestRunResult {
   execution?: ExecutionRecord;
+  executionId?: string;
   sessionId?: string;
   waitingFor?: "webhook" | "app";
   url?: string;
@@ -273,23 +283,35 @@ async function createTestSession(workflow: RuntimeWorkflow, path: string) {
   return id;
 }
 
-export async function startTestRun(workflow: RuntimeWorkflow): Promise<TestRunResult> {
+/**
+ * live = answer with the execution id as soon as the run starts (the editor then follows each step);
+ * otherwise wait for the finished record.
+ */
+async function runNow(workflow: RuntimeWorkflow, triggerOutput: unknown, live: boolean): Promise<TestRunResult> {
+  if (!live) return { execution: await executeWorkflow({ workflow, triggerOutput, mode: "manual" }) };
+  let started!: (id: string) => void;
+  const idPromise = new Promise<string>((resolve) => (started = resolve));
+  const execution = executeWorkflow({ workflow, triggerOutput, mode: "manual", onStart: started });
+  runInBackground(execution);
+  const executionId = await Promise.race([idPromise, execution.then((record) => record.id)]);
+  return { executionId };
+}
+
+export async function startTestRun(workflow: RuntimeWorkflow, live = false): Promise<TestRunResult> {
   const info = triggerInfo(workflow.graph);
   if (!info) throw new Error("ضيف محفّز (Trigger) الأول");
   const params = triggerParams(info.def, info.node);
 
   switch (info.def.triggerType) {
     case "manual":
-      return {
-        execution: await executeWorkflow({ workflow, triggerOutput: { triggeredAt: now(), data: params.data ?? {} }, mode: "manual" }),
-      };
+      return runNow(workflow, { triggeredAt: now(), data: params.data ?? {} }, live);
     case "schedule": {
       if (info.def.poll) {
         const items = await pollOnce(workflow, info, AbortSignal.timeout(60_000), true);
         if (!items.length) throw new Error("مفيش بيانات دلوقتي أجرّب عليها - تأكد إن فيه عنصر واحد على الأقل (صف، طلب، خبر...)");
-        return { execution: await executeWorkflow({ workflow, triggerOutput: items[0], mode: "manual" }) };
+        return runNow(workflow, items[0], live);
       }
-      return { execution: await executeWorkflow({ workflow, triggerOutput: { firedAt: now() }, mode: "manual" }) };
+      return runNow(workflow, { firedAt: now() }, live);
     }
     case "webhook":
       return { sessionId: await createTestSession(workflow, info.path), waitingFor: "webhook", url: webhookUrl(info.path) };

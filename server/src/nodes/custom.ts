@@ -83,7 +83,25 @@ export async function customRequest(c: CredentialValue | undefined, method: stri
   });
   const text = await response.text();
   const data = parseBody(text, response.headers.get("content-type"));
-  if (!response.ok) throw new Error(`الخدمة الخارجية: HTTP ${response.status} - ${text.slice(0, 300)}`);
+  if (!response.ok) {
+    // Web servers answer with HTML pages: keep only their title.
+    const detail = /<html/i.test(text) ? (text.match(/<title>([^<]*)<\/title>/i)?.[1] ?? "").trim() : text.slice(0, 300);
+    const host = new URL(url).hostname;
+    if (/upload-post\.com$/i.test(host)) {
+      throw new Error(
+        "الخدمة الخارجية: رابط Upload-Post هنا غلط (ده رابط الموقع مش الـ API). الأسهل: ضيف حساب «Upload-Post» الجاهز من «الحسابات» واستخدم خطوة «Upload-Post: نشر على المنصات» بدل الخدمة الخارجية.",
+      );
+    }
+    const hint =
+      response.status === 405
+        ? "المسار ده مش بيقبل الطلب ده - غالباً «رابط الـ API» في الحساب هو رابط الموقع مش رابط الـ API، أو المسار أو الـ Method غلط."
+        : response.status === 404
+          ? "المسار مش موجود - راجع «رابط الـ API» في الحساب والمسار في الخطوة من توثيق الخدمة."
+          : response.status === 401 || response.status === 403
+            ? "المفتاح غلط أو اتكتب في الخانة الغلط - راجع «اسم Header المفتاح» و«قيمة المفتاح»."
+            : "";
+    throw new Error(`الخدمة الخارجية: HTTP ${response.status}${detail ? ` (${detail})` : ""}${hint ? ` - ${hint}` : ""}`);
+  }
   return { status: response.status, data };
 }
 

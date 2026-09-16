@@ -102,6 +102,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_media_folder ON media(user_id, folder);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
   ALTER TABLE media ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT '';
+  ALTER TABLE executions ADD COLUMN IF NOT EXISTS current_node TEXT;
 
   CREATE TABLE IF NOT EXISTS scheduled_posts (
     id TEXT PRIMARY KEY,
