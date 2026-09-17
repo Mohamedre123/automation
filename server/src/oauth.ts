@@ -238,3 +238,40 @@ export async function oauthAccessToken(credential: CredentialValue | undefined, 
   }
   return data.accessToken;
 }
+
+/* ---------- setup check (public health page: only yes/no, never the keys) ---------- */
+let setupCache: { at: number; value: Record<string, unknown> } | null = null;
+
+async function checkAppKeys(provider: OAuthProvider): Promise<string> {
+  if (!providerReady(provider)) return "مش متضاف";
+  try {
+    if (provider.key === "meta") {
+      const url = new URL("https://graph.facebook.com/oauth/access_token");
+      url.search = new URLSearchParams({ client_id: provider.clientId, client_secret: provider.clientSecret, grant_type: "client_credentials" }).toString();
+      const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      const data: any = await response.json().catch(() => null);
+      return data?.access_token ? "المفاتيح صحيحة ✓" : `المفاتيح غلط: ${data?.error?.message ?? `HTTP ${response.status}`}`;
+    }
+    if (provider.key === "tiktok") {
+      const response = await fetch(provider.tokenUrl, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_key: provider.clientId, client_secret: provider.clientSecret, grant_type: "client_credentials" }).toString(),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const data: any = await response.json().catch(() => null);
+      return data?.access_token ? "المفاتيح صحيحة ✓" : `المفاتيح غلط: ${data?.error_description ?? data?.error ?? `HTTP ${response.status}`}`;
+    }
+    return "متضاف (بيتأكد أول ما حد يدوس ربط)";
+  } catch (error) {
+    return `مقدرتش أتأكد: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+export async function oauthSetupStatus() {
+  if (setupCache && Date.now() - setupCache.at < 10 * 60_000) return setupCache.value;
+  const entries = await Promise.all(Object.values(oauthProviders).map(async (p) => [p.key, await checkAppKeys(p)] as const));
+  const value = { redirectUrl: oauthRedirectUrl(), ...Object.fromEntries(entries) };
+  setupCache = { at: Date.now(), value };
+  return value;
+}

@@ -1,26 +1,113 @@
 import { useEffect, useRef } from "react";
 
-interface Point {
+/* Site-wide animated space backdrop: twinkling stars on three depth layers (far ones barely move,
+   near ones drift and shift more with the pointer and scroll), a few planets, faint constellation
+   lines between close stars, and the odd shooting star. Colors follow the theme. */
+
+interface Star {
   x: number;
   y: number;
   vx: number;
   vy: number;
   r: number;
-  hue: number;
+  /** 0.15 (far) .. 1 (near): parallax strength, speed and brightness. */
+  depth: number;
+  phase: number;
+  speed: number;
+  tint: number;
 }
 
-const LINK_DISTANCE = 150;
-const POINTER_DISTANCE = 190;
+interface Planet {
+  sprite: HTMLCanvasElement;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  depth: number;
+  size: number;
+  spin: number;
+  angle: number;
+}
 
-/**
- * Site-wide animated backdrop: a slow drifting network of nodes (the platform's own "flows")
- * that reaches toward the pointer or finger and shifts with scrolling. Colors follow the theme.
- */
+interface Meteor {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+}
+
+const LINK_DISTANCE = 120;
+const POINTER_DISTANCE = 170;
+
+type Palette = { stars: string[]; link: string; pointer: string };
+const DARK: Palette = { stars: ["255, 250, 240", "251, 191, 36", "251, 146, 60", "253, 164, 175"], link: "249, 115, 22", pointer: "251, 191, 36" };
+const LIGHT: Palette = { stars: ["234, 88, 12", "217, 119, 6", "225, 29, 72", "120, 90, 60"], link: "234, 88, 12", pointer: "225, 29, 72" };
+
+/** Planets are drawn once to small canvases, then just moved each frame. */
+function planetSprite(size: number, colors: [string, string, string], ring: boolean, light: boolean) {
+  const pad = ring ? size * 0.9 : size * 0.35;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = Math.ceil((size + pad) * 2);
+  const ctx = canvas.getContext("2d")!;
+  const c = canvas.width / 2;
+
+  // Soft glow around the planet.
+  const glow = ctx.createRadialGradient(c, c, size * 0.6, c, c, size + pad * 0.8);
+  glow.addColorStop(0, `${colors[1]}${light ? "30" : "40"}`);
+  glow.addColorStop(1, `${colors[1]}00`);
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const drawRing = (front: boolean) => {
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(-0.35);
+    ctx.scale(1, 0.28);
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 1.65, front ? 0 : Math.PI, front ? Math.PI : Math.PI * 2);
+    ctx.lineWidth = size * 0.32;
+    const ringGradient = ctx.createLinearGradient(-size * 1.7, 0, size * 1.7, 0);
+    ringGradient.addColorStop(0, `${colors[2]}10`);
+    ringGradient.addColorStop(0.5, `${colors[2]}${light ? "70" : "90"}`);
+    ringGradient.addColorStop(1, `${colors[2]}10`);
+    ctx.strokeStyle = ringGradient;
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  if (ring) drawRing(false);
+  // Lit from the top-left: bright edge to deep shadow.
+  const body = ctx.createRadialGradient(c - size * 0.4, c - size * 0.45, size * 0.1, c, c, size);
+  body.addColorStop(0, colors[0]);
+  body.addColorStop(0.55, colors[1]);
+  body.addColorStop(1, colors[2]);
+  ctx.beginPath();
+  ctx.arc(c, c, size, 0, Math.PI * 2);
+  ctx.fillStyle = body;
+  ctx.fill();
+  // Faint bands for texture.
+  ctx.save();
+  ctx.clip();
+  ctx.globalAlpha = 0.12;
+  for (let i = -3; i <= 3; i++) {
+    ctx.fillStyle = i % 2 ? "#ffffff" : "#000000";
+    ctx.fillRect(c - size, c + i * size * 0.26, size * 2, size * 0.1);
+  }
+  ctx.restore();
+  // Night side.
+  const shade = ctx.createRadialGradient(c + size * 0.55, c + size * 0.55, size * 0.2, c + size * 0.3, c + size * 0.3, size * 1.3);
+  shade.addColorStop(0, "rgba(0,0,0,0.55)");
+  shade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  ctx.arc(c, c, size, 0, Math.PI * 2);
+  ctx.fillStyle = shade;
+  ctx.fill();
+  if (ring) drawRing(true);
+  return canvas;
+}
+
 export function NetworkBackground() {
-  return <NetworkCanvas />;
-}
-
-function NetworkCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -32,15 +119,41 @@ function NetworkCanvas() {
     const lowPower =
       window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768 || (navigator.hardwareConcurrency ?? 8) <= 4;
     const frameGap = lowPower ? 1000 / 30 : 0;
-    let lastFrame = 0;
     const pointer = { x: -9999, y: -9999, active: false };
-    let points: Point[] = [];
+    const parallax = { x: 0, y: 0, tx: 0, ty: 0 };
+    let stars: Star[] = [];
+    let planets: Planet[] = [];
+    const meteors: Meteor[] = [];
     let width = 0;
     let height = 0;
     let frame = 0;
-    let lastScroll = window.scrollY;
-    let scrollDrift = 0;
+    let lastFrame = 0;
+    let scrollShift = 0;
     let light = document.documentElement.dataset.theme === "light";
+
+    const makePlanets = () => {
+      const unit = Math.min(width, height);
+      const specs: { size: number; colors: [string, string, string]; ring: boolean; x: number; y: number; depth: number }[] = [
+        // Big ringed amber giant, far right.
+        { size: unit * 0.075, colors: ["#fde68a", "#f59e0b", "#7c2d12"], ring: true, x: 0.84, y: 0.22, depth: 0.35 },
+        // Small rose planet, low left.
+        { size: unit * 0.032, colors: ["#fecdd3", "#f43f5e", "#4c0519"], ring: false, x: 0.12, y: 0.72, depth: 0.6 },
+        // Distant pale moon.
+        { size: unit * 0.018, colors: ["#fff7ed", "#fdba74", "#7c2d12"], ring: false, x: 0.38, y: 0.12, depth: 0.2 },
+      ];
+      if (!lowPower) specs.push({ size: unit * 0.045, colors: ["#fed7aa", "#ea580c", "#431407"], ring: false, x: 0.62, y: 0.86, depth: 0.5 });
+      planets = specs.map((s) => ({
+        sprite: planetSprite(Math.max(8, s.size), s.colors, s.ring, light),
+        x: s.x * width,
+        y: s.y * height,
+        vx: (Math.random() - 0.5) * 0.05 * s.depth,
+        vy: (Math.random() - 0.5) * 0.03 * s.depth,
+        depth: s.depth,
+        size: s.size,
+        spin: (Math.random() - 0.5) * 0.0004,
+        angle: 0,
+      }));
+    };
 
     const resize = () => {
       const dpr = lowPower ? 1 : Math.min(window.devicePixelRatio || 1, 2);
@@ -49,40 +162,85 @@ function NetworkCanvas() {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Density scales with the screen so phones stay light and wide monitors don't look empty.
       const target = lowPower
-        ? Math.max(16, Math.min(30, Math.round((width * height) / 24000)))
-        : Math.max(26, Math.min(95, Math.round((width * height) / 15000)));
-      while (points.length < target) {
-        points.push({
+        ? Math.max(50, Math.min(90, Math.round((width * height) / 9000)))
+        : Math.max(90, Math.min(260, Math.round((width * height) / 6000)));
+      while (stars.length < target) {
+        // More far stars than near ones, like a real sky.
+        const layer = Math.random();
+        const depth = layer < 0.55 ? 0.15 + Math.random() * 0.15 : layer < 0.88 ? 0.4 + Math.random() * 0.2 : 0.8 + Math.random() * 0.2;
+        stars.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.32,
-          vy: (Math.random() - 0.5) * 0.32,
-          r: 1.2 + Math.random() * 1.6,
-          hue: Math.random(),
+          vx: (Math.random() - 0.5) * 0.12 * depth,
+          vy: (Math.random() - 0.5) * 0.12 * depth,
+          r: 0.35 + depth * (1.1 + Math.random() * 1.1),
+          depth,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.6 + Math.random() * 1.8,
+          tint: Math.random(),
         });
       }
-      points = points.slice(0, target);
-      if (reducedMotion) draw();
+      stars = stars.slice(0, target);
+      makePlanets();
+      if (reducedMotion) draw(0);
     };
 
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      // Accent violet -> cyan, softer on the light theme.
-      const lineAlpha = light ? 0.2 : 0.26;
-      const dotAlpha = light ? 0.5 : 0.7;
+    const wrap = (value: number, max: number, margin: number) => (value < -margin ? max + margin : value > max + margin ? -margin : value);
 
-      for (let i = 0; i < points.length; i++) {
-        const a = points[i];
-        for (let j = i + 1; j < points.length; j++) {
-          const b = points[j];
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const dist = Math.hypot(dx, dy);
+    const draw = (time: number) => {
+      ctx.clearRect(0, 0, width, height);
+      const palette = light ? LIGHT : DARK;
+      const t = time / 1000;
+
+      // Planets behind the stars.
+      for (const planet of planets) {
+        const px = planet.x + parallax.x * planet.depth * 40;
+        const py = planet.y + parallax.y * planet.depth * 40 - scrollShift * planet.depth * 0.25;
+        const s = planet.sprite.width;
+        ctx.save();
+        ctx.globalAlpha = light ? 0.55 : 0.9;
+        ctx.translate(px, wrap(py, height, s));
+        ctx.rotate(planet.angle);
+        ctx.drawImage(planet.sprite, -s / 2, -s / 2);
+        ctx.restore();
+      }
+
+      const positions: { x: number; y: number; star: Star }[] = [];
+      for (const star of stars) {
+        const x = wrap(star.x + parallax.x * star.depth * 30, width, 10);
+        const y = wrap(star.y + parallax.y * star.depth * 30 - scrollShift * star.depth * 0.35, height, 10);
+        const twinkle = 0.55 + 0.45 * Math.sin(t * star.speed + star.phase);
+        const alpha = (light ? 0.35 : 0.45) + star.depth * (light ? 0.35 : 0.5) * twinkle;
+        const color = palette.stars[star.tint < 0.55 ? 0 : star.tint < 0.78 ? 1 : star.tint < 0.93 ? 2 : 3];
+        ctx.fillStyle = `rgba(${color}, ${Math.min(1, alpha)})`;
+        ctx.beginPath();
+        ctx.arc(x, y, star.r * (0.85 + 0.15 * twinkle), 0, Math.PI * 2);
+        ctx.fill();
+        // Near bright stars get a small cross sparkle.
+        if (star.depth > 0.85 && star.r > 1.6 && !lowPower) {
+          ctx.strokeStyle = `rgba(${color}, ${0.35 * twinkle})`;
+          ctx.lineWidth = 0.6;
+          const len = star.r * 3.2 * twinkle;
+          ctx.beginPath();
+          ctx.moveTo(x - len, y);
+          ctx.lineTo(x + len, y);
+          ctx.moveTo(x, y - len);
+          ctx.lineTo(x, y + len);
+          ctx.stroke();
+        }
+        if (star.depth > 0.35) positions.push({ x, y, star });
+      }
+
+      // Faint constellations between close mid/near stars, and toward the pointer.
+      for (let i = 0; i < positions.length; i++) {
+        const a = positions[i];
+        for (let j = i + 1; j < positions.length; j++) {
+          const b = positions[j];
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
           if (dist < LINK_DISTANCE) {
-            ctx.strokeStyle = `rgba(${light ? "234, 88, 12" : "249, 115, 22"}, ${lineAlpha * (1 - dist / LINK_DISTANCE)})`;
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = `rgba(${palette.link}, ${(light ? 0.12 : 0.16) * (1 - dist / LINK_DISTANCE)})`;
+            ctx.lineWidth = 0.8;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -92,8 +250,8 @@ function NetworkCanvas() {
         if (pointer.active) {
           const dist = Math.hypot(a.x - pointer.x, a.y - pointer.y);
           if (dist < POINTER_DISTANCE) {
-            ctx.strokeStyle = `rgba(${light ? "225, 29, 72" : "251, 191, 36"}, ${(light ? 0.4 : 0.5) * (1 - dist / POINTER_DISTANCE)})`;
-            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = `rgba(${palette.pointer}, ${(light ? 0.3 : 0.4) * (1 - dist / POINTER_DISTANCE)})`;
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(pointer.x, pointer.y);
@@ -102,68 +260,92 @@ function NetworkCanvas() {
         }
       }
 
-      for (const p of points) {
-        const color = p.hue > 0.5 ? (light ? "225, 29, 72" : "251, 191, 36") : light ? "234, 88, 12" : "251, 146, 60";
-        ctx.fillStyle = `rgba(${color}, ${dotAlpha})`;
+      // Shooting stars.
+      for (const m of meteors) {
+        const tail = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * 14, m.y - m.vy * 14);
+        tail.addColorStop(0, `rgba(${palette.stars[0]}, ${0.9 * m.life})`);
+        tail.addColorStop(1, `rgba(${palette.stars[1]}, 0)`);
+        ctx.strokeStyle = tail;
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x - m.vx * 14, m.y - m.vy * 14);
+        ctx.stroke();
       }
     };
 
     const step = (time = 0) => {
-      // Phones: 30fps is plenty for a slow drift and halves the work.
-      if (frameGap && time - lastFrame < frameGap) {
-        frame = requestAnimationFrame(step);
-        return;
-      }
+      frame = requestAnimationFrame(step);
+      if (frameGap && time - lastFrame < frameGap) return;
       lastFrame = time;
       // Theme switch in progress: hold still so the reveal animation gets the whole frame budget.
-      if (document.documentElement.classList.contains("theme-switching")) {
-        frame = requestAnimationFrame(step);
-        return;
-      }
-      scrollDrift *= 0.92;
-      for (const p of points) {
-        // Gentle pull toward the pointer so the network visibly "notices" it.
-        if (pointer.active) {
-          const dx = pointer.x - p.x;
-          const dy = pointer.y - p.y;
+      if (document.documentElement.classList.contains("theme-switching")) return;
+
+      parallax.x += (parallax.tx - parallax.x) * 0.05;
+      parallax.y += (parallax.ty - parallax.y) * 0.05;
+      scrollShift *= 0.94;
+
+      for (const star of stars) {
+        // Near stars lean gently toward the pointer.
+        if (pointer.active && star.depth > 0.5) {
+          const dx = pointer.x - star.x;
+          const dy = pointer.y - star.y;
           const dist = Math.hypot(dx, dy);
           if (dist < POINTER_DISTANCE && dist > 30) {
-            p.vx += (dx / dist) * 0.012;
-            p.vy += (dy / dist) * 0.012;
+            star.vx += (dx / dist) * 0.004 * star.depth;
+            star.vy += (dy / dist) * 0.004 * star.depth;
           }
         }
-        p.vx *= 0.99;
-        p.vy *= 0.99;
-        const speed = Math.hypot(p.vx, p.vy);
-        if (speed < 0.08) {
-          p.vx += (Math.random() - 0.5) * 0.04;
-          p.vy += (Math.random() - 0.5) * 0.04;
+        star.vx *= 0.995;
+        star.vy *= 0.995;
+        if (Math.hypot(star.vx, star.vy) < 0.02 * star.depth) {
+          star.vx += (Math.random() - 0.5) * 0.02 * star.depth;
+          star.vy += (Math.random() - 0.5) * 0.02 * star.depth;
         }
-        p.x += p.vx;
-        p.y += p.vy - scrollDrift;
-        if (p.x < -20) p.x = width + 20;
-        if (p.x > width + 20) p.x = -20;
-        if (p.y < -20) p.y = height + 20;
-        if (p.y > height + 20) p.y = -20;
+        star.x = wrap(star.x + star.vx, width, 10);
+        star.y = wrap(star.y + star.vy, height, 10);
       }
-      draw();
-      frame = requestAnimationFrame(step);
+      for (const planet of planets) {
+        planet.x = wrap(planet.x + planet.vx, width, planet.sprite.width);
+        planet.y = wrap(planet.y + planet.vy, height, planet.sprite.width);
+        planet.angle += planet.spin;
+      }
+      if (!lowPower && meteors.length < 1 && Math.random() < 0.0025) {
+        const fromLeft = Math.random() < 0.5;
+        meteors.push({
+          x: fromLeft ? Math.random() * width * 0.5 : width * (0.5 + Math.random() * 0.5),
+          y: Math.random() * height * 0.4,
+          vx: (fromLeft ? 1 : -1) * (7 + Math.random() * 5),
+          vy: 3 + Math.random() * 3,
+          life: 1,
+        });
+      }
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        m.x += m.vx;
+        m.y += m.vy;
+        m.life -= 0.02;
+        if (m.life <= 0 || m.y > height + 40) meteors.splice(i, 1);
+      }
+      draw(time);
     };
 
     const onPointer = (e: PointerEvent) => {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
       pointer.active = true;
+      parallax.tx = (e.clientX / Math.max(1, width) - 0.5) * 2;
+      parallax.ty = (e.clientY / Math.max(1, height) - 0.5) * 2;
     };
     const onLeave = () => {
       pointer.active = false;
+      parallax.tx = 0;
+      parallax.ty = 0;
     };
+    let lastScroll = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
-      scrollDrift = Math.max(-6, Math.min(6, scrollDrift + (y - lastScroll) * 0.04));
+      scrollShift = Math.max(-60, Math.min(60, scrollShift + (y - lastScroll) * 0.6));
       lastScroll = y;
     };
     const onVisibility = () => {
@@ -171,15 +353,17 @@ function NetworkCanvas() {
       if (!document.hidden && !reducedMotion) frame = requestAnimationFrame(step);
     };
     const themeObserver = new MutationObserver(() => {
-      light = document.documentElement.dataset.theme === "light";
-      if (reducedMotion) draw();
+      const next = document.documentElement.dataset.theme === "light";
+      if (next === light) return;
+      light = next;
+      makePlanets();
+      if (reducedMotion) draw(0);
     });
 
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onPointer, { passive: true });
     window.addEventListener("pointerdown", onPointer, { passive: true });
-    window.addEventListener("pointerleave", onLeave);
     document.addEventListener("pointerleave", onLeave);
     window.addEventListener("touchend", onLeave, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
@@ -192,7 +376,6 @@ function NetworkCanvas() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("pointerdown", onPointer);
-      window.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("touchend", onLeave);
       window.removeEventListener("scroll", onScroll, { capture: true });
