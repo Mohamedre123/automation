@@ -108,10 +108,8 @@ const PLATFORMS: PlatformDef[] = [
     node: "telegram.sendPhoto",
     targetField: { key: "telegramChatId", label: "تيليجرام: القناة أو الجروب", type: "text", placeholder: "@my_channel", help: "البوت لازم يكون أدمن في القناة." },
   },
-  { key: "x", label: "X (تويتر)", credentialTypes: ["xOAuth2", "xOAuth1"], node: "x.post" },
-  { key: "youtube", label: "YouTube", credentialTypes: ["youtubeOAuth"], node: "youtube.upload", videoOnly: true },
-  { key: "tiktok", label: "TikTok", credentialTypes: ["tiktokOAuth"], node: "tiktok.postVideo", videoOnly: true },
-  { key: "linkedin", label: "LinkedIn", credentialTypes: ["linkedinOAuth", "linkedinApi"], node: "linkedin.post" },
+  { key: "x", label: "X (تويتر)", credentialTypes: ["xOAuth1"], node: "x.post" },
+  { key: "linkedin", label: "LinkedIn", credentialTypes: ["linkedinApi"], node: "linkedin.post" },
   { key: "threads", label: "Threads", credentialTypes: ["threadsApi"], node: "threads.post" },
   { key: "bluesky", label: "Bluesky", credentialTypes: ["blueskyApi"], node: "bluesky.post" },
   {
@@ -233,14 +231,6 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       if (!target) throw new Error("اكتب مسار الخدمة الخارجية");
       return [{ _custom: true, path: target }];
     }
-    case "youtube": {
-      if (!p.videoUrl) throw new Error("YouTube محتاج فيديو - اتخطّى");
-      const firstLine = p.caption.split("\n").find((line) => line.trim()) ?? "فيديو جديد";
-      return [{ videoUrl: p.videoUrl, title: clip(firstLine.replace(/#\S+/g, "").trim() || "فيديو جديد", 90), description: withLink, privacy: "public", short: true }];
-    }
-    case "tiktok":
-      if (!p.videoUrl) throw new Error("TikTok محتاج فيديو - اتخطّى");
-      return [{ videoUrl: p.videoUrl, caption: clip(p.caption, 2200), privacy: "auto" }];
     case "pinterest": {
       if (!target) throw new Error("اكتب رقم لوحة Pinterest (Board ID)");
       if (!p.imageUrl) throw new Error("Pinterest محتاج صورة - اتخطّى");

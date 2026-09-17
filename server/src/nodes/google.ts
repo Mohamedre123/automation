@@ -1,16 +1,17 @@
 import crypto from "node:crypto";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
 import { apiRequest, parseJsonParam } from "./api.js";
-import { oauthAccessToken } from "../oauth.js";
 import { checkEveryField } from "./feeds.js";
 
-const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const GOOGLE_SCOPES = [
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/calendar.events",
+].join(" ");
 const tokenCache = new Map<string, { token: string; expires: number }>();
 
 /** Service-account OAuth: sign a JWT with the account's private key and swap it for an access token. */
-async function googleToken(credential: CredentialValue | undefined, signal: AbortSignal) {
-  // "Connect with Google" accounts carry their own refreshable token.
-  if (credential?.type === "googleSheetsOAuth") return oauthAccessToken(credential, "google", signal);
+export async function googleToken(credential: CredentialValue | undefined, signal: AbortSignal) {
   let account: { client_email?: string; private_key?: string };
   try {
     account = JSON.parse(credential?.data.serviceAccountJson ?? "");
@@ -26,7 +27,7 @@ async function googleToken(credential: CredentialValue | undefined, signal: Abor
   const issuedAt = Math.floor(Date.now() / 1000);
   const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({
     iss: account.client_email,
-    scope: SHEETS_SCOPE,
+    scope: GOOGLE_SCOPES,
     aud: "https://oauth2.googleapis.com/token",
     iat: issuedAt,
     exp: issuedAt + 3600,
@@ -42,7 +43,7 @@ async function googleToken(credential: CredentialValue | undefined, signal: Abor
 
 export const googleCredential: CredentialType = {
   key: "googleServiceAccount",
-  name: "Google Sheets (Service Account)",
+  name: "Google (Sheets / Drive / Calendar)",
   app: "sheets",
   description:
     "من Google Cloud: فعّل Google Sheets API ← اعمل Service Account ← Keys ← Add key (JSON). الصق محتوى الملف هنا، وشارك الشيت مع إيميل الـ Service Account كـ Editor.",
@@ -90,7 +91,7 @@ export const googleNodes: NodeDefinition[] = [
     color: "#0f9d58",
     group: "apps",
     kind: "action",
-    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
+    credentialTypes: ["googleServiceAccount"],
     fields: [
       spreadsheetField,
       sheetField,
@@ -125,7 +126,7 @@ export const googleNodes: NodeDefinition[] = [
     color: "#0f9d58",
     group: "apps",
     kind: "action",
-    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
+    credentialTypes: ["googleServiceAccount"],
     fields: [spreadsheetField, sheetField, { key: "limit", label: "أقصى عدد صفوف", type: "number", default: 200 }],
     sampleOutput: { rows: [{ الاسم: "Ahmed", التليفون: "010...", _row: 2 }], count: 1 },
     async run({ params, credential, signal }) {
@@ -144,7 +145,7 @@ export const googleNodes: NodeDefinition[] = [
     group: "trigger",
     kind: "trigger",
     triggerType: "schedule",
-    credentialTypes: ["googleSheetsOAuth", "googleServiceAccount"],
+    credentialTypes: ["googleServiceAccount"],
     fields: [spreadsheetField, sheetField, checkEveryField],
     sampleOutput: { الاسم: "Ahmed", التليفون: "010...", _row: 12 },
     async poll({ params, credential, state, signal, testMode }) {

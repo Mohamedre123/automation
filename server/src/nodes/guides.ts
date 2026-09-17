@@ -170,11 +170,11 @@ export const credentialGuides: Record<string, string[]> = {
   /* ---------- أدوات الشغل ---------- */
   googleServiceAccount: [
     "افتح console.cloud.google.com واعمل مشروع جديد.",
-    "من APIs & Services ← Library ابحث عن Google Sheets API واضغط Enable.",
+    "من APIs & Services ← Library فعّل اللي هتستخدمه: Google Sheets API و Google Drive API و Google Calendar API.",
     "روح IAM & Admin ← Service Accounts ← Create service account (سمّيه تدفق) ← Done.",
     "افتح الحساب ← Keys ← Add key ← Create new key ← JSON - هينزل ملف.",
     "افتح الملف بأي محرر نصوص، وانسخ محتواه كله والصقه هنا.",
-    "افتح الشيت بتاعك ← Share، وضيف الإيميل اللي في الملف (client_email) كـ Editor.",
+    "انسخ الإيميل اللي في الملف (client_email) وشارك معاه اللي عايز المنصة توصله: الشيت (Editor)، أو فولدر Drive، أو التقويم (Make changes to events).",
   ],
   resendApi: [
     "اعمل حساب مجاني على resend.com.",

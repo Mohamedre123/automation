@@ -7,7 +7,6 @@ import { httpError } from "../errors.js";
 import { credentialTypes, getNode, nodeDefinitions } from "../nodes/index.js";
 import { templates } from "../templates.js";
 import { runDueSchedules } from "../triggers/manager.js";
-import { oauthRedirect, oauthStatus } from "./oauth.js";
 import { insertWorkflow } from "./workflows.js";
 
 export async function miscRoutes(app: FastifyInstance) {
@@ -17,7 +16,6 @@ export async function miscRoutes(app: FastifyInstance) {
     platform: { isVercel: config.isVercel, receivesWebhooks: config.receivesWebhooks, backgroundWorkers: config.backgroundWorkers },
     nodes: nodeDefinitions.map(({ run, poll, webhook, ...def }) => def),
     credentialTypes: credentialTypes.map(({ test, ...type }) => ({ ...type, hasTest: Boolean(test) })),
-    oauth: { providers: oauthStatus(), redirectUrl: oauthRedirect() },
   }));
 
   app.get("/api/stats", async (req) => {

@@ -6,8 +6,6 @@ import fastifyStatic from "@fastify/static";
 import { assistantRoutes } from "./assistant.js";
 import { authenticate, authRoutes } from "./auth.js";
 import { registerProtection, rateLimit } from "./protection.js";
-import { oauthCallbackRoutes, oauthRoutes } from "./routes/oauth.js";
-import { oauthSetupStatus } from "./oauth.js";
 import { config } from "./config.js";
 import { ensureDatabase } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
@@ -53,7 +51,6 @@ export async function buildApp() {
     try {
       await ensureDatabase();
       health.database = "connected";
-      health.connectApps = await oauthSetupStatus();
     } catch (error) {
       health.ok = false;
       health.database = error instanceof Error ? error.message : String(error);
@@ -65,7 +62,6 @@ export async function buildApp() {
   await app.register(cronRoutes);
   await app.register(mediaRoutes);
   await app.register(publicRoutes);
-  await app.register(oauthCallbackRoutes);
   await app.register(async (api) => {
     api.addHook("onRequest", async (req) => {
       req.user = await authenticate(req);
@@ -77,7 +73,6 @@ export async function buildApp() {
     await api.register(miscRoutes);
     await api.register(mediaLibraryRoutes);
     await api.register(assistantRoutes);
-    await api.register(oauthRoutes);
   });
 
   // Local production build serves the frontend itself; on Vercel the CDN does.

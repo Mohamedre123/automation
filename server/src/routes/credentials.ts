@@ -29,7 +29,6 @@ async function toSummary(row: any, userId: string) {
         return [f.key, f.secret || (value.length > 48 && !/^https?:\/\//.test(value)) ? mask(value) : value];
       }),
     ),
-    ...(type?.oauth ? { oauth: { account: data.account ?? "", expiresAt: data.expiresAt ?? "", refreshable: Boolean(data.refreshToken) } } : {}),
     usedBy,
   };
 }
@@ -78,7 +77,6 @@ export async function credentialRoutes(app: FastifyInstance) {
   app.post("/api/credentials", async (req) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const type = requireType(body.type);
-    if (type.oauth) throw httpError(400, "الحساب ده بيتربط بزرار «ربط» مش بمفاتيح");
     const name = requireString(body.name, "اسم الحساب", 120);
     const data = cleanData(type, body.data);
     const id = newId();

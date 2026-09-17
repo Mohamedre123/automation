@@ -4,7 +4,8 @@ import { anthropicNodes } from "./anthropic.js";
 import { commerceCredentials, commerceNodes } from "./commerce.js";
 import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
-import { connectedCredentials, connectedNodes } from "./connected.js";
+import { connectedNodes } from "./connected.js";
+import { smtpCredential, smtpNode } from "./smtp.js";
 import { customApiCredential, customApiNode } from "./custom.js";
 import { uploadPostCredential, uploadPostNode } from "./uploadpost.js";
 import { aggregatorCredentials, aggregatorNodes } from "./aggregators.js";
@@ -43,6 +44,7 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...storeNodes,
   ...marketingNodes,
   ...connectedNodes,
+  smtpNode,
   ...feedNodes,
   httpRequest,
   customApiNode,
@@ -53,7 +55,7 @@ export const nodeDefinitions: NodeDefinition[] = [
 
 export const credentialTypes: CredentialType[] = [
   ...aiCredentialTypes,
-  ...connectedCredentials,
+  smtpCredential,
   wasenderCredential,
   whatsappCloudCredential,
   telegramCredential,
@@ -90,8 +92,6 @@ const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>
   "threads.post": { text: "caption", imageUrl: "image", videoUrl: "video" },
   "bluesky.post": { text: "caption", imageUrl: "image" },
   "pinterest.createPin": { description: "caption", imageUrl: "image" },
-  "youtube.upload": { description: "caption", videoUrl: "video" },
-  "tiktok.postVideo": { caption: "caption", videoUrl: "video" },
   "wordpress.createPost": { content: "caption", imageUrl: "image" },
   "drive.upload": { fileUrl: "image" },
   "ai.image": { referenceImage: "sourceImage" },

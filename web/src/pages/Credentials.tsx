@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { AppIcon, Empty, Modal, Spinner, timeAgo, useToast } from "../components/ui";
 import { useMeta } from "../context";
@@ -18,10 +18,7 @@ export function CredentialModal({
 }) {
   const { meta, credType } = useMeta();
   const toast = useToast();
-  // "Connect with Facebook" creates Page / Instagram accounts: offer it wherever those are needed.
-  const options = meta.credentialTypes.filter(
-    (t) => !types || types.includes(t.key) || Boolean(t.oauth?.creates?.some((created) => types.includes(created))),
-  );
+  const options = meta.credentialTypes.filter((t) => !types || types.includes(t.key));
   const [type, setType] = useState<CredentialTypeDef | undefined>(
     existing ? credType(existing.type) : options.length === 1 ? options[0] : undefined,
   );
@@ -29,78 +26,6 @@ export function CredentialModal({
   const [data, setData] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"" | "save" | "test">("");
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-
-  const popupRef = useRef<Window | null>(null);
-  const provider = type?.oauth ? meta.oauth?.providers[type.oauth.provider] : undefined;
-
-  // The provider's popup reports back when the customer approved (or cancelled).
-  useEffect(() => {
-    const onMessage = async (event: MessageEvent) => {
-      const message = event.data as { source?: string; ok?: boolean; message?: string; credentialIds?: string[] };
-      if (message?.source !== "tadfuq-oauth") return;
-      popupRef.current = null;
-      if (!message.ok) {
-        setBusy("");
-        setResult({ ok: false, message: message.message ?? "الربط ما كملش" });
-        return;
-      }
-      try {
-        const all = await api<Credential[]>("/credentials");
-        const created = all.filter((c) => message.credentialIds?.includes(c.id));
-        const wanted = created.find((c) => !types || types.includes(c.type)) ?? created[0];
-        toast(message.message ?? "اتربط ✓", "success");
-        if (wanted) onSaved(wanted);
-        else onClose();
-      } catch (e) {
-        setResult({ ok: false, message: (e as Error).message });
-      } finally {
-        setBusy("");
-      }
-    };
-    window.addEventListener("message", onMessage);
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== "tadfuq-oauth-result" || !event.newValue) return;
-      try {
-        void onMessage(new MessageEvent("message", { data: JSON.parse(event.newValue) }));
-      } catch {
-        /* ignore malformed values */
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    // Closed the popup without finishing: stop the spinner.
-    const watcher = window.setInterval(() => {
-      if (popupRef.current?.closed) {
-        popupRef.current = null;
-        setBusy("");
-      }
-    }, 800);
-    return () => {
-      window.removeEventListener("message", onMessage);
-      window.removeEventListener("storage", onStorage);
-      window.clearInterval(watcher);
-    };
-  }, [onClose, onSaved, toast, types]);
-
-  const connect = async () => {
-    if (!type) return;
-    // Open the window right away (inside the click) so popup blockers allow it.
-    const popup = window.open("about:blank", "tadfuq-oauth", "width=540,height=740");
-    popupRef.current = popup;
-    setBusy("save");
-    setResult(null);
-    try {
-      const { url } = await api<{ url: string }>(`/oauth/${type.key}/start`, {
-        body: { name: existing ? undefined : name !== type.name ? name : "", credentialId: existing?.id },
-      });
-      if (popup && !popup.closed) popup.location.href = url;
-      else window.location.href = url;
-    } catch (e) {
-      popup?.close();
-      popupRef.current = null;
-      setBusy("");
-      setResult({ ok: false, message: (e as Error).message });
-    }
-  };
 
   const pick = (t: CredentialTypeDef) => {
     setType(t);
@@ -153,23 +78,9 @@ export function CredentialModal({
                 {busy === "test" ? <Spinner size={14} /> : "اختبار الاتصال"}
               </button>
             )}
-            {type.oauth ? (
-              <button className="btn primary" onClick={connect} disabled={Boolean(busy) || provider?.ready === false}>
-                {busy === "save" ? (
-                  <>
-                    <Spinner size={14} /> مستني موافقتك...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="key" size={15} /> {existing ? "إعادة الربط" : `ربط بحساب ${provider?.name ?? type.name}`}
-                  </>
-                )}
-              </button>
-            ) : (
-              <button className="btn primary" onClick={save} disabled={Boolean(busy)}>
-                {busy === "save" ? <Spinner size={14} /> : "حفظ"}
-              </button>
-            )}
+            <button className="btn primary" onClick={save} disabled={Boolean(busy)}>
+              {busy === "save" ? <Spinner size={14} /> : "حفظ"}
+            </button>
           </>
         )
       }
@@ -180,7 +91,6 @@ export function CredentialModal({
             <button key={t.key} className="type-card" onClick={() => pick(t)}>
               <AppIcon app={t.app} size={40} />
               <strong style={{ fontSize: 13 }}>{t.name}</strong>
-              {t.oauth && <span className="badge success" style={{ fontSize: 10.5 }}>ربط بضغطة</span>}
             </button>
           ))}
         </div>
@@ -216,26 +126,10 @@ export function CredentialModal({
               </a>
             )
           )}
-          {type.oauth && provider?.ready === false && (
-            <div className="alert error" style={{ marginBottom: 12 }}>
-              الربط بـ {provider.name} لسه مش متفعّل على المنصة. صاحب المنصة يضيف {provider.env.join(" و ")} في إعدادات السيرفر، ويسجّل رابط الرجوع:
-              <div className="mono" style={{ direction: "ltr", marginTop: 6, wordBreak: "break-all" }}>
-                {meta.oauth?.redirectUrl}
-              </div>
-            </div>
-          )}
-          {existing?.oauth && (
-            <div className="alert info" style={{ marginBottom: 12 }}>
-              مربوط بـ {existing.oauth.account || "الحساب"}
-              {existing.oauth.expiresAt && !existing.oauth.refreshable ? ` - صالح لحد ${new Date(existing.oauth.expiresAt).toLocaleDateString("ar-EG")}` : " - بيتجدد تلقائياً"}
-            </div>
-          )}
-          {!type.oauth?.creates && (
-            <div className="field">
-              <label className="label">اسم الحساب</label>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: بوت خدمة العملاء" />
-            </div>
-          )}
+          <div className="field">
+            <label className="label">اسم الحساب</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: بوت خدمة العملاء" />
+          </div>
           {type.fields.map((field) => (
             <div className="field" key={field.key}>
               <label className="label">
@@ -335,12 +229,6 @@ export function Credentials() {
                   </div>
                 </div>
                 <div>
-                  {c.oauth && (
-                    <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-                      <span className="muted">مربوط بـ</span>
-                      <span className="faint" style={{ direction: "ltr" }}>{c.oauth.account || "—"}</span>
-                    </div>
-                  )}
                   {type?.fields.map((f) => (
                     <div key={f.key} className="cred-row">
                       <span className="muted">{f.label}</span>
@@ -360,7 +248,7 @@ export function Credentials() {
                     </button>
                   )}
                   <button className="btn sm" onClick={() => setModal({ existing: c })}>
-                    {type?.oauth ? "إعادة الربط" : "تعديل"}
+                    تعديل
                   </button>
                   <button className="btn sm danger" onClick={() => remove(c)}>
                     حذف
