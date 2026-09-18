@@ -64,6 +64,33 @@ const sampleIncoming = {
   raw: {},
 };
 
+/**
+ * WhatsApp now often hides the sender behind a private id ("125713776689337@lid") instead of the
+ * phone number. WasenderAPI sends the real number alongside it; use that so replies reach the person.
+ * With no real number available, keep the whole "...@lid" id - WasenderAPI can reply to that too,
+ * whereas the bare digits look like a phone number that doesn't exist.
+ */
+function senderPhone(key: any, data: any, remoteJid: string) {
+  const candidates = [
+    key.cleanedSenderPn,
+    key.senderPn,
+    key.remoteJidAlt,
+    key.cleanedParticipantPn,
+    key.participantPn,
+    data.cleanedSenderPn,
+    data.senderPn,
+    data.remoteJidAlt,
+  ];
+  if (!remoteJid.endsWith("@lid")) candidates.unshift(remoteJid);
+  for (const value of candidates) {
+    const text = String(value ?? "");
+    if (!text || text.endsWith("@lid")) continue;
+    const digits = text.split("@")[0].replace(/\D/g, "");
+    if (digits.length >= 7) return digits;
+  }
+  return remoteJid;
+}
+
 export const wasenderNodes: NodeDefinition[] = [
   {
     type: "wasender.trigger",
@@ -127,7 +154,7 @@ export const wasenderNodes: NodeDefinition[] = [
           {
             event,
             from: remoteJid,
-            phone: remoteJid.split("@")[0],
+            phone: senderPhone(message?.key ?? data.key ?? {}, data, remoteJid),
             text,
             pushName: message?.pushName ?? data.pushName ?? "",
             isGroup,
@@ -181,15 +208,25 @@ export const wasenderNodes: NodeDefinition[] = [
         if (params.skipIfEmpty !== false) return { output: { skipped: true, reason: "النص فاضي" } };
         throw new Error("نص الرسالة فاضي");
       }
-      return {
-        output: await postJson(
-          `${WASENDER_BASE}/send-message`,
-          body,
-          { authorization: `Bearer ${credential?.data.apiKey ?? ""}` },
-          signal,
-          "WasenderAPI",
-        ),
-      };
+      try {
+        return {
+          output: await postJson(
+            `${WASENDER_BASE}/send-message`,
+            body,
+            { authorization: `Bearer ${credential?.data.apiKey ?? ""}` },
+            signal,
+            "WasenderAPI",
+          ),
+        };
+      } catch (error) {
+        const message = (error as Error).message;
+        if (/JID does not exist|not.*on WhatsApp/i.test(message)) {
+          throw new Error(
+            `الرقم ${to} مش متسجل على واتساب. اتأكد إنه بكود الدولة (زي 201012345678). لو جاي من رسالة واردة استخدم {{1.phone}} - ومحتاج تعيد تشغيل الرسالة بعد التحديث عشان الرقم الحقيقي يوصل بدل الكود المخفي بتاع واتساب.`,
+          );
+        }
+        throw error;
+      }
     },
   },
 ];
