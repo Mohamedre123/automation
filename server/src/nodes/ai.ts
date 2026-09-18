@@ -3,7 +3,7 @@ import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/
 import { imageAsBase64, urlList } from "./media.js";
 import { anthropicCredential } from "./anthropic.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
-import { AI_CREDENTIAL_TYPES, customAiCredential, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec } from "./llm.js";
+import { AI_CREDENTIAL_TYPES, customAiCredential, extractJson, geminiCredential, openaiCredential, providerLabel, runModel, type ToolSpec, effortFor, speedField } from "./llm.js";
 import { NOTIFY_CREDENTIAL_TYPES, sendNotification } from "./notify.js";
 import { assertPublicUrl, parseBody, toNumber, withTimeout } from "./util.js";
 
@@ -302,6 +302,7 @@ export const aiNodes: NodeDefinition[] = [
       { key: "maxSteps", label: "أقصى عدد استخدام للأدوات", type: "number", default: 5 },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false },
+      speedField("fast"),
     ],
     sampleOutput: {
       text: "تمام يا أحمد، بلّغت خدمة العملاء وهيتواصلوا معاك حالاً.",
@@ -319,16 +320,18 @@ export const aiNodes: NodeDefinition[] = [
       const memoryKey = String(params.memoryKey ?? "").trim();
       const memoryId = memoryKey ? `${workflow.id}:${memoryKey}` : "";
 
+      // Handoff state and conversation memory are read together.
+      const [handoffRead, memoryRead] = memoryId
+        ? await Promise.all([datastoreRead(workflow.userId, HANDOFF_STORE, memoryId), datastoreRead(workflow.userId, MEMORY_STORE, memoryId)])
+        : [undefined, undefined];
       // A human took over this conversation: stay silent until the pause ends.
-      if (memoryId) {
-        const handoffState = (await datastoreRead(workflow.userId, HANDOFF_STORE, memoryId)).value as { until?: string } | null;
-        if (handoffState?.until && handoffState.until > new Date().toISOString()) {
-          return { output: { text: "", json: null, handedOff: true, handedOffUntil: handoffState.until, toolCalls: [] } };
-        }
+      const handoffState = handoffRead?.value as { until?: string } | null | undefined;
+      if (handoffState?.until && handoffState.until > new Date().toISOString()) {
+        return { output: { text: "", json: null, handedOff: true, handedOffUntil: handoffState.until, toolCalls: [] } };
       }
 
       const memoryLength = Math.min(Math.max(Math.floor(toNumber(params.memoryLength, 12)), 2), 50);
-      const history: Memory = memoryId ? (((await datastoreRead(workflow.userId, MEMORY_STORE, memoryId)).value as Memory) ?? []) : [];
+      const history: Memory = (memoryRead?.value as Memory) ?? [];
 
       const selectedTools: string[] = Array.isArray(params.tools) ? params.tools : [];
       const handoffCredentialId = String(params.handoffCredentialId ?? "").trim();
@@ -366,6 +369,7 @@ export const aiNodes: NodeDefinition[] = [
         runTool: tools.run,
         maxSteps: Math.min(Math.max(Math.floor(toNumber(params.maxSteps, 5)), 1), 15),
         maxTokens: Math.max(1, Math.floor(toNumber(params.maxTokens, 16000))),
+        effort: effortFor(params.speed ?? "fast"),
         signal,
       });
 

@@ -7,7 +7,7 @@ import { assistantRoutes } from "./assistant.js";
 import { authenticate, authRoutes } from "./auth.js";
 import { registerProtection, rateLimit } from "./protection.js";
 import { config } from "./config.js";
-import { ensureDatabase } from "./db.js";
+import { ensureDatabase, one } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
 import { mediaLibraryRoutes, mediaRoutes } from "./routes/media.js";
 import { cronRoutes, miscRoutes, publicRoutes } from "./routes/misc.js";
@@ -51,6 +51,16 @@ export async function buildApp() {
     try {
       await ensureDatabase();
       health.database = "connected";
+      // Round trip to the database from this server: every chatbot message makes several of these.
+      const pings: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const started = performance.now();
+        await one("SELECT 1");
+        pings.push(Math.round(performance.now() - started));
+      }
+      health.databasePingMs = pings;
+      health.serverRegion = process.env.VERCEL_REGION ?? "local";
+      health.databaseRegion = config.databaseUrl.match(/aws-\d+-([a-z]+-[a-z]+-\d+)/)?.[1] ?? "unknown";
     } catch (error) {
       health.ok = false;
       health.database = error instanceof Error ? error.message : String(error);

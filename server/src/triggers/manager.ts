@@ -206,17 +206,19 @@ function dispatchWebhook(workflow: RuntimeWorkflow, payload: unknown, mode: Exec
 const notFound: WebhookResponse = { status: 404, headers: {}, body: { error: "الـ Webhook ده مش موجود أو السيناريو مش مفعّل" } };
 
 export async function handleWebhook(path: string, request: WebhookRequest): Promise<WebhookResponse> {
-  const session = await one(
+  const [session, row] = await Promise.all([
+    one(
     `UPDATE test_sessions SET status = 'running'
      WHERE id = (SELECT id FROM test_sessions WHERE trigger_path = $1 AND status = 'waiting' AND expires_at > $2
                  ORDER BY created_at DESC LIMIT 1)
        AND status = 'waiting'
      RETURNING *`,
     [path, now()],
-  );
+    ),
+    one("SELECT * FROM workflows WHERE trigger_path = $1 AND active = 1", [path]),
+  ]);
   if (session) return deliverToTestSession(session, request);
 
-  const row = await one("SELECT * FROM workflows WHERE trigger_path = $1 AND active = 1", [path]);
   const workflow = row ? rowToWorkflow(row) : undefined;
   const info = workflow ? triggerInfo(workflow.graph) : undefined;
   if (!workflow || !info) return notFound;

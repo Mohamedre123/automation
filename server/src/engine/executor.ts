@@ -4,6 +4,7 @@ import { newId, now, one, parseJson, run } from "../db.js";
 import { getNode } from "../nodes/index.js";
 import { resolveMediaMentions } from "../nodes/media.js";
 import { assertExecutionQuota } from "../protection.js";
+import { runInBackground } from "../background.js";
 import { autoFillFromRun } from "./autofill.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
@@ -53,13 +54,18 @@ export async function loadCredential(userId: string, credentialId: string): Prom
   return { id: row.id, type: row.type, data: decrypt<Record<string, string>>(row.data) };
 }
 
-export async function resolveCredential(def: NodeDefinition, node: WorkflowNode, userId: string) {
+export async function resolveCredential(
+  def: NodeDefinition,
+  node: WorkflowNode,
+  userId: string,
+  load: (id: string) => Promise<CredentialValue | undefined> = (id) => loadCredential(userId, id),
+) {
   if (!def.credentialTypes?.length) return undefined;
   if (!node.credentialId) {
     if (def.credentialOptional) return undefined;
     throw new Error("اختار الحساب (Credential) للخطوة دي");
   }
-  const credential = await loadCredential(userId, node.credentialId);
+  const credential = await load(node.credentialId);
   if (!credential) throw new Error("الحساب (Credential) المختار اتمسح - اختار واحد تاني");
   if (!def.credentialTypes.includes(credential.type)) throw new Error("نوع الحساب المختار مش مناسب للخطوة دي");
   return credential;
@@ -94,27 +100,55 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
   const steps: StepLog[] = [];
   let error: string | null = null;
 
-  await run(
-    "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES ($1, $2, $3, 'running', $4, $5, '[]')",
-    [id, workflow.id, workflow.userId, mode, startedAt],
-  );
+  // Each account is read and decrypted once per run, however many steps use it.
+  const credentialCache = new Map<string, Promise<CredentialValue | undefined>>();
+  const credentialById = (credentialId: string) => {
+    let cached = credentialCache.get(credentialId);
+    if (!cached) {
+      cached = loadCredential(workflow.userId, credentialId);
+      credentialCache.set(credentialId, cached);
+    }
+    return cached;
+  };
+
+  // Recording the run and checking the daily quota happen together, not one after the other.
+  const [quota] = await Promise.allSettled([
+    assertExecutionQuota(workflow.userId),
+    run(
+      "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES ($1, $2, $3, 'running', $4, $5, '[]')",
+      [id, workflow.id, workflow.userId, mode, startedAt],
+    ),
+  ]).then(async (results) => {
+    if (results[1].status === "rejected") throw results[1].reason;
+    return results;
+  });
   onStart?.(id);
 
-  // Editors watching this run see each step light up as it starts and finishes.
-  const progress = (currentNode: string | null) =>
-    run("UPDATE executions SET steps = $1, current_node = $2 WHERE id = $3", [JSON.stringify(steps), currentNode, id]).catch(() => undefined);
+  // Editors watching this run see each step light up as it starts and finishes. The writes go out in
+  // order in the background, so a chatbot's reply never waits for them.
+  let progressChain: Promise<unknown> = Promise.resolve();
+  const progress = (currentNode: string | null) => {
+    const snapshot = JSON.stringify(steps);
+    progressChain = progressChain.then(() =>
+      run("UPDATE executions SET steps = $1, current_node = $2 WHERE id = $3 AND status = 'running'", [snapshot, currentNode, id]).catch(() => undefined),
+    );
+  };
+  // Side work (remembering the contact, etc.) runs alongside the steps.
+  const sideTasks: Promise<unknown>[] = [];
 
   try {
-    await assertExecutionQuota(workflow.userId);
+    if (quota.status === "rejected") throw quota.reason;
     const trigger = findTrigger(graph);
     if (!trigger) throw new Error("السيناريو محتاج محفّز (Trigger) في البداية");
     const outputs: Record<string, unknown> = { [trigger.id]: triggerOutput };
     const triggerDef = getNode(trigger.type);
-    const triggerCredential = trigger.credentialId ? await loadCredential(workflow.userId, trigger.credentialId).catch(() => undefined) : undefined;
+    const triggerCredential = trigger.credentialId ? await credentialById(trigger.credentialId).catch(() => undefined) : undefined;
     if (triggerDef?.onTriggered) {
-      await triggerDef.onTriggered({ output: triggerOutput, credential: triggerCredential, userId: workflow.userId }).catch((e) => {
-        console.error(`[execution ${id}] onTriggered failed: ${errorMessage(e)}`);
-      });
+      sideTasks.push(
+        triggerDef.onTriggered({ output: triggerOutput, credential: triggerCredential, userId: workflow.userId }).catch((e) => {
+          console.error(`[execution ${id}] onTriggered failed: ${errorMessage(e)}`);
+        }),
+      );
     }
     const triggerContext = { type: trigger.type, credential: triggerCredential };
     const vars = systemVars({ id: workflow.id, name: workflow.name }, { id, mode });
@@ -145,7 +179,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
         steps.push({ ...base, status: "skipped", durationMs: 0 });
         continue;
       }
-      await progress(node.id);
+      progress(node.id);
 
       let params: Record<string, any> | undefined;
       try {
@@ -168,7 +202,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
         }
         const result = await def.run({
           params,
-          credential: await resolveCredential(def, node, workflow.userId),
+          credential: await resolveCredential(def, node, workflow.userId, credentialById),
           outputs: scope,
           workflow: { id: workflow.id, name: workflow.name, userId: workflow.userId },
           execution: { id, mode },
@@ -184,7 +218,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
           output: compact(result.fanOut ? { items: result.fanOut.length, ...(result.output as object) } : result.output),
           branch: result.branch,
         });
-        void progress(null);
+        progress(null);
 
         if (result.stop) {
           if (result.stop.status === "error") error = `${base.name} (${node.id}): ${result.stop.message}`;
@@ -207,7 +241,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
       } catch (err) {
         const message = errorMessage(err);
         steps.push({ ...base, status: "error", durationMs: Date.now() - stepStart, input: compact(params), error: message });
-        void progress(null);
+        progress(null);
         if (!node.continueOnFail) {
           error = `${base.name} (${node.id}): ${message}`;
           break;
@@ -232,6 +266,8 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
     steps,
   };
 
+  await Promise.allSettled(sideTasks);
+  await progressChain;
   await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5, current_node = NULL WHERE id = $6", [
     record.status,
     record.finishedAt,
@@ -240,10 +276,13 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
     JSON.stringify(steps),
     id,
   ]);
-  await run(
-    `DELETE FROM executions WHERE workflow_id = $1 AND id NOT IN (
-       SELECT id FROM executions WHERE workflow_id = $1 ORDER BY started_at DESC LIMIT $2)`,
-    [workflow.id, config.executionsKeptPerWorkflow],
+  // Trimming old history is housekeeping: don't make the caller wait for it.
+  runInBackground(
+    run(
+      `DELETE FROM executions WHERE workflow_id = $1 AND id NOT IN (
+         SELECT id FROM executions WHERE workflow_id = $1 ORDER BY started_at DESC LIMIT $2)`,
+      [workflow.id, config.executionsKeptPerWorkflow],
+    ),
   );
 
   return record;

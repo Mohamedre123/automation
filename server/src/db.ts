@@ -172,7 +172,8 @@ async function createDriver(): Promise<Driver> {
     // Supabase transaction pooler (port 6543) does not support prepared statements.
     const sql = postgres(config.databaseUrl.trim(), {
       prepare: false,
-      max: config.isVercel ? 1 : 5,
+      // A few connections so status updates in the background never hold up the next real query.
+      max: config.isVercel ? 3 : 5,
       idle_timeout: 20,
       ssl: local ? false : "require",
       onnotice: () => {},
@@ -206,7 +207,7 @@ let driverPromise: Promise<Driver> | null = null;
 function driver(): Promise<Driver> {
   driverPromise ??= (async () => {
     const d = await createDriver();
-    await d.exec(SCHEMA);
+    await applySchema(d);
     await importLegacySqlite(d);
     return d;
   })().catch((error) => {
@@ -214,6 +215,23 @@ function driver(): Promise<Driver> {
     throw error;
   });
   return driverPromise;
+}
+
+/**
+ * The schema script is long; on a cold start only run it when it changed since it was last applied
+ * (one quick lookup instead of dozens of statements before the first request is answered).
+ */
+async function applySchema(d: Driver) {
+  const version = crypto.createHash("sha1").update(SCHEMA).digest("hex");
+  try {
+    const found = await d.query("SELECT 1 FROM schema_version WHERE version = $1", [version]);
+    if (found.rows.length) return;
+  } catch {
+    /* first run: the table doesn't exist yet */
+  }
+  await d.exec(SCHEMA);
+  await d.exec("CREATE TABLE IF NOT EXISTS schema_version (version TEXT PRIMARY KEY, applied_at TEXT)");
+  await d.query("INSERT INTO schema_version (version, applied_at) VALUES ($1, $2) ON CONFLICT (version) DO NOTHING", [version, new Date().toISOString()]);
 }
 
 const clean = (params: unknown[]) => params.map((p) => (p === undefined ? null : p));

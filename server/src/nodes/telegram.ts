@@ -112,7 +112,15 @@ export const telegramNodes: NodeDefinition[] = [
       },
     ],
     sampleOutput: { update_id: 900000001, message: sampleMessage },
-    onTriggered: ({ output, credential, userId }) => rememberTelegramContact(userId, credential, output),
+    onTriggered: async ({ output, credential, userId }) => {
+      // Show "typing..." right away while the reply is being prepared.
+      const chatId = (output as any)?.message?.chat?.id ?? (output as any)?.callback_query?.message?.chat?.id;
+      const typing =
+        chatId && credential?.data.botToken
+          ? telegram(credential.data.botToken, "sendChatAction", { chat_id: chatId, action: "typing" }, AbortSignal.timeout(5_000)).catch(() => undefined)
+          : undefined;
+      await Promise.all([rememberTelegramContact(userId, credential, output), typing]);
+    },
     // Deployed (public HTTPS): Telegram pushes updates to our webhook.
     webhook: {
       async register({ params, credential, url, secretToken, signal }) {

@@ -59,15 +59,23 @@ export async function claudeRun(o: LlmRunOptions): Promise<LlmRunResult> {
     const request: Anthropic.MessageCreateParamsNonStreaming = { model: o.model, max_tokens: o.maxTokens, messages };
     if (o.system) request.system = o.system;
     if (tools.length) request.tools = tools;
+    // Chat replies: think less (much faster first answer). Haiku 4.5 has no effort setting.
+    if (o.effort && !/haiku/.test(o.model)) (request as any).output_config = { effort: o.effort };
+    // Reuse the processed persona / knowledge / earlier turns between messages: faster and cheaper.
+    (request as any).cache_control = { type: "ephemeral" };
 
+    const send = (): Promise<any> =>
+      FALLBACK_MODELS.has(o.model)
+        ? client.beta.messages.create({ ...request, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as any, { signal: o.signal })
+        : client.messages.create(request, { signal: o.signal });
     let response: any;
     try {
-      response = FALLBACK_MODELS.has(o.model)
-        ? await client.beta.messages.create(
-            { ...request, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as any,
-            { signal: o.signal },
-          )
-        : await client.messages.create(request, { signal: o.signal });
+      response = await send().catch((error) => {
+        // Older models without the effort setting: answer anyway, just without it.
+        if (!(error instanceof Anthropic.BadRequestError) || !(request as any).output_config || !/effort|output_config/i.test(error.message)) throw error;
+        delete (request as any).output_config;
+        return send();
+      });
     } catch (error) {
       throw describeError(error);
     }

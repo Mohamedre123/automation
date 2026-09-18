@@ -1,4 +1,4 @@
-import type { CredentialType, CredentialValue } from "../engine/types.js";
+import type { CredentialType, CredentialValue, FieldDef } from "../engine/types.js";
 import { config } from "../config.js";
 import { claudeRun } from "./anthropic.js";
 import { assertAllowedUrl } from "./util.js";
@@ -24,8 +24,30 @@ export interface LlmRunOptions {
   images?: { mimeType: string; data: string }[];
   maxSteps: number;
   maxTokens: number;
+  /** How much the model thinks before answering: "low" for chat replies (much faster). */
+  effort?: "low" | "medium";
   signal: AbortSignal;
 }
+
+/** "Reply speed" box on AI steps. */
+export const speedField = (fallback: "fast" | "balanced" | "deep"): FieldDef => ({
+  key: "speed",
+  label: "سرعة الرد",
+  type: "select",
+  default: fallback,
+  options: [
+    { value: "fast", label: "سريع (مناسب للشات بوت)" },
+    { value: "balanced", label: "متوازن" },
+    { value: "deep", label: "تفكير عميق (أبطأ)" },
+  ],
+  help: "سريع = الموديل يفكّر أقل ويرد في ثواني، مناسب لخدمة العملاء. التفكير العميق للمهام الصعبة بس.",
+});
+
+export const effortFor = (speed: unknown): LlmRunOptions["effort"] =>
+  speed === "deep" ? undefined : speed === "balanced" ? "medium" : "low";
+
+/** Reasoning settings some models reject: retry once without them instead of failing the reply. */
+const rejectsSetting = (error: unknown, pattern: RegExp) => error instanceof Error && pattern.test(error.message) && !/مفتاح|الرصيد/.test(error.message);
 
 export interface LlmRunResult {
   text: string;
@@ -75,12 +97,20 @@ async function openaiRun(o: LlmRunOptions): Promise<LlmRunResult> {
     : o.prompt;
   const input: unknown[] = [...o.history.map((h) => ({ role: h.role, content: h.text })), { role: "user", content: userContent }];
   const tools = o.tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters }));
+  let reasoningAllowed: boolean | undefined;
 
   for (let step = 0; step <= o.maxSteps; step++) {
     const body: Record<string, unknown> = { model: o.model, input, max_output_tokens: o.maxTokens };
     if (o.system) body.instructions = o.system;
     if (tools.length) body.tools = tools;
-    const data = await postJson("https://api.openai.com/v1/responses", body, { authorization: `Bearer ${o.apiKey}` }, o.signal, "OpenAI");
+    if (o.effort && reasoningAllowed !== false && /^(gpt-5|gpt-6|o\d)/.test(o.model)) body.reasoning = { effort: o.effort };
+    const send = () => postJson("https://api.openai.com/v1/responses", body, { authorization: `Bearer ${o.apiKey}` }, o.signal, "OpenAI");
+    const data = await send().catch((error) => {
+      if (!body.reasoning || !rejectsSetting(error, /reasoning|effort/i)) throw error;
+      reasoningAllowed = false;
+      delete body.reasoning;
+      return send();
+    });
     result.model = data.model ?? o.model;
     result.usage.inputTokens += data.usage?.input_tokens ?? 0;
     result.usage.outputTokens += data.usage?.output_tokens ?? 0;
@@ -113,6 +143,13 @@ async function openaiRun(o: LlmRunOptions): Promise<LlmRunResult> {
 }
 
 /* ---------- Google Gemini (generateContent) ---------- */
+/** Gemini 3 takes a thinking level; 2.5 Flash can skip thinking, 2.5 Pro can only shrink it. */
+function geminiThinking(model: string, effort: "low" | "medium") {
+  if (/gemini-2\.5-pro/.test(model)) return { thinkingBudget: effort === "low" ? 128 : 1024 };
+  if (/gemini-2\.5/.test(model)) return { thinkingBudget: effort === "low" ? 0 : 1024 };
+  if (/gemini-[3-9]/.test(model)) return { thinkingLevel: effort };
+  return undefined;
+}
 async function geminiRun(o: LlmRunOptions): Promise<LlmRunResult> {
   const result: LlmRunResult = { text: "", model: o.model, toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
   const contents: any[] = [
@@ -125,12 +162,21 @@ async function geminiRun(o: LlmRunOptions): Promise<LlmRunResult> {
     ...(Object.keys(t.parameters.properties).length ? { parameters: t.parameters } : {}),
   }));
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(o.model)}:generateContent`;
+  let thinking = o.effort ? geminiThinking(o.model, o.effort) : undefined;
 
   for (let step = 0; step <= o.maxSteps; step++) {
-    const body: Record<string, unknown> = { contents, generationConfig: { maxOutputTokens: o.maxTokens } };
+    const generationConfig: Record<string, unknown> = { maxOutputTokens: o.maxTokens };
+    const body: Record<string, unknown> = { contents, generationConfig };
     if (o.system) body.systemInstruction = { parts: [{ text: o.system }] };
     if (declarations.length) body.tools = [{ functionDeclarations: declarations }];
-    const data = await postJson(url, body, { "x-goog-api-key": o.apiKey }, o.signal, "Gemini");
+    if (thinking) generationConfig.thinkingConfig = thinking;
+    const send = () => postJson(url, body, { "x-goog-api-key": o.apiKey }, o.signal, "Gemini");
+    const data = await send().catch((error) => {
+      if (!thinking || !rejectsSetting(error, /thinking/i)) throw error;
+      thinking = undefined;
+      delete generationConfig.thinkingConfig;
+      return send();
+    });
     result.model = data.modelVersion ?? o.model;
     result.usage.inputTokens += data.usageMetadata?.promptTokenCount ?? 0;
     result.usage.outputTokens += data.usageMetadata?.candidatesTokenCount ?? 0;
