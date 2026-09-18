@@ -65,6 +65,11 @@ export const config = {
     /** Egyptian pounds per US dollar, for showing the amount to transfer. */
     egpRate: Number(process.env.EGP_RATE || 50),
   },
+  /** Public contact numbers (contact page + footer); editable from the admin console. */
+  contact: {
+    whatsapp: process.env.CONTACT_WHATSAPP || "+201200026457",
+    phone: process.env.CONTACT_PHONE || "+201281762540",
+  },
   /** Owner accounts: every feature, no credit limits, and the admin console. */
   adminEmails: (process.env.ADMIN_EMAILS || "iaomn8406@gmail.com")
     .split(",")

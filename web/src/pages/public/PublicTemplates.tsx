@@ -79,7 +79,7 @@ export function PublicTemplates() {
           <Spinner size={26} />
         </div>
       ) : (
-        <div className="grid">
+        <div className="grid tpl-grid">
           {visible.map((t) => (
             <article className="card tpl reveal" key={t.id}>
               <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>

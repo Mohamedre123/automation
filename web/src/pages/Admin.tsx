@@ -240,13 +240,15 @@ export function Admin() {
 function SettingsCard() {
   const toast = useToast();
   const { refresh } = useAccount();
-  const [form, setForm] = useState<{ egpRate: string; paymentPhone: string; assistantModel: string } | null>(null);
+  const [form, setForm] = useState<{ egpRate: string; paymentPhone: string; assistantModel: string; contactWhatsapp: string; contactPhone: string } | null>(null);
   const [models, setModels] = useState<{ id: string; name: string; cost?: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api<{ egpRate: number; phone: string; assistantModel: string }>("/admin/settings")
-      .then((res) => setForm({ egpRate: String(res.egpRate), paymentPhone: res.phone, assistantModel: res.assistantModel }))
+    api<{ egpRate: number; phone: string; assistantModel: string; whatsapp: string; contactPhone?: string }>("/admin/settings")
+      .then((res: any) =>
+        setForm({ egpRate: String(res.egpRate), paymentPhone: res.phone, assistantModel: res.assistantModel, contactWhatsapp: res.whatsapp, contactPhone: res.contactPhone }),
+      )
       .catch(() => {});
     api<{ models: { id: string; name: string; cost?: string }[] }>("/assistant/models")
       .then((res) => setModels(res.models))
@@ -284,6 +286,14 @@ function SettingsCard() {
         <div className="field">
           <label className="label">رقم الدفع (محفظة / إنستاباي / واتساب)</label>
           <input className="input mono" dir="ltr" value={form.paymentPhone} onChange={(e) => setForm({ ...form, paymentPhone: e.target.value })} />
+        </div>
+        <div className="field">
+          <label className="label">واتساب التواصل (صفحة التواصل والفوتر)</label>
+          <input className="input mono" dir="ltr" value={form.contactWhatsapp} onChange={(e) => setForm({ ...form, contactWhatsapp: e.target.value })} />
+        </div>
+        <div className="field">
+          <label className="label">تليفون التواصل</label>
+          <input className="input mono" dir="ltr" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
         </div>
         <div className="field">
           <label className="label">الموديل الافتراضي للمساعد</label>

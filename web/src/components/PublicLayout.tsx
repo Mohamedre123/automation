@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context";
 import { Icon } from "../icons";
 import { BurgerButton, NavDrawer } from "./NavDrawer";
+import { prettyPhone, useSiteContact, whatsappLink } from "./siteContact";
 import { useAutoHideHeader } from "./useAutoHideHeader";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
@@ -21,6 +22,7 @@ export function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const bar = useAutoHideHeader(menuOpen);
+  const contact = useSiteContact();
 
   useEffect(() => {
     setMenuOpen(false);
@@ -138,6 +140,16 @@ export function PublicLayout() {
               <Link to="/refund">سياسة الاسترداد</Link>
               <Link to="/security">الأمان</Link>
               <Link to="/cookies">الكوكيز</Link>
+            </div>
+            <div>
+              <h4>كلّمنا</h4>
+              <a className="footer-contact" href={whatsappLink(contact.whatsapp)} target="_blank" rel="noreferrer">
+                <Icon name="whatsapp" size={15} /> <span dir="ltr">{prettyPhone(contact.whatsapp)}</span>
+              </a>
+              <a className="footer-contact" href={`tel:${contact.phone}`}>
+                <Icon name="phone" size={15} /> <span dir="ltr">{prettyPhone(contact.phone)}</span>
+              </a>
+              <Link to="/contact">ابعتلنا رسالة</Link>
             </div>
             <div>
               <h4>حسابك</h4>

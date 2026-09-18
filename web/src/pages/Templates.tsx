@@ -78,7 +78,7 @@ export function Templates() {
           <Empty icon="search" title="مفيش تيمبلت بالمواصفات دي" text="جرّب كلمة تانية أو تصفّح كل الأقسام." />
         </div>
       ) : (
-        <div className="grid">
+        <div className="grid tpl-grid">
           {visible.map((t) => (
             <div className="card tpl" key={t.id}>
               <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>

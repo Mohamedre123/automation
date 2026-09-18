@@ -201,6 +201,12 @@ export async function paymentInfo() {
   };
 }
 
+/** Contact numbers shown on the site: WhatsApp (the contact form sends to it) and a phone for calls. */
+export async function contactInfo() {
+  const values = await settings();
+  return { whatsapp: values.contactWhatsapp || config.contact.whatsapp, phone: values.contactPhone || config.contact.phone };
+}
+
 /** Steps that talk to an app or an AI cost a credit; logic, data and "typing..." steps are free. */
 export function billableSteps(steps: { type: string; status: string }[], groupOf: (type: string) => string | undefined) {
   return steps.filter((s) => s.status !== "skipped" && s.type !== "telegram.typing" && ["ai", "apps"].includes(groupOf(s.type) ?? "")).length;
@@ -430,6 +436,7 @@ const planList = () => Object.values(PLANS).filter((p) => p.public);
 /** Public: the pricing page. */
 export async function planRoutes(app: FastifyInstance) {
   app.get("/api/plans", async () => ({ plans: planList(), trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: await paymentInfo() }));
+  app.get("/api/site", async () => ({ contact: await contactInfo() }));
 }
 
 /** Logged-in customer: their plan, credits and subscription requests. */
@@ -505,12 +512,19 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.get("/api/admin/settings", async () => ({
     ...(await paymentInfo()),
+    ...(await contactInfo()),
     assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5",
     assistantCreditUsd: ASSISTANT_CREDIT_USD,
   }));
 
   app.put("/api/admin/settings", async (req) => {
-    const body = (req.body ?? {}) as { egpRate?: number | string; paymentPhone?: string; assistantModel?: string };
+    const body = (req.body ?? {}) as {
+      egpRate?: number | string;
+      paymentPhone?: string;
+      assistantModel?: string;
+      contactWhatsapp?: string;
+      contactPhone?: string;
+    };
     const updates: [string, string][] = [];
     if (body.assistantModel !== undefined) {
       if (!/^claude-[a-z0-9.-]+$/i.test(body.assistantModel)) throw httpError(400, "اسم الموديل مش صحيح");
@@ -521,6 +535,12 @@ export async function adminRoutes(app: FastifyInstance) {
       if (!(rate > 0 && rate < 10_000)) throw httpError(400, "سعر الدولار لازم يكون رقم أكبر من صفر");
       updates.push(["egpRate", String(rate)]);
     }
+    for (const key of ["contactWhatsapp", "contactPhone"] as const) {
+      if (body[key] === undefined) continue;
+      const phone = String(body[key]).replace(/[\s-]/g, "");
+      if (!/^\+?\d{8,15}$/.test(phone)) throw httpError(400, "رقم التواصل مش صحيح");
+      updates.push([key, phone]);
+    }
     if (body.paymentPhone !== undefined) {
       const phone = String(body.paymentPhone).trim();
       if (!/^\+?\d{8,15}$/.test(phone.replace(/[\s-]/g, ""))) throw httpError(400, "رقم الدفع مش صحيح");
@@ -530,7 +550,7 @@ export async function adminRoutes(app: FastifyInstance) {
       await run("INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [key, value]);
     }
     settingsCache = null;
-    return { ...(await paymentInfo()), assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5" };
+    return { ...(await paymentInfo()), ...(await contactInfo()), assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5" };
   });
 
   app.get("/api/admin/users", async () => {
