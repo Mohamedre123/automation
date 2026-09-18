@@ -5,7 +5,7 @@ import { getNode } from "../nodes/index.js";
 import { resolveMediaMentions } from "../nodes/media.js";
 import { assertExecutionQuota } from "../protection.js";
 import { runInBackground } from "../background.js";
-import { assertCanRun, chargeRun } from "../billing.js";
+import { assertCanRun, billableSteps, chargeRun } from "../billing.js";
 import { autoFillFromRun } from "./autofill.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
@@ -272,7 +272,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
   await Promise.allSettled(sideTasks);
   await progressChain;
   // Credits: every step that actually ran (the trigger and skipped steps are free), at least 1 per run.
-  const credits = allowance.status === "fulfilled" ? Math.max(1, steps.filter((s, i) => i > 0 && s.status !== "skipped").length) : 0;
+  const credits = allowance.status === "fulfilled" ? billableSteps(steps, (type) => getNode(type)?.group) : 0;
   if (credits) await chargeRun(workflow.userId, credits).catch((e) => console.error(`[execution ${id}] charge failed: ${errorMessage(e)}`));
   await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5, current_node = NULL, credits = $7 WHERE id = $6", [
     record.status,

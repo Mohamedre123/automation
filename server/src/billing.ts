@@ -5,7 +5,7 @@ import { httpError } from "./errors.js";
 
 /*
  * Plans and virtual credits. Customers pay for their own AI / app usage with their own keys, so credits
- * are a platform allowance: every step a scenario runs costs 1 credit, and the built-in assistant (which
+ * are a platform allowance: every app / AI step a scenario runs costs 1 credit, and the built-in assistant (which
  * runs on the platform's own Claude key) spends its own separate assistant credits.
  */
 
@@ -53,14 +53,14 @@ export const PLANS: Record<PlanKey, Plan> = {
     name: "تجربة مجانية",
     tagline: "3 أيام بكل مميزات الاحترافي",
     price: { monthly: 0, yearly: 0 },
-    credits: 500,
-    assistantCredits: 100,
+    credits: 1_000,
+    assistantCredits: 150,
     maxActiveScenarios: 0,
     minIntervalMinutes: 1,
     assistant: true,
     logDays: 30,
     priority: true,
-    features: ["كل مميزات الاحترافي لمدة 3 أيام", "500 كريديت للمنصة + 100 للمساعد الذكي"],
+    features: ["كل مميزات الاحترافي لمدة 3 أيام", "1,000 كريديت للمنصة + 150 للمساعد الذكي"],
     public: false,
   },
   core: {
@@ -116,6 +116,34 @@ export const PLANS: Record<PlanKey, Plan> = {
 };
 
 export const TRIAL_DAYS = 3;
+
+/** Top-ups: added on top of the plan, never expire, used after the monthly credits. */
+export interface CreditPack {
+  key: string;
+  name: string;
+  credits: number;
+  assistantCredits: number;
+  price: number;
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
+  { key: "c2k", name: "2,000 كريديت", credits: 2_000, assistantCredits: 0, price: 4 },
+  { key: "c5k", name: "5,000 كريديت", credits: 5_000, assistantCredits: 0, price: 9 },
+  { key: "c12k", name: "12,000 كريديت", credits: 12_000, assistantCredits: 0, price: 18 },
+  { key: "a500", name: "500 كريديت للمساعد", credits: 0, assistantCredits: 500, price: 5 },
+  { key: "a1500", name: "1,500 كريديت للمساعد", credits: 0, assistantCredits: 1_500, price: 12 },
+];
+
+export const paymentInfo = () => ({
+  phone: config.payment.phone,
+  egpRate: config.payment.egpRate,
+  methods: ["محفظة إلكترونية (فودافون كاش / اتصالات / أورانج / وي)", "إنستاباي InstaPay"],
+});
+
+/** Steps that talk to an app or an AI cost a credit; logic, data and "typing..." steps are free. */
+export function billableSteps(steps: { type: string; status: string }[], groupOf: (type: string) => string | undefined) {
+  return steps.filter((s) => s.status !== "skipped" && s.type !== "telegram.typing" && ["ai", "apps"].includes(groupOf(s.type) ?? "")).length;
+}
 const DAY = 86_400_000;
 const addDays = (from: Date, days: number) => new Date(from.getTime() + days * DAY).toISOString();
 
@@ -135,6 +163,8 @@ interface AccountRow {
   credits_reset_at: string | null;
   credits_used: number;
   assistant_used: number;
+  extra_credits: number;
+  extra_assistant_credits: number;
 }
 
 export interface Account {
@@ -146,15 +176,18 @@ export interface Account {
   /** Paid plans: when they end. Trial: when the trial ends. */
   expiresAt: string | null;
   trialEndsAt: string | null;
+  /** Everything left: this month's credits plus bought top-ups. */
   credits: number;
   assistantCredits: number;
+  extraCredits: number;
+  extraAssistantCredits: number;
   creditsUsed: number;
   assistantUsed: number;
   resetsAt: string | null;
 }
 
 const ACCOUNT_COLUMNS =
-  "id, email, name, created_at, plan, plan_period, plan_expires_at, trial_ends_at, credits, assistant_credits, credits_reset_at, credits_used, assistant_used";
+  "id, email, name, created_at, plan, plan_period, plan_expires_at, trial_ends_at, credits, assistant_credits, credits_reset_at, credits_used, assistant_used, extra_credits, extra_assistant_credits";
 
 function toAccount(row: AccountRow): Account {
   const plan = PLANS[row.plan as PlanKey] ?? PLANS.free;
@@ -166,8 +199,10 @@ function toAccount(row: AccountRow): Account {
     period: row.plan_period === "yearly" ? "yearly" : "monthly",
     expiresAt: plan.key === "trial" ? row.trial_ends_at : row.plan_expires_at,
     trialEndsAt: row.trial_ends_at,
-    credits: Math.max(0, Number(row.credits) || 0),
-    assistantCredits: Math.max(0, Number(row.assistant_credits) || 0),
+    credits: Math.max(0, Number(row.credits) || 0) + Math.max(0, Number(row.extra_credits) || 0),
+    assistantCredits: Math.max(0, Number(row.assistant_credits) || 0) + Math.max(0, Number(row.extra_assistant_credits) || 0),
+    extraCredits: Math.max(0, Number(row.extra_credits) || 0),
+    extraAssistantCredits: Math.max(0, Number(row.extra_assistant_credits) || 0),
     creditsUsed: Number(row.credits_used) || 0,
     assistantUsed: Number(row.assistant_used) || 0,
     resetsAt: row.credits_reset_at,
@@ -185,6 +220,17 @@ async function setPlan(userId: string, plan: PlanKey, period: Period, expiresAt:
     trialEndsAt !== undefined
       ? [plan, period, expiresAt, p.credits, p.assistantCredits, resetAt, userId, trialEndsAt]
       : [plan, period, expiresAt, p.credits, p.assistantCredits, resetAt, userId],
+  );
+}
+
+/** Bought or granted credits: they stay until used (a negative amount takes some away). */
+async function addCredits(userId: string, credits: number, assistant: number) {
+  await run(
+    `UPDATE users SET extra_credits = GREATEST(extra_credits + $1, 0), extra_assistant_credits = GREATEST(extra_assistant_credits + $2, 0),
+       credits = CASE WHEN $1 < 0 AND extra_credits + $1 < 0 THEN GREATEST(credits + extra_credits + $1, 0) ELSE credits END,
+       assistant_credits = CASE WHEN $2 < 0 AND extra_assistant_credits + $2 < 0 THEN GREATEST(assistant_credits + extra_assistant_credits + $2, 0) ELSE assistant_credits END
+     WHERE id = $3`,
+    [credits, assistant, userId],
   );
 }
 
@@ -243,11 +289,14 @@ export async function assertCanRun(userId: string, workflowId?: string, mode?: s
   return account;
 }
 
-/** After a run: 1 credit per step that ran (at least 1). */
-export async function chargeRun(userId: string, steps: number) {
-  if (await isAdminUser(userId)) return;
-  const cost = Math.max(1, steps);
-  await run("UPDATE users SET credits = GREATEST(credits - $1, 0), credits_used = credits_used + $1 WHERE id = $2", [cost, userId]);
+/** After a run: 1 credit per app / AI step. This month's credits go first, then bought top-ups. */
+export async function chargeRun(userId: string, cost: number) {
+  if (cost <= 0 || (await isAdminUser(userId))) return;
+  await run(
+    `UPDATE users SET credits = GREATEST(credits - $1, 0), extra_credits = GREATEST(extra_credits - GREATEST($1 - credits, 0), 0),
+       credits_used = credits_used + $1 WHERE id = $2`,
+    [cost, userId],
+  );
 }
 
 /** Assistant access: plan includes it, and both balances still have credit. */
@@ -261,19 +310,21 @@ export async function assistantAllowance(userId: string): Promise<{ ok: true; ac
 }
 
 /**
- * Assistant credits follow what a reply costs the platform: about 1 credit per 1,000 tokens, where
- * written tokens weigh 5x and tokens re-read from cache weigh a tenth.
+ * Assistant credits follow what a reply costs: about 1 credit per 2,000 tokens, where written tokens weigh
+ * 5x and the platform's own instructions (cached) weigh a tenth - a normal message is ~2-5 credits.
  */
 export function assistantCost(usage: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number }) {
   const weighted =
-    (usage.input_tokens ?? 0) + 1.25 * (usage.cache_creation_input_tokens ?? 0) + 0.1 * (usage.cache_read_input_tokens ?? 0) + 5 * (usage.output_tokens ?? 0);
-  return Math.max(1, Math.ceil(weighted / 1000));
+    (usage.input_tokens ?? 0) + 0.1 * ((usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0)) + 5 * (usage.output_tokens ?? 0);
+  return Math.max(1, Math.ceil(weighted / 2000));
 }
 
 export async function chargeAssistant(userId: string, credits: number) {
   if (credits <= 0 || (await isAdminUser(userId))) return;
   await run(
-    "UPDATE users SET assistant_credits = GREATEST(assistant_credits - $1, 0), assistant_used = assistant_used + $1 WHERE id = $2",
+    `UPDATE users SET assistant_credits = GREATEST(assistant_credits - $1, 0),
+       extra_assistant_credits = GREATEST(extra_assistant_credits - GREATEST($1 - assistant_credits, 0), 0),
+       assistant_used = assistant_used + $1 WHERE id = $2`,
     [credits, userId],
   );
 }
@@ -309,6 +360,8 @@ export function publicAccount(account: Account) {
     trialEndsAt: account.trialEndsAt,
     credits: account.credits,
     assistantCredits: account.assistantCredits,
+    extraCredits: account.extraCredits,
+    extraAssistantCredits: account.extraAssistantCredits,
     creditsUsed: account.creditsUsed,
     assistantUsed: account.assistantUsed,
     monthlyCredits: account.plan.credits,
@@ -325,7 +378,7 @@ const planList = () => Object.values(PLANS).filter((p) => p.public);
 
 /** Public: the pricing page. */
 export async function planRoutes(app: FastifyInstance) {
-  app.get("/api/plans", async () => ({ plans: planList(), trialDays: TRIAL_DAYS }));
+  app.get("/api/plans", async () => ({ plans: planList(), trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: paymentInfo() }));
 }
 
 /** Logged-in customer: their plan, credits and subscription requests. */
@@ -333,35 +386,44 @@ export async function billingRoutes(app: FastifyInstance) {
   app.get("/api/billing", async (req) => {
     const account = await getAccount(req.user.id);
     const requests = await query(
-      `SELECT id, plan, period, status, note, created_at AS "createdAt" FROM subscription_requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10`,
+      `SELECT id, kind, plan, pack, amount, period, status, note, created_at AS "createdAt" FROM subscription_requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10`,
       [req.user.id],
     );
-    return { account: publicAccount(account), plans: planList(), requests, trialDays: TRIAL_DAYS };
+    return { account: publicAccount(account), plans: planList(), requests, trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: paymentInfo() };
   });
 
   app.post("/api/billing/request", async (req) => {
-    const body = (req.body ?? {}) as { plan?: string; period?: string; note?: string };
+    const body = (req.body ?? {}) as { kind?: string; plan?: string; period?: string; pack?: string; note?: string };
+    const note = String(body.note ?? "").slice(0, 500);
+    if (body.kind === "credits") {
+      const pack = CREDIT_PACKS.find((p) => p.key === body.pack);
+      if (!pack) throw httpError(400, "اختار باقة كريديت");
+      await run(
+        "INSERT INTO subscription_requests (id, user_id, kind, plan, pack, amount, period, note, status, created_at) VALUES ($1, $2, 'credits', '', $3, $4, 'monthly', $5, 'pending', $6)",
+        [newId(), req.user.id, pack.key, `$${pack.price}`, note, now()],
+      );
+      return { ok: true };
+    }
     const plan = PLANS[body.plan as PlanKey];
     if (!plan || !plan.public || plan.key === "free") throw httpError(400, "اختار باقة");
     const period: Period = body.period === "yearly" ? "yearly" : "monthly";
-    const pending = await one("SELECT id FROM subscription_requests WHERE user_id = $1 AND status = 'pending'", [req.user.id]);
+    const amount = `$${period === "yearly" ? Math.round(plan.price.yearly * 12) : plan.price.monthly}`;
+    // One open plan request at a time: a new choice replaces the old one.
+    const pending = await one<{ id: string }>("SELECT id FROM subscription_requests WHERE user_id = $1 AND status = 'pending' AND kind = 'plan'", [req.user.id]);
     if (pending) {
-      await run("UPDATE subscription_requests SET plan = $1, period = $2, note = $3, created_at = $4 WHERE id = $5", [
+      await run("UPDATE subscription_requests SET plan = $1, period = $2, note = $3, amount = $4, created_at = $5 WHERE id = $6", [
         plan.key,
         period,
-        String(body.note ?? "").slice(0, 500),
+        note,
+        amount,
         now(),
-        (pending as { id: string }).id,
+        pending.id,
       ]);
     } else {
-      await run("INSERT INTO subscription_requests (id, user_id, plan, period, note, status, created_at) VALUES ($1, $2, $3, $4, $5, 'pending', $6)", [
-        newId(),
-        req.user.id,
-        plan.key,
-        period,
-        String(body.note ?? "").slice(0, 500),
-        now(),
-      ]);
+      await run(
+        "INSERT INTO subscription_requests (id, user_id, kind, plan, amount, period, note, status, created_at) VALUES ($1, $2, 'plan', $3, $4, $5, $6, 'pending', $7)",
+        [newId(), req.user.id, plan.key, amount, period, note, now()],
+      );
     }
     return { ok: true };
   });
@@ -385,7 +447,7 @@ export async function adminRoutes(app: FastifyInstance) {
       [new Date(Date.now() - 30 * DAY).toISOString()],
     );
     const requests = await query(
-      `SELECT r.id, r.user_id AS "userId", r.plan, r.period, r.note, r.status, r.created_at AS "createdAt", u.email, u.name
+      `SELECT r.id, r.user_id AS "userId", r.kind, r.plan, r.pack, r.amount, r.period, r.note, r.status, r.created_at AS "createdAt", u.email, u.name
        FROM subscription_requests r JOIN users u ON u.id = r.user_id ORDER BY (r.status = 'pending') DESC, r.created_at DESC LIMIT 100`,
     );
     const users = rows.map((row) => ({
@@ -398,7 +460,7 @@ export async function adminRoutes(app: FastifyInstance) {
       runs30d: row.runs_30d,
       ...publicAccount(toAccount(row)),
     }));
-    return { users, requests, plans: Object.values(PLANS) };
+    return { users, requests, plans: Object.values(PLANS), packs: CREDIT_PACKS };
   });
 
   const target = async (id: string) => {
@@ -421,7 +483,7 @@ export async function adminRoutes(app: FastifyInstance) {
       const days = Number(body.days) > 0 ? Number(body.days) : period === "yearly" ? 365 : 30;
       await setPlan(userId, plan.key, period, addDays(new Date(), days));
     }
-    await run("UPDATE subscription_requests SET status = 'done' WHERE user_id = $1 AND status = 'pending'", [userId]);
+    await run("UPDATE subscription_requests SET status = 'done' WHERE user_id = $1 AND status = 'pending' AND kind = 'plan'", [userId]);
     return publicAccount(await getAccount(userId));
   });
 
@@ -430,18 +492,32 @@ export async function adminRoutes(app: FastifyInstance) {
     const body = (req.body ?? {}) as { credits?: number; assistantCredits?: number };
     const credits = Math.trunc(Number(body.credits) || 0);
     const assistant = Math.trunc(Number(body.assistantCredits) || 0);
-    await run("UPDATE users SET credits = GREATEST(credits + $1, 0), assistant_credits = GREATEST(assistant_credits + $2, 0) WHERE id = $3", [
-      credits,
-      assistant,
-      userId,
-    ]);
+    await addCredits(userId, credits, assistant);
     return publicAccount(await getAccount(userId));
   });
 
+  /** Approve (apply what was paid for) or reject a request. */
   app.post("/api/admin/requests/:id", async (req) => {
     const body = (req.body ?? {}) as { status?: string };
-    const status = body.status === "rejected" ? "rejected" : "done";
-    await run("UPDATE subscription_requests SET status = $1 WHERE id = $2", [status, (req.params as { id: string }).id]);
+    const request = await one<{ id: string; user_id: string; kind: string; plan: string; pack: string; period: string; status: string }>(
+      "SELECT * FROM subscription_requests WHERE id = $1",
+      [(req.params as { id: string }).id],
+    );
+    if (!request) throw httpError(404, "الطلب مش موجود");
+    if (request.status !== "pending") throw httpError(400, "الطلب ده اتقفل قبل كده");
+    if (body.status === "rejected") {
+      await run("UPDATE subscription_requests SET status = 'rejected' WHERE id = $1", [request.id]);
+      return { ok: true };
+    }
+    if (request.kind === "credits") {
+      const pack = CREDIT_PACKS.find((p) => p.key === request.pack);
+      if (!pack) throw httpError(400, "باقة الكريديت دي مش موجودة");
+      await addCredits(request.user_id, pack.credits, pack.assistantCredits);
+    } else {
+      const period: Period = request.period === "yearly" ? "yearly" : "monthly";
+      await setPlan(request.user_id, request.plan as PlanKey, period, addDays(new Date(), period === "yearly" ? 365 : 30));
+    }
+    await run("UPDATE subscription_requests SET status = 'done' WHERE id = $1", [request.id]);
     return { ok: true };
   });
 }

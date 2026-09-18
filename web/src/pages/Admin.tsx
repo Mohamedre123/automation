@@ -5,7 +5,7 @@ import { number } from "../components/PlanCards";
 import { copyText, formatDateTime, Modal, Spinner, timeAgo, useToast } from "../components/ui";
 import { useAccount, useAuth } from "../context";
 import { Icon } from "../icons";
-import type { AccountInfo, PlanDef, PlanKey } from "../types";
+import type { AccountInfo, CreditPack, PlanDef, PlanKey } from "../types";
 
 interface AdminUser extends AccountInfo {
   id: string;
@@ -20,6 +20,9 @@ interface AdminUser extends AccountInfo {
 interface AdminRequest {
   id: string;
   userId: string;
+  kind: "plan" | "credits";
+  pack: string;
+  amount: string;
   plan: PlanKey;
   period: "monthly" | "yearly";
   note: string;
@@ -42,13 +45,13 @@ export function Admin() {
   const { user } = useAuth();
   const { refresh: refreshMine } = useAccount();
   const toast = useToast();
-  const [data, setData] = useState<{ users: AdminUser[]; requests: AdminRequest[]; plans: PlanDef[] } | null>(null);
+  const [data, setData] = useState<{ users: AdminUser[]; requests: AdminRequest[]; plans: PlanDef[]; packs: CreditPack[] } | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | PlanKey>("all");
   const [managing, setManaging] = useState<AdminUser | null>(null);
 
   const load = useCallback(() => {
-    api<{ users: AdminUser[]; requests: AdminRequest[]; plans: PlanDef[] }>("/admin/users")
+    api<{ users: AdminUser[]; requests: AdminRequest[]; plans: PlanDef[]; packs: CreditPack[] }>("/admin/users")
       .then(setData)
       .catch((e: Error) => toast(e.message, "error"));
   }, [toast]);
@@ -89,8 +92,14 @@ export function Admin() {
     }
   };
 
-  const reject = async (id: string) => {
-    await api(`/admin/requests/${id}`, { body: { status: "rejected" } }).catch((e: Error) => toast(e.message, "error"));
+  const decide = async (r: AdminRequest, status: "done" | "rejected") => {
+    try {
+      await api(`/admin/requests/${r.id}`, { body: { status } });
+      toast(status === "rejected" ? "الطلب اترفض" : r.kind === "credits" ? "الكريديت اتضاف ✓" : "الباقة اتفعّلت ✓", "success");
+      refreshMine();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
     load();
   };
 
@@ -120,31 +129,37 @@ export function Admin() {
           <div className="stat-value">{number(trials)}</div>
         </div>
         <div className="card stat">
-          <div className="stat-label">طلبات اشتراك مستنية</div>
+          <div className="stat-label">طلبات دفع مستنية</div>
           <div className="stat-value">{number(pending.length)}</div>
         </div>
       </div>
 
       {pending.length > 0 && (
         <div className="card" style={{ padding: 18, marginBottom: 22 }}>
-          <h3 style={{ marginBottom: 12 }}>
-            <Icon name="crown" size={17} /> طلبات الاشتراك
+          <h3 style={{ marginBottom: 4 }}>
+            <Icon name="crown" size={17} /> طلبات الدفع
           </h3>
+          <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
+            قارن كل طلب بصورة الإيصال اللي وصلتك على واتساب (فيها نفس رقم الحساب) قبل التفعيل.
+          </p>
           <div className="admin-requests">
             {pending.map((r) => (
               <div key={r.id} className="admin-request">
                 <div style={{ minWidth: 0 }}>
                   <strong>{r.name}</strong> <span className="faint">{r.email}</span>
                   <div className="muted" style={{ fontSize: 13 }}>
-                    باقة «{planName(r.plan)}» {r.period === "yearly" ? "سنوي" : "شهري"} · {timeAgo(r.createdAt)}
+                    {r.kind === "credits"
+                      ? `شراء «${data.packs.find((p) => p.key === r.pack)?.name ?? r.pack}»`
+                      : `باقة «${planName(r.plan)}» ${r.period === "yearly" ? "سنوي" : "شهري"}`}
+                    {r.amount && ` · ${r.amount}`} · {timeAgo(r.createdAt)}
                     {r.note && ` · ${r.note}`}
                   </div>
                 </div>
                 <div className="row">
-                  <button className="btn sm primary" onClick={() => setPlan(r.userId, r.plan, r.period)}>
-                    فعّل
+                  <button className="btn sm primary" onClick={() => decide(r, "done")}>
+                    {r.kind === "credits" ? "ضيف الكريديت" : "فعّل"}
                   </button>
-                  <button className="btn sm" onClick={() => reject(r.id)}>
+                  <button className="btn sm" onClick={() => decide(r, "rejected")}>
                     رفض
                   </button>
                 </div>

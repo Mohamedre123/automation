@@ -48,7 +48,10 @@ export function Pricing() {
           plans={plans}
           period={period}
           action={(plan) => (
-            <Link className={`btn ${plan.key === "pro" ? "primary" : ""}`} to={user ? "/app/billing" : "/register"}>
+            <Link
+              className={`btn ${plan.key === "pro" ? "primary" : ""}`}
+              to={user ? (plan.key === "free" ? "/app/billing" : `/app/billing?plan=${plan.key}&period=${period}`) : "/register"}
+            >
               {plan.key === "free" ? "ابدأ مجاناً" : user ? "اشترك" : `جرّب ${trialDays} أيام مجاناً`}
             </Link>
           )}

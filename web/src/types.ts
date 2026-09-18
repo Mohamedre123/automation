@@ -194,6 +194,9 @@ export interface AccountInfo {
   trialEndsAt: string | null;
   credits: number;
   assistantCredits: number;
+  /** Bought top-ups (included in the totals above), they never expire. */
+  extraCredits: number;
+  extraAssistantCredits: number;
   creditsUsed: number;
   assistantUsed: number;
   monthlyCredits: number;
@@ -203,8 +206,25 @@ export interface AccountInfo {
   limits: { maxActiveScenarios: number; minIntervalMinutes: number };
 }
 
+export interface CreditPack {
+  key: string;
+  name: string;
+  credits: number;
+  assistantCredits: number;
+  price: number;
+}
+
+export interface PaymentInfo {
+  phone: string;
+  egpRate: number;
+  methods: string[];
+}
+
 export interface SubscriptionRequest {
   id: string;
+  kind: "plan" | "credits";
+  pack: string;
+  amount: string;
   plan: PlanKey;
   period: "monthly" | "yearly";
   status: "pending" | "done" | "rejected";

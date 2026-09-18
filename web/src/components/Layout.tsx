@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAccount, useAuth } from "../context";
 import { Icon } from "../icons";
@@ -20,12 +20,34 @@ const links: NavItem[] = [
 /** Remaining credits, always one tap from the subscription page. */
 function CreditPill() {
   const { account } = useAccount();
+  const previous = useRef<number | null>(null);
+  const [spent, setSpent] = useState<{ amount: number; id: number } | null>(null);
+
+  // When credits drop, float a small "−N" so the customer sees what was just used.
+  useEffect(() => {
+    if (!account || account.isAdmin) return;
+    const before = previous.current;
+    previous.current = account.credits;
+    if (before !== null && account.credits < before) {
+      setSpent({ amount: before - account.credits, id: Date.now() });
+      const timer = window.setTimeout(() => setSpent(null), 2600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [account]);
+
   if (!account) return null;
   const low = !account.isAdmin && account.credits <= Math.max(20, account.monthlyCredits * 0.1);
   return (
     <Link to="/app/billing" className={`credit-pill ${low ? "low" : ""}`} title="الكريديت المتبقي">
       <Icon name={account.isAdmin ? "crown" : "coins"} size={15} />
-      {account.isAdmin ? "أدمن" : account.credits.toLocaleString("en-US")}
+      <span key={account.credits} className={spent ? "credit-value bump" : "credit-value"}>
+        {account.isAdmin ? "أدمن" : account.credits.toLocaleString("en-US")}
+      </span>
+      {spent && (
+        <span key={spent.id} className="credit-spent">
+          −{spent.amount.toLocaleString("en-US")}
+        </span>
+      )}
     </Link>
   );
 }

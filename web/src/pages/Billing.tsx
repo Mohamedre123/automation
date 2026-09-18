@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { api } from "../api";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { PayModal, type Order } from "../components/Payment";
 import { CREDIT_FAQ, Faq, money, number, PeriodSwitch, PlanCards, type Period } from "../components/PlanCards";
-import { formatDateTime, Modal, Spinner, useToast } from "../components/ui";
+import { formatDateTime, Spinner } from "../components/ui";
 import { useAccount, useAuth } from "../context";
 import { Icon } from "../icons";
-import type { AccountInfo, PlanDef } from "../types";
+import type { AccountInfo } from "../types";
 
 const daysLeft = (iso: string | null) => (iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)) : 0);
 
@@ -35,13 +36,19 @@ function statusLine(account: AccountInfo) {
 }
 
 export function Billing() {
-  const { account, plans, requests, refresh } = useAccount();
+  const { account, plans, packs, requests } = useAccount();
   const { user } = useAuth();
-  const toast = useToast();
+  const location = useLocation();
   const [period, setPeriod] = useState<Period>("monthly");
-  const [chosen, setChosen] = useState<PlanDef | null>(null);
-  const [note, setNote] = useState("");
-  const [sending, setSending] = useState(false);
+  const [order, setOrder] = useState<Order | null>(null);
+
+  // Links from the pricing page (?plan=pro&period=yearly) and "buy credits" (#credits).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const plan = plans.find((p) => p.key === params.get("plan"));
+    if (plan && plan.key !== "free") setOrder({ kind: "plan", plan, period: params.get("period") === "yearly" ? "yearly" : "monthly" });
+    if (location.hash === "#credits") window.setTimeout(() => document.getElementById("credits")?.scrollIntoView({ behavior: "smooth" }), 150);
+  }, [location.search, location.hash, plans]);
 
   if (!account) {
     return (
@@ -50,24 +57,8 @@ export function Billing() {
       </div>
     );
   }
-  const pending = requests.find((r) => r.status === "pending");
+  const pending = requests.filter((r) => r.status === "pending");
   const outOfCredits = !account.isAdmin && account.credits <= 0;
-
-  const send = async () => {
-    if (!chosen) return;
-    setSending(true);
-    try {
-      await api("/billing/request", { body: { plan: chosen.key, period, note } });
-      toast("وصلنا طلبك ✓ هنتواصل معاك لتأكيد الدفع والتفعيل", "success");
-      setChosen(null);
-      setNote("");
-      refresh();
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <div className="page">
@@ -117,6 +108,15 @@ export function Billing() {
               icon="sparkles"
             />
           )}
+          {account.extraCredits + account.extraAssistantCredits > 0 && (
+            <div className="faint" style={{ fontSize: 12.5 }}>
+              منهم كريديت إضافي اشتريته (ما بينتهيش): {number(account.extraCredits)} للمنصة
+              {account.extraAssistantCredits ? ` + ${number(account.extraAssistantCredits)} للمساعد` : ""}
+            </div>
+          )}
+          <a className="btn sm primary" href="#credits" style={{ justifySelf: "start" }}>
+            <Icon name="plus" size={14} /> شراء كريديت
+          </a>
           <div className="faint" style={{ fontSize: 12.5 }}>
             {account.plan.key === "trial"
               ? "رصيد التجربة مش بيتجدد - بعد التجربة بتاخد رصيد الباقة المجانية كل شهر."
@@ -127,12 +127,14 @@ export function Billing() {
         </div>
       </div>
 
-      {pending && (
-        <div className="alert success" style={{ margin: "18px 0" }}>
-          طلب اشتراك «{plans.find((p) => p.key === pending.plan)?.name ?? pending.plan}» ({pending.period === "yearly" ? "سنوي" : "شهري"}) مستني التفعيل -
-          هنتواصل معاك لتأكيد الدفع، وأول ما يتأكد الباقة بتشتغل على حسابك فوراً.
+      {pending.map((r) => (
+        <div key={r.id} className="alert success" style={{ margin: "18px 0 0" }}>
+          {r.kind === "credits"
+            ? `طلب شراء «${packs.find((p) => p.key === r.pack)?.name ?? r.pack}» (${r.amount}) مستني مراجعة التحويل`
+            : `طلب اشتراك «${plans.find((p) => p.key === r.plan)?.name ?? r.plan}» (${r.period === "yearly" ? "سنوي" : "شهري"} - ${r.amount}) مستني مراجعة التحويل`}{" "}
+          - أول ما يتأكد بيتفعّل على حسابك فوراً.
         </div>
-      )}
+      ))}
 
       <div className="section-title-row">
         <h2 style={{ fontSize: 20 }}>الباقات</h2>
@@ -148,50 +150,38 @@ export function Billing() {
               {account.plan.key === "free" ? "باقتك الحالية" : "متاحة بعد التجربة"}
             </button>
           ) : (
-            <button className={`btn ${plan.key === "pro" ? "primary" : ""}`} onClick={() => setChosen(plan)} disabled={account.isAdmin}>
+            <button className={`btn ${plan.key === "pro" ? "primary" : ""}`} onClick={() => setOrder({ kind: "plan", plan, period })} disabled={account.isAdmin}>
               {account.plan.key === plan.key ? "جدّد الباقة" : "اشترك"}
             </button>
           )
         }
       />
 
+      <div id="credits" className="section-title-row" style={{ marginTop: 36 }}>
+        <div>
+          <h2 style={{ fontSize: 20 }}>شراء كريديت إضافي</h2>
+          <p className="faint" style={{ margin: "4px 0 0", fontSize: 13.5 }}>
+            بيتضاف فوق باقتك وما بينتهيش، وبيتصرف بعد كريديت الشهر.
+          </p>
+        </div>
+      </div>
+      <div className="packs">
+        {packs.map((pack) => (
+          <button key={pack.key} className="card pack" onClick={() => setOrder({ kind: "credits", pack })} disabled={account.isAdmin}>
+            <Icon name={pack.assistantCredits ? "sparkles" : "coins"} size={22} />
+            <strong>{pack.name}</strong>
+            <span className="pack-price">{money(pack.price)}</span>
+            <span className="faint" style={{ fontSize: 12 }}>
+              {pack.assistantCredits ? "للمساعد الذكي" : "للمنصة"}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <h2 style={{ fontSize: 20, margin: "34px 0 14px" }}>أسئلة عن الكريديت</h2>
       <Faq items={CREDIT_FAQ} />
 
-      {chosen && (
-        <Modal
-          title={`الاشتراك في باقة «${chosen.name}»`}
-          onClose={() => setChosen(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setChosen(null)}>
-                إلغاء
-              </button>
-              <button className="btn primary" onClick={send} disabled={sending}>
-                {sending ? <Spinner size={14} /> : "ابعت طلب الاشتراك"}
-              </button>
-            </>
-          }
-        >
-          <PeriodSwitch period={period} onChange={setPeriod} />
-          <div className="card" style={{ padding: 16, margin: "14px 0" }}>
-            <div className="plan-price" style={{ fontSize: 26 }}>
-              {money(chosen.price[period])} <small>/ شهرياً</small>
-            </div>
-            <div className="faint">
-              {period === "yearly" ? `إجمالي ${money(Math.round(chosen.price.yearly * 12))} في السنة` : "بتدفع كل شهر"} ·{" "}
-              {number(chosen.credits + chosen.assistantCredits)} كريديت كل شهر
-            </div>
-          </div>
-          <p className="muted" style={{ marginTop: 0 }}>
-            الدفع الإلكتروني لسه بيتجهز: ابعت الطلب وهنتواصل معاك نأكّد طريقة الدفع (فودافون كاش، إنستاباي، تحويل بنكي أو غيرها)، وأول ما يتأكد الباقة بتتفعّل على حسابك.
-          </p>
-          <div className="field">
-            <label className="label">رقم واتساب أو أي ملاحظة (اختياري)</label>
-            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثلاً: 01012345678 - هدفع فودافون كاش" />
-          </div>
-        </Modal>
-      )}
+      {order && <PayModal order={order} onClose={() => setOrder(null)} />}
     </div>
   );
 }

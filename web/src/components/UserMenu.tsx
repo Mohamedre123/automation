@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context";
+import { useAccount, useAuth } from "../context";
 import { Icon } from "../icons";
 import { useTheme } from "../theme";
 
@@ -18,8 +18,63 @@ export function ThemeToggle() {
   );
 }
 
+/** Plan and remaining credits, with a shortcut to buy more. */
+function CreditBox({ onNavigate }: { onNavigate: () => void }) {
+  const { account } = useAccount();
+  if (!account) return null;
+  const bar = (left: number, monthly: number) => `${Math.max(3, Math.min(100, Math.round((left / Math.max(monthly, left, 1)) * 100)))}%`;
+  return (
+    <div className="credit-box">
+      <div className="credit-box-head">
+        <span>
+          <Icon name="crown" size={14} /> {account.isAdmin ? "أدمن" : account.plan.name}
+        </span>
+        {!account.isAdmin && account.plan.key === "trial" && <span className="faint">تجربة</span>}
+      </div>
+      {account.isAdmin ? (
+        <div className="faint" style={{ fontSize: 12.5 }}>
+          كل المميزات مفتوحة ومن غير حدود
+        </div>
+      ) : (
+        <>
+          <div className="credit-line">
+            <span>كريديت المنصة</span>
+            <strong>{account.credits.toLocaleString("en-US")}</strong>
+          </div>
+          <div className="meter-bar">
+            <span className={account.credits <= account.monthlyCredits * 0.1 ? "low" : ""} style={{ width: bar(account.credits, account.monthlyCredits) }} />
+          </div>
+          {account.plan.assistant && (
+            <>
+              <div className="credit-line">
+                <span>كريديت المساعد</span>
+                <strong>{account.assistantCredits.toLocaleString("en-US")}</strong>
+              </div>
+              <div className="meter-bar">
+                <span
+                  className={account.assistantCredits <= account.monthlyAssistantCredits * 0.1 ? "low" : ""}
+                  style={{ width: bar(account.assistantCredits, account.monthlyAssistantCredits) }}
+                />
+              </div>
+            </>
+          )}
+          <div className="credit-box-actions">
+            <Link className="btn sm primary" to="/app/billing#credits" onClick={onNavigate}>
+              <Icon name="plus" size={14} /> شراء كريديت
+            </Link>
+            <Link className="btn sm" to="/app/billing" onClick={onNavigate}>
+              الباقات
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const { account } = useAccount();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -67,6 +122,7 @@ export function UserMenu() {
               </span>
             </div>
           </div>
+          {account && <CreditBox onNavigate={() => setOpen(false)} />}
           <Link className="menu-item" to="/app" onClick={() => setOpen(false)} role="menuitem">
             <Icon name="flows" size={16} /> لوحة التحكم
           </Link>

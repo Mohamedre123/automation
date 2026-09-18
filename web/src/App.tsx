@@ -54,6 +54,7 @@ export default function App() {
       <NetworkBackground />
       <ToastProvider>
         <AuthProvider>
+          <AccountProvider>
           <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route element={<PublicLayout />}>
@@ -77,9 +78,7 @@ export default function App() {
               element={
                 <Protected>
                   <MetaProvider>
-                    <AccountProvider>
-                      <Layout />
-                    </AccountProvider>
+                    <Layout />
                   </MetaProvider>
                 </Protected>
               }
@@ -98,6 +97,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
+          </AccountProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

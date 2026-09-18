@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, tokenStore } from "./api";
 import { APP_COLORS } from "./components/AppBadge";
-import type { AccountInfo, CredentialTypeDef, Meta, NodeDefinition, PlanDef, SubscriptionRequest, User } from "./types";
+import type { AccountInfo, CreditPack, CredentialTypeDef, Meta, NodeDefinition, PaymentInfo, PlanDef, SubscriptionRequest, User } from "./types";
 
 /* ---------- auth ---------- */
 interface AuthState {
@@ -95,25 +95,41 @@ export const useMeta = () => useContext(MetaContext);
 interface AccountState {
   account: AccountInfo | null;
   plans: PlanDef[];
+  packs: CreditPack[];
+  payment: PaymentInfo | null;
   requests: SubscriptionRequest[];
   refresh: () => void;
 }
 
-const AccountContext = createContext<AccountState>({ account: null, plans: [], requests: [], refresh: () => {} });
+const AccountContext = createContext<AccountState>({ account: null, plans: [], packs: [], payment: null, requests: [], refresh: () => {} });
 
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Omit<AccountState, "refresh">>({ account: null, plans: [], requests: [] });
+  const { user } = useAuth();
+  const signedIn = Boolean(user);
+  const [state, setState] = useState<Omit<AccountState, "refresh">>({ account: null, plans: [], packs: [], payment: null, requests: [] });
   const refresh = useCallback(() => {
-    api<{ account: AccountInfo; plans: PlanDef[]; requests: SubscriptionRequest[] }>("/billing")
-      .then((res) => setState({ account: res.account, plans: res.plans, requests: res.requests }))
+    if (!tokenStore.get()) return;
+    api<{ account: AccountInfo; plans: PlanDef[]; packs: CreditPack[]; payment: PaymentInfo; requests: SubscriptionRequest[] }>("/billing")
+      .then((res) => setState({ account: res.account, plans: res.plans, packs: res.packs, payment: res.payment, requests: res.requests }))
       .catch(() => {});
   }, []);
   useEffect(() => {
+    if (!signedIn) {
+      setState({ account: null, plans: [], packs: [], payment: null, requests: [] });
+      return;
+    }
     refresh();
-    // Credits move as scenarios run: keep the counter fresh.
-    const timer = window.setInterval(refresh, 60_000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
+    // Credits move as scenarios run: keep the counter live while the page is open.
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 15_000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refresh, signedIn]);
   const value = useMemo(() => ({ ...state, refresh }), [state, refresh]);
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

@@ -59,6 +59,12 @@ export const config = {
   allowSignup: process.env.ALLOW_SIGNUP !== "false",
   /** Platform-owned Claude key for the in-app assistant (a paid-plan feature). */
   assistantApiKey: process.env.ANTHROPIC_API_KEY || "",
+  /** Manual payments (wallet / InstaPay) until a payment gateway is connected. */
+  payment: {
+    phone: process.env.PAYMENT_PHONE || "+201200026457",
+    /** Egyptian pounds per US dollar, for showing the amount to transfer. */
+    egpRate: Number(process.env.EGP_RATE || 50),
+  },
   /** Owner accounts: every feature, no credit limits, and the admin console. */
   adminEmails: (process.env.ADMIN_EMAILS || "iaomn8406@gmail.com")
     .split(",")
