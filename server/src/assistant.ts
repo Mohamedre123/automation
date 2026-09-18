@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { assistantAllowance, assistantCost, chargeAssistant } from "./billing.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { rateLimit } from "./protection.js";
@@ -18,13 +19,12 @@ import { insertWorkflow, sanitizeGraph, updateInactiveWorkflow } from "./routes/
 const DEFAULT_MODEL = "claude-opus-5";
 const MAX_TOOL_ROUNDS = 12;
 
-type Access = { ok: true } | { ok: false; reason: "not_configured" | "plan" };
+type Access = { ok: true } | { ok: false; reason: "not_configured" | "plan" | "credits" | "assistant_credits" };
 
 async function assistantAccess(req: FastifyRequest): Promise<Access> {
   if (!config.assistantApiKey) return { ok: false, reason: "not_configured" };
-  if (config.adminEmails.includes(req.user.email.toLowerCase())) return { ok: true };
-  const row = await one<{ plan: string }>("SELECT plan FROM users WHERE id = $1", [req.user.id]);
-  return row && row.plan !== "free" ? { ok: true } : { ok: false, reason: "plan" };
+  const allowance = await assistantAllowance(req.user.id);
+  return allowance.ok ? { ok: true } : { ok: false, reason: allowance.reason };
 }
 
 let catalogJson: string | null = null;
@@ -320,6 +320,8 @@ async function streamChat(userId: string, history: StoredMessage[], workflowId: 
         }
       }
       message = await stream.finalMessage();
+      // Every round is billed by what it actually used.
+      await chargeAssistant(userId, assistantCost(message.usage ?? {})).catch(() => undefined);
     } catch (error) {
       if (signal.aborted) throw error;
       if (error instanceof Anthropic.RateLimitError) throw httpError(429, "المساعد عليه ضغط دلوقتي - جرّب كمان دقيقة");
@@ -406,7 +408,16 @@ export async function assistantRoutes(app: FastifyInstance) {
     await rateLimit(`assistant:${req.user.id}`, 40, 3600, "استخدمت المساعد كتير في الساعة دي - جرّب بعد شوية");
     const access = await assistantAccess(req);
     if (!access.ok) {
-      throw httpError(403, access.reason === "plan" ? "المساعد الذكي متاح في الباقة الاحترافية" : "المساعد الذكي مش متضبط على المنصة");
+      throw httpError(
+        403,
+        access.reason === "plan"
+          ? "المساعد الذكي متاح في باقة «احترافي» و«ماكس»"
+          : access.reason === "credits"
+            ? "الكريديت بتاعك خلص - جدّد الباقة من صفحة «الاشتراك»"
+            : access.reason === "assistant_credits"
+              ? "كريديت المساعد خلص الشهر ده - هيتجدد مع الباقة، أو اترقّى لباقة أعلى"
+              : "المساعد الذكي مش متضبط على المنصة",
+      );
     }
     const body = (req.body ?? {}) as { conversationId?: string; message?: string; workflowId?: string; model?: string };
     const text = String(body.message ?? "").trim();

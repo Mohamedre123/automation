@@ -10,6 +10,7 @@ export default defineConfig({
     proxy: {
       "/api": backend,
       "/webhook": backend,
+      "^/mcp/.+": backend,
     },
   },
 });

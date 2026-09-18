@@ -6,6 +6,7 @@ import { coreNodes } from "./core.js";
 import { feedNodes } from "./feeds.js";
 import { connectedNodes } from "./connected.js";
 import { smtpCredential, smtpNode } from "./smtp.js";
+import { mcpClientNode, mcpServerCredential } from "./mcpClient.js";
 import { customApiCredential, customApiNode } from "./custom.js";
 import { uploadPostCredential, uploadPostNode } from "./uploadpost.js";
 import { aggregatorCredentials, aggregatorNodes } from "./aggregators.js";
@@ -45,6 +46,7 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...marketingNodes,
   ...connectedNodes,
   smtpNode,
+  mcpClientNode,
   ...feedNodes,
   httpRequest,
   customApiNode,
@@ -56,6 +58,7 @@ export const nodeDefinitions: NodeDefinition[] = [
 export const credentialTypes: CredentialType[] = [
   ...aiCredentialTypes,
   smtpCredential,
+  mcpServerCredential,
   wasenderCredential,
   whatsappCloudCredential,
   telegramCredential,

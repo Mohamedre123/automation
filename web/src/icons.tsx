@@ -194,6 +194,40 @@ const paths: Record<string, ReactElement> = {
   edit: <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
   stop: <rect x="5" y="5" width="14" height="14" rx="2" />,
   fit: <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />,
+  crown: <path d="m2 7 5 4 5-7 5 7 5-4-2 12H4z" />,
+  shield: (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  plug: (
+    <>
+      <path d="M9 2v6M15 2v6" />
+      <path d="M6 8h12v4a6 6 0 0 1-12 0z" />
+      <path d="M12 18v4" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 21a7 7 0 0 1 14 0" />
+      <path d="M16 3.5a4 4 0 0 1 0 9M22 21a7 7 0 0 0-4-6.3" />
+    </>
+  ),
+  coins: (
+    <>
+      <ellipse cx="9" cy="6" rx="6" ry="3" />
+      <path d="M3 6v5c0 1.7 2.7 3 6 3s6-1.3 6-3V6" />
+      <path d="M9 14v4c0 1.7 2.7 3 6 3s6-1.3 6-3v-6c0-1.7-2.7-3-6-3" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M8 13h8M8 17h6" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 18, style }: { name: string; size?: number; style?: CSSProperties }) {
@@ -239,6 +273,7 @@ const appIcons: Record<string, string> = {
   social: "send",
   customai: "sparkles",
   customapi: "globe",
+  mcp: "plug",
 };
 
 export function AppGlyph({ app, size = 22 }: { app: string; size?: number }) {

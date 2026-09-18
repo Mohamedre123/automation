@@ -22,6 +22,10 @@
       "destination": "/api?__route=/webhook/$1"
     },
     {
+      "source": "/mcp/(.+)",
+      "destination": "/api?__route=/mcp/$1"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

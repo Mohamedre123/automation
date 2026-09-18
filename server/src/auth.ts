@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { hashPassword, randomToken, sha256, verifyPassword } from "./crypto.js";
 import { newId, now, one, run } from "./db.js";
 import { clientIp, rateLimit } from "./protection.js";
+import { isAdminEmail, startTrial } from "./billing.js";
 import { httpError, requireString } from "./errors.js";
 
 export interface AuthUser {
@@ -65,7 +66,9 @@ export async function authRoutes(app: FastifyInstance) {
       hashPassword(password),
       now(),
     ]);
-    return { token: await createSession(id), user: { id, email, name } };
+    // Every new account starts with the free trial.
+    await startTrial(id);
+    return { token: await createSession(id), user: { id, email, name, isAdmin: isAdminEmail(email) } };
   });
 
   app.post("/api/auth/login", async (req) => {
@@ -77,7 +80,7 @@ export async function authRoutes(app: FastifyInstance) {
     await rateLimit(`login-ip:${clientIp(req)}`, 30, 900, "محاولات دخول كتير - استنى ربع ساعة وجرّب تاني");
     const user = await one<AuthUser & { password_hash: string }>("SELECT id, email, name, password_hash FROM users WHERE email = $1", [email]);
     if (!user || !verifyPassword(password, user.password_hash)) throw httpError(401, "الإيميل أو كلمة السر غلط");
-    return { token: await createSession(user.id), user: { id: user.id, email: user.email, name: user.name } };
+    return { token: await createSession(user.id), user: { id: user.id, email: user.email, name: user.name, isAdmin: isAdminEmail(user.email) } };
   });
 
   app.post("/api/auth/logout", async (req) => {
@@ -86,5 +89,8 @@ export async function authRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  app.get("/api/auth/me", async (req) => ({ user: await authenticate(req) }));
+  app.get("/api/auth/me", async (req) => {
+    const user = await authenticate(req);
+    return { user: { ...user, isAdmin: isAdminEmail(user.email) } };
+  });
 }

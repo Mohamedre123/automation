@@ -6,6 +6,8 @@ import fastifyStatic from "@fastify/static";
 import { assistantRoutes } from "./assistant.js";
 import { authenticate, authRoutes } from "./auth.js";
 import { registerProtection, rateLimit } from "./protection.js";
+import { adminRoutes, billingRoutes, planRoutes } from "./billing.js";
+import { mcpServerRoutes, mcpToolboxRoutes } from "./mcp.js";
 import { config } from "./config.js";
 import { ensureDatabase, one } from "./db.js";
 import { credentialRoutes } from "./routes/credentials.js";
@@ -72,6 +74,8 @@ export async function buildApp() {
   await app.register(cronRoutes);
   await app.register(mediaRoutes);
   await app.register(publicRoutes);
+  await app.register(planRoutes);
+  await app.register(mcpServerRoutes);
   await app.register(async (api) => {
     api.addHook("onRequest", async (req) => {
       req.user = await authenticate(req);
@@ -83,6 +87,9 @@ export async function buildApp() {
     await api.register(miscRoutes);
     await api.register(mediaLibraryRoutes);
     await api.register(assistantRoutes);
+    await api.register(billingRoutes);
+    await api.register(mcpToolboxRoutes);
+    await api.register(adminRoutes);
   });
 
   // Local production build serves the frontend itself; on Vercel the CDN does.

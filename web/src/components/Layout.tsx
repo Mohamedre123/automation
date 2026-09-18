@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAccount, useAuth } from "../context";
 import { Icon } from "../icons";
 import { AssistantLauncher } from "./Assistant";
 import { BurgerButton, NavDrawer, type NavItem } from "./NavDrawer";
@@ -13,9 +14,38 @@ const links: NavItem[] = [
   { to: "/app/media", icon: "image", label: "الصور" },
   { to: "/app/executions", icon: "history", label: "التشغيلات" },
   { to: "/app/datastore", icon: "database", label: "البيانات" },
+  { to: "/app/mcp", icon: "plug", label: "MCP" },
 ];
 
+/** Remaining credits, always one tap from the subscription page. */
+function CreditPill() {
+  const { account } = useAccount();
+  if (!account) return null;
+  const low = !account.isAdmin && account.credits <= Math.max(20, account.monthlyCredits * 0.1);
+  return (
+    <Link to="/app/billing" className={`credit-pill ${low ? "low" : ""}`} title="الكريديت المتبقي">
+      <Icon name={account.isAdmin ? "crown" : "coins"} size={15} />
+      {account.isAdmin ? "أدمن" : account.credits.toLocaleString("en-US")}
+    </Link>
+  );
+}
+
+/** Out of credits (or the trial just ended): say so on every page, not only on the billing page. */
+function CreditNotice() {
+  const { account } = useAccount();
+  const location = useLocation();
+  if (!account || account.isAdmin || location.pathname === "/app/billing") return null;
+  if (account.credits > 0) return null;
+  return (
+    <div className="alert error credit-notice">
+      <Icon name="alert" size={16} /> الكريديت بتاعك خلص - السيناريوهات والمساعد واقفين.{" "}
+      <Link to="/app/billing">جدّد أو اترقّى من هنا</Link>
+    </div>
+  );
+}
+
 export function Layout() {
+  const { user } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -41,6 +71,7 @@ export function Layout() {
         </nav>
 
         <div className="nav-side">
+          <CreditPill />
           <ThemeToggle />
           <UserMenu />
           <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
@@ -50,7 +81,11 @@ export function Layout() {
       <NavDrawer
         open={menuOpen}
         onClose={closeMenu}
-        links={links}
+        links={[
+          ...links,
+          { to: "/app/billing", icon: "crown", label: "الاشتراك والكريديت" },
+          ...(user?.isAdmin ? [{ to: "/app/admin", icon: "users", label: "لوحة الأدمن" }] : []),
+        ]}
         homeTo="/app"
         footer={
           <Link className="btn block" to="/" onClick={closeMenu}>
@@ -60,6 +95,7 @@ export function Layout() {
       />
 
       <main className="main">
+        <CreditNotice />
         <Outlet />
       </main>
       <AssistantLauncher />

@@ -59,8 +59,8 @@ export const config = {
   allowSignup: process.env.ALLOW_SIGNUP !== "false",
   /** Platform-owned Claude key for the in-app assistant (a paid-plan feature). */
   assistantApiKey: process.env.ANTHROPIC_API_KEY || "",
-  /** Accounts that always get paid features (the owner testing before billing exists). */
-  adminEmails: (process.env.ADMIN_EMAILS || "")
+  /** Owner accounts: every feature, no credit limits, and the admin console. */
+  adminEmails: (process.env.ADMIN_EMAILS || "iaomn8406@gmail.com")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),

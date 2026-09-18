@@ -70,6 +70,14 @@ export function UserMenu() {
           <Link className="menu-item" to="/app" onClick={() => setOpen(false)} role="menuitem">
             <Icon name="flows" size={16} /> لوحة التحكم
           </Link>
+          <Link className="menu-item" to="/app/billing" onClick={() => setOpen(false)} role="menuitem">
+            <Icon name="crown" size={16} /> الاشتراك والكريديت
+          </Link>
+          {user.isAdmin && (
+            <Link className="menu-item" to="/app/admin" onClick={() => setOpen(false)} role="menuitem">
+              <Icon name="users" size={16} /> لوحة الأدمن
+            </Link>
+          )}
           <Link className="menu-item" to="/" onClick={() => setOpen(false)} role="menuitem">
             <Icon name="home" size={16} /> الصفحة الرئيسية
           </Link>

@@ -1,4 +1,5 @@
 import type { WorkflowGraph } from "./engine/types.js";
+import { moreTemplates } from "./templates-more.js";
 
 export interface Template {
   id: string;
@@ -1225,4 +1226,5 @@ export const templates: Template[] = [
       edges: [edge("1", "2"), edge("2", "3"), edge("3", "4", "true")],
     },
   },
+  ...moreTemplates,
 ];

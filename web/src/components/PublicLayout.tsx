@@ -10,6 +10,7 @@ export const PUBLIC_LINKS = [
   { to: "/features", label: "المميزات", icon: "sparkles" },
   { to: "/integrations", label: "التطبيقات", icon: "templates" },
   { to: "/templates", label: "التيمبلت", icon: "flows" },
+  { to: "/mcp", label: "MCP", icon: "plug" },
   { to: "/pricing", label: "الأسعار", icon: "key" },
   { to: "/contact", label: "تواصل معنا", icon: "send" },
 ];
@@ -111,7 +112,7 @@ export function PublicLayout() {
             </div>
             <div>
               <h4>المنصة</h4>
-              {PUBLIC_LINKS.slice(0, 3).map((link) => (
+              {PUBLIC_LINKS.slice(0, 4).map((link) => (
                 <Link key={link.to} to={link.to}>
                   {link.label}
                 </Link>
@@ -119,11 +120,18 @@ export function PublicLayout() {
             </div>
             <div>
               <h4>الشركة</h4>
-              {PUBLIC_LINKS.slice(3).map((link) => (
+              <Link to="/about">عن تدفّق</Link>
+              {PUBLIC_LINKS.slice(4).map((link) => (
                 <Link key={link.to} to={link.to}>
                   {link.label}
                 </Link>
               ))}
+            </div>
+            <div>
+              <h4>السياسات</h4>
+              <Link to="/privacy">سياسة الخصوصية</Link>
+              <Link to="/terms">شروط الاستخدام</Link>
+              <Link to="/refund">سياسة الاسترداد</Link>
             </div>
             <div>
               <h4>حسابك</h4>

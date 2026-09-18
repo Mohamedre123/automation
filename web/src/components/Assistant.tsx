@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, tokenStore } from "../api";
+import { useAccount } from "../context";
 import { Icon } from "../icons";
 import { Spinner, timeAgo } from "./ui";
 
@@ -112,8 +113,12 @@ function FormattedText({ text }: { text: string }) {
 
 export function AssistantLauncher() {
   const location = useLocation();
+  const { account } = useAccount();
   const [open, setOpen] = useState(false);
   const inEditor = location.pathname.startsWith("/app/workflows/");
+
+  // Only plans that include the assistant (Pro, Max, the trial) see it at all.
+  if (!account?.plan.assistant) return null;
 
   return (
     <>
@@ -127,6 +132,12 @@ export function AssistantLauncher() {
     </>
   );
 }
+
+const LOCKED: Record<string, { title: string; text: string }> = {
+  plan: { title: "المساعد الذكي في باقة احترافي وماكس", text: "المساعد بيبنيلك السيناريو كامل من وصف بسيط، وبيقرا سجل التشغيل ويقولك سبب أي خطأ وإزاي تحلّه." },
+  credits: { title: "الكريديت خلص", text: "رصيد المنصة خلص، فالسيناريوهات والمساعد واقفين لحد ما الرصيد يتجدد أو تترقّى لباقة أعلى." },
+  assistant_credits: { title: "كريديت المساعد خلص الشهر ده", text: "رصيد المساعد هيتجدد مع باقتك الشهر الجاي، أو تقدر تترقّى لباقة ماكس." },
+};
 
 function AssistantPanel({ onClose }: { onClose: () => void }) {
   const location = useLocation();
@@ -377,15 +388,11 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
           <div className="empty-icon">
             <Icon name="sparkles" size={28} />
           </div>
-          <h3>{status.reason === "plan" ? "المساعد الذكي في الباقة الاحترافية" : "المساعد لسه مش متفعّل"}</h3>
-          <p className="muted">
-            {status.reason === "plan"
-              ? "المساعد بيبنيلك السيناريو كامل من وصف بسيط، وبيقرا سجل التشغيل ويقولك سبب أي خطأ وإزاي تحلّه. هيكون متاح مع الباقة الاحترافية قريباً."
-              : "صاحب المنصة محتاج يضيف مفتاح Claude (ANTHROPIC_API_KEY) في إعدادات السيرفر."}
-          </p>
-          {status.reason === "plan" && (
-            <Link className="btn primary" to="/pricing" onClick={onClose}>
-              شوف الباقات
+          <h3>{LOCKED[status.reason ?? ""]?.title ?? "المساعد لسه مش متفعّل"}</h3>
+          <p className="muted">{LOCKED[status.reason ?? ""]?.text ?? "صاحب المنصة محتاج يضيف مفتاح Claude (ANTHROPIC_API_KEY) في إعدادات السيرفر."}</p>
+          {status.reason && LOCKED[status.reason] && (
+            <Link className="btn primary" to="/app/billing" onClick={onClose}>
+              صفحة الاشتراك
             </Link>
           )}
         </div>

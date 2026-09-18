@@ -4,7 +4,7 @@ import { Layout } from "./components/Layout";
 import { NetworkBackground } from "./components/NetworkBackground";
 import { PublicLayout } from "./components/PublicLayout";
 import { Spinner, ToastProvider } from "./components/ui";
-import { AuthProvider, MetaProvider, useAuth } from "./context";
+import { AccountProvider, AuthProvider, MetaProvider, useAuth } from "./context";
 import { AuthPage } from "./pages/AuthPage";
 import { Landing } from "./pages/Landing";
 
@@ -20,6 +20,14 @@ const Features = lazy(() => import("./pages/public/Features").then((m) => ({ def
 const Integrations = lazy(() => import("./pages/public/Integrations").then((m) => ({ default: m.Integrations })));
 const Pricing = lazy(() => import("./pages/public/Pricing").then((m) => ({ default: m.Pricing })));
 const PublicTemplates = lazy(() => import("./pages/public/PublicTemplates").then((m) => ({ default: m.PublicTemplates })));
+const Billing = lazy(() => import("./pages/Billing").then((m) => ({ default: m.Billing })));
+const Admin = lazy(() => import("./pages/Admin").then((m) => ({ default: m.Admin })));
+const Mcp = lazy(() => import("./pages/Mcp").then((m) => ({ default: m.Mcp })));
+const McpInfo = lazy(() => import("./pages/public/McpInfo").then((m) => ({ default: m.McpInfo })));
+const Privacy = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Privacy })));
+const Terms = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Terms })));
+const Refund = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Refund })));
+const About = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.About })));
 const Templates = lazy(() => import("./pages/Templates").then((m) => ({ default: m.Templates })));
 
 const PageLoading = () => (
@@ -55,6 +63,11 @@ export default function App() {
               <Route path="/templates" element={<PublicTemplates />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/mcp" element={<McpInfo />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/refund" element={<Refund />} />
             </Route>
             <Route path="/form/:path" element={<FormPage />} />
             <Route path="/login" element={<AuthPage mode="login" />} />
@@ -64,7 +77,9 @@ export default function App() {
               element={
                 <Protected>
                   <MetaProvider>
-                    <Layout />
+                    <AccountProvider>
+                      <Layout />
+                    </AccountProvider>
                   </MetaProvider>
                 </Protected>
               }
@@ -76,6 +91,9 @@ export default function App() {
               <Route path="executions" element={<Executions />} />
               <Route path="datastore" element={<DataStore />} />
               <Route path="media" element={<MediaLibrary />} />
+              <Route path="mcp" element={<Mcp />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

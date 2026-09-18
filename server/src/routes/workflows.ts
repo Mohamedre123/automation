@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { assertCanActivate } from "../billing.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { newId, now, one, parseJson, query, run } from "../db.js";
 import { executionFromRow } from "../engine/executor.js";
@@ -79,6 +80,16 @@ async function ensureTriggerPaths(graph: WorkflowGraph, workflowId: string) {
 function triggerColumns(graph: WorkflowGraph) {
   const info = triggerInfo(graph);
   return { type: info?.def.triggerType ?? null, path: info?.path || null };
+}
+
+/** How often the trigger checks or runs, in minutes (for the plan's minimum interval). */
+function triggerIntervals(graph: WorkflowGraph): number[] {
+  const info = triggerInfo(graph);
+  if (!info) return [];
+  const params = info.node.params ?? {};
+  if (info.node.type === "trigger.schedule") return params.mode === "interval" ? [Number(params.minutes ?? 15)] : [];
+  const field = info.def.fields.find((f) => f.key === "minutes");
+  return field ? [Number(params.minutes ?? field.default ?? 15)] : [];
 }
 
 function validateForActivation(graph: WorkflowGraph) {
@@ -251,6 +262,7 @@ export async function workflowRoutes(app: FastifyInstance) {
 
     if (active) {
       validateForActivation(workflow.graph);
+      await assertCanActivate(req.user.id, id, triggerIntervals(workflow.graph));
       let nextRunAt: string | null;
       try {
         ({ nextRunAt } = await activateTrigger(workflow));

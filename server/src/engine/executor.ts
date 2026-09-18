@@ -5,6 +5,7 @@ import { getNode } from "../nodes/index.js";
 import { resolveMediaMentions } from "../nodes/media.js";
 import { assertExecutionQuota } from "../protection.js";
 import { runInBackground } from "../background.js";
+import { assertCanRun, chargeRun } from "../billing.js";
 import { autoFillFromRun } from "./autofill.js";
 import { errorMessage, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
@@ -112,14 +113,15 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
   };
 
   // Recording the run and checking the daily quota happen together, not one after the other.
-  const [quota] = await Promise.allSettled([
+  const [quota, allowance] = await Promise.allSettled([
     assertExecutionQuota(workflow.userId),
+    assertCanRun(workflow.userId, workflow.id, mode),
     run(
       "INSERT INTO executions (id, workflow_id, user_id, status, mode, started_at, steps) VALUES ($1, $2, $3, 'running', $4, $5, '[]')",
       [id, workflow.id, workflow.userId, mode, startedAt],
     ),
   ]).then(async (results) => {
-    if (results[1].status === "rejected") throw results[1].reason;
+    if (results[2].status === "rejected") throw results[2].reason;
     return results;
   });
   onStart?.(id);
@@ -138,6 +140,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
 
   try {
     if (quota.status === "rejected") throw quota.reason;
+    if (allowance.status === "rejected") throw allowance.reason;
     const trigger = findTrigger(graph);
     if (!trigger) throw new Error("السيناريو محتاج محفّز (Trigger) في البداية");
     const outputs: Record<string, unknown> = { [trigger.id]: triggerOutput };
@@ -268,13 +271,17 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
 
   await Promise.allSettled(sideTasks);
   await progressChain;
-  await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5, current_node = NULL WHERE id = $6", [
+  // Credits: every step that actually ran (the trigger and skipped steps are free), at least 1 per run.
+  const credits = allowance.status === "fulfilled" ? Math.max(1, steps.filter((s, i) => i > 0 && s.status !== "skipped").length) : 0;
+  if (credits) await chargeRun(workflow.userId, credits).catch((e) => console.error(`[execution ${id}] charge failed: ${errorMessage(e)}`));
+  await run("UPDATE executions SET status = $1, finished_at = $2, duration_ms = $3, error = $4, steps = $5, current_node = NULL, credits = $7 WHERE id = $6", [
     record.status,
     record.finishedAt,
     record.durationMs,
     record.error,
     JSON.stringify(steps),
     id,
+    credits,
   ]);
   // Trimming old history is housekeeping: don't make the caller wait for it.
   runInBackground(

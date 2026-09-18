@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, tokenStore } from "./api";
 import { APP_COLORS } from "./components/AppBadge";
-import type { CredentialTypeDef, Meta, NodeDefinition, User } from "./types";
+import type { AccountInfo, CredentialTypeDef, Meta, NodeDefinition, PlanDef, SubscriptionRequest, User } from "./types";
 
 /* ---------- auth ---------- */
 interface AuthState {
@@ -90,3 +90,32 @@ export function MetaProvider({ children }: { children: ReactNode }) {
 }
 
 export const useMeta = () => useContext(MetaContext);
+
+/* ---------- plan & credits ---------- */
+interface AccountState {
+  account: AccountInfo | null;
+  plans: PlanDef[];
+  requests: SubscriptionRequest[];
+  refresh: () => void;
+}
+
+const AccountContext = createContext<AccountState>({ account: null, plans: [], requests: [], refresh: () => {} });
+
+export function AccountProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<Omit<AccountState, "refresh">>({ account: null, plans: [], requests: [] });
+  const refresh = useCallback(() => {
+    api<{ account: AccountInfo; plans: PlanDef[]; requests: SubscriptionRequest[] }>("/billing")
+      .then((res) => setState({ account: res.account, plans: res.plans, requests: res.requests }))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    refresh();
+    // Credits move as scenarios run: keep the counter fresh.
+    const timer = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
+  const value = useMemo(() => ({ ...state, refresh }), [state, refresh]);
+  return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
+}
+
+export const useAccount = () => useContext(AccountContext);

@@ -167,4 +167,47 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  isAdmin?: boolean;
+}
+
+export type PlanKey = "free" | "trial" | "core" | "pro" | "max";
+
+export interface PlanDef {
+  key: PlanKey;
+  name: string;
+  tagline: string;
+  price: { monthly: number; yearly: number };
+  credits: number;
+  assistantCredits: number;
+  maxActiveScenarios: number;
+  minIntervalMinutes: number;
+  assistant: boolean;
+  logDays: number;
+  priority: boolean;
+  features: string[];
+}
+
+export interface AccountInfo {
+  plan: { key: PlanKey; name: string; assistant: boolean };
+  period: "monthly" | "yearly";
+  expiresAt: string | null;
+  trialEndsAt: string | null;
+  credits: number;
+  assistantCredits: number;
+  creditsUsed: number;
+  assistantUsed: number;
+  monthlyCredits: number;
+  monthlyAssistantCredits: number;
+  resetsAt: string | null;
+  isAdmin: boolean;
+  limits: { maxActiveScenarios: number; minIntervalMinutes: number };
+}
+
+export interface SubscriptionRequest {
+  id: string;
+  plan: PlanKey;
+  period: "monthly" | "yearly";
+  status: "pending" | "done" | "rejected";
+  note: string;
+  createdAt: string;
 }
