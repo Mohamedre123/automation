@@ -28,6 +28,15 @@ const Privacy = lazy(() => import("./pages/public/Legal").then((m) => ({ default
 const Terms = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Terms })));
 const Refund = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Refund })));
 const About = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.About })));
+const Usage = lazy(() => import("./pages/Account").then((m) => ({ default: m.Usage })));
+const Links = lazy(() => import("./pages/Account").then((m) => ({ default: m.Links })));
+const Settings = lazy(() => import("./pages/Account").then((m) => ({ default: m.Settings })));
+const Help = lazy(() => import("./pages/public/More").then((m) => ({ default: m.Help })));
+const AiAgents = lazy(() => import("./pages/public/More").then((m) => ({ default: m.AiAgents })));
+const Changelog = lazy(() => import("./pages/public/More").then((m) => ({ default: m.Changelog })));
+const Status = lazy(() => import("./pages/public/More").then((m) => ({ default: m.Status })));
+const Security = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Security })));
+const Cookies = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Cookies })));
 const Templates = lazy(() => import("./pages/Templates").then((m) => ({ default: m.Templates })));
 
 const PageLoading = () => (
@@ -69,6 +78,12 @@ export default function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/refund" element={<Refund />} />
+              <Route path="/security" element={<Security />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/ai-agents" element={<AiAgents />} />
+              <Route path="/changelog" element={<Changelog />} />
+              <Route path="/status" element={<Status />} />
             </Route>
             <Route path="/form/:path" element={<FormPage />} />
             <Route path="/login" element={<AuthPage mode="login" />} />
@@ -93,6 +108,9 @@ export default function App() {
               <Route path="mcp" element={<Mcp />} />
               <Route path="billing" element={<Billing />} />
               <Route path="admin" element={<Admin />} />
+              <Route path="usage" element={<Usage />} />
+              <Route path="links" element={<Links />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

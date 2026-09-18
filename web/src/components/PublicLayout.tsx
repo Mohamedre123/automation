@@ -121,6 +121,10 @@ export function PublicLayout() {
             <div>
               <h4>الشركة</h4>
               <Link to="/about">عن تدفّق</Link>
+              <Link to="/ai-agents">AI Agents</Link>
+              <Link to="/help">مركز المساعدة</Link>
+              <Link to="/changelog">الجديد</Link>
+              <Link to="/status">حالة الخدمة</Link>
               {PUBLIC_LINKS.slice(4).map((link) => (
                 <Link key={link.to} to={link.to}>
                   {link.label}
@@ -132,6 +136,8 @@ export function PublicLayout() {
               <Link to="/privacy">سياسة الخصوصية</Link>
               <Link to="/terms">شروط الاستخدام</Link>
               <Link to="/refund">سياسة الاسترداد</Link>
+              <Link to="/security">الأمان</Link>
+              <Link to="/cookies">الكوكيز</Link>
             </div>
             <div>
               <h4>حسابك</h4>

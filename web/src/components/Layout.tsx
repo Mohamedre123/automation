@@ -106,6 +106,9 @@ export function Layout() {
         links={[
           ...links,
           { to: "/app/billing", icon: "crown", label: "الاشتراك والكريديت" },
+          { to: "/app/usage", icon: "coins", label: "استهلاك الكريديت" },
+          { to: "/app/links", icon: "webhook", label: "الروابط والـ Webhooks" },
+          { to: "/app/settings", icon: "tools", label: "إعدادات الحساب" },
           ...(user?.isAdmin ? [{ to: "/app/admin", icon: "users", label: "لوحة الأدمن" }] : []),
         ]}
         homeTo="/app"

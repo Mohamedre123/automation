@@ -134,6 +134,8 @@ export function Admin() {
         </div>
       </div>
 
+      <SettingsCard />
+
       {pending.length > 0 && (
         <div className="card" style={{ padding: 18, marginBottom: 22 }}>
           <h3 style={{ marginBottom: 4 }}>
@@ -230,6 +232,75 @@ export function Admin() {
       </div>
 
       {managing && <ManageModal user={managing} plans={data.plans} onClose={() => setManaging(null)} onPlan={setPlan} onCredits={load} />}
+    </div>
+  );
+}
+
+/** Payment details and the assistant model: saved in the database, live immediately (no redeploy). */
+function SettingsCard() {
+  const toast = useToast();
+  const { refresh } = useAccount();
+  const [form, setForm] = useState<{ egpRate: string; paymentPhone: string; assistantModel: string } | null>(null);
+  const [models, setModels] = useState<{ id: string; name: string; cost?: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api<{ egpRate: number; phone: string; assistantModel: string }>("/admin/settings")
+      .then((res) => setForm({ egpRate: String(res.egpRate), paymentPhone: res.phone, assistantModel: res.assistantModel }))
+      .catch(() => {});
+    api<{ models: { id: string; name: string; cost?: string }[] }>("/assistant/models")
+      .then((res) => setModels(res.models))
+      .catch(() => {});
+  }, []);
+
+  if (!form) return null;
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api("/admin/settings", { method: "PUT", body: form });
+      toast("الإعدادات اتحفظت ✓ واتطبقت على الموقع فوراً", "success");
+      refresh();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 22 }}>
+      <h3 style={{ marginBottom: 4 }}>
+        <Icon name="tools" size={17} /> إعدادات الدفع والمساعد
+      </h3>
+      <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
+        أي تغيير هنا بيتطبق على الموقع كله في خلال ثواني، من غير ما تعيد النشر.
+      </p>
+      <div className="settings-grid">
+        <div className="field">
+          <label className="label">سعر الدولار بالجنيه</label>
+          <input className="input" type="number" step="0.01" min={1} value={form.egpRate} onChange={(e) => setForm({ ...form, egpRate: e.target.value })} />
+          <div className="help">بيتحسب بيه المبلغ بالجنيه في شاشة الدفع.</div>
+        </div>
+        <div className="field">
+          <label className="label">رقم الدفع (محفظة / إنستاباي / واتساب)</label>
+          <input className="input mono" dir="ltr" value={form.paymentPhone} onChange={(e) => setForm({ ...form, paymentPhone: e.target.value })} />
+        </div>
+        <div className="field">
+          <label className="label">الموديل الافتراضي للمساعد</label>
+          <select className="input" value={form.assistantModel} onChange={(e) => setForm({ ...form, assistantModel: e.target.value })}>
+            {!models.some((m) => m.id === form.assistantModel) && <option value={form.assistantModel}>{form.assistantModel}</option>}
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.cost ? `${m.name} · ${m.cost}` : m.name}
+              </option>
+            ))}
+          </select>
+          <div className="help">كل كريديت مساعد = سنت من فلوس Claude. الموديل الأرخص بيخلّي كريديت العملاء يكفّي رسايل أكتر.</div>
+        </div>
+      </div>
+      <button className="btn primary" onClick={save} disabled={saving}>
+        {saving ? <Spinner size={14} /> : "حفظ الإعدادات"}
+      </button>
     </div>
   );
 }

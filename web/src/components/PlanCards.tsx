@@ -14,7 +14,7 @@ export function PeriodSwitch({ period, onChange }: { period: Period; onChange: (
         شهري
       </button>
       <button role="tab" aria-selected={period === "yearly"} className={period === "yearly" ? "on" : ""} onClick={() => onChange("yearly")}>
-        سنوي <span className="save-pill">وفّر 15%</span>
+        سنوي <span className="save-pill">وفّر 20%</span>
       </button>
     </div>
   );
@@ -53,11 +53,16 @@ export function PlanCards({
             </div>
             <div className="plan-credits">
               <div>
-                <Icon name="coins" size={15} /> <strong>{number(plan.credits + plan.assistantCredits)}</strong> كريديت / شهر
+                <Icon name="coins" size={15} /> <strong>{number(plan.credits)}</strong> كريديت للمنصة / شهر
               </div>
-              {plan.assistantCredits > 0 && (
+              {plan.assistantCredits > 0 ? (
+                <div>
+                  <Icon name="sparkles" size={15} /> <strong>{number(plan.assistantCredits)}</strong> للمساعد الذكي
+                  <span className="faint" style={{ fontSize: 12 }}> (≈ {number(Math.round(plan.assistantCredits / 3))} رسالة)</span>
+                </div>
+              ) : (
                 <div className="faint" style={{ fontSize: 12.5 }}>
-                  {number(plan.credits)} للمنصة + {number(plan.assistantCredits)} للمساعد الذكي
+                  من غير المساعد الذكي
                 </div>
               )}
             </div>
@@ -87,7 +92,7 @@ export const CREDIT_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "كريديت المساعد الذكي ده إيه؟",
-    a: "المساعد اللي بيبني السيناريوهات ويصلّح الأخطاء شغال على حساب المنصة، وليه رصيد لوحده في باقة احترافي وماكس. الرسالة العادية بتاخد تقريباً من 3 لـ 10 كريديت حسب طولها، وأول رسالة في كل محادثة جديدة بتاخد أكتر شوية.",
+    a: "المساعد اللي بيبني السيناريوهات ويصلّح الأخطاء شغال على حسابنا، وليه رصيد لوحده في باقة احترافي وأعمال. الرسالة العادية بتاخد من 2 لـ 4 كريديت، وبناء سيناريو كامل من 9 لـ 22 كريديت حسب الموديل اللي بتختاره (الموديلات الأرخص بتاخد أقل).",
   },
   {
     q: "إيه اللي بيحصل لما الكريديت يخلص؟",

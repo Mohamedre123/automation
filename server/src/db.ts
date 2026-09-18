@@ -126,6 +126,11 @@ const SCHEMA = `
   ALTER TABLE subscription_requests ADD COLUMN IF NOT EXISTS pack TEXT NOT NULL DEFAULT '';
   ALTER TABLE subscription_requests ADD COLUMN IF NOT EXISTS amount TEXT NOT NULL DEFAULT '';
 
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS mcp_toolboxes (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

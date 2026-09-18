@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { assistantAllowance, assistantCost, chargeAssistant } from "./billing.js";
+import { ASSISTANT_CREDIT_USD, assistantAllowance, assistantUsd, chargeAssistant, getSetting } from "./billing.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { rateLimit } from "./protection.js";
@@ -17,6 +17,13 @@ import { insertWorkflow, sanitizeGraph, updateInactiveWorkflow } from "./routes/
  */
 
 const DEFAULT_MODEL = "claude-opus-5";
+/** The owner picks the default model in the admin console (cheaper models stretch assistant credits further). */
+const defaultModel = async () => (await getSetting("assistantModel")) || DEFAULT_MODEL;
+/** Relative cost shown next to each model in the picker. */
+function modelCostLabel(id: string) {
+  const price = assistantUsd(id, { input_tokens: 1_000_000 });
+  return price <= 1 ? "الأرخص" : price <= 3 ? "اقتصادي" : price <= 5 ? "قياسي" : "الأغلى";
+}
 const MAX_TOOL_ROUNDS = 12;
 
 type Access = { ok: true } | { ok: false; reason: "not_configured" | "plan" | "credits" | "assistant_credits" };
@@ -280,7 +287,15 @@ async function availableModels() {
 /* ---------- streaming chat ---------- */
 type Emit = (event: Record<string, unknown>) => void;
 
-async function streamChat(userId: string, history: StoredMessage[], workflowId: string | undefined, model: string, emit: Emit, signal: AbortSignal) {
+async function streamChat(
+  userId: string,
+  history: StoredMessage[],
+  workflowId: string | undefined,
+  model: string,
+  emit: Emit,
+  signal: AbortSignal,
+  meter: { usd: number },
+) {
   const client = new Anthropic({ apiKey: config.assistantApiKey, maxRetries: 2 });
   const trimmed = history.filter((m) => !m.error && m.text?.trim()).slice(-30);
   const firstUser = trimmed.findIndex((m) => m.role === "user");
@@ -291,9 +306,9 @@ async function streamChat(userId: string, history: StoredMessage[], workflowId: 
     last.content = `(المستخدم فاتح دلوقتي السيناريو رقم ${workflowId} في المحرر)\n\n${last.content as string}`;
   }
 
-  // Stable prefix (instructions + node catalog) is cached across requests.
+  // Stable prefix (instructions + node catalog), identical for every customer: cached for an hour so it is paid for once, not per conversation.
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
-    { type: "text", text: `${INSTRUCTIONS}\n\n# كتالوج الخطوات المتاحة (JSON)\n${catalog()}`, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `${INSTRUCTIONS}\n\n# كتالوج الخطوات المتاحة (JSON)\n${catalog()}`, cache_control: { type: "ephemeral", ttl: "1h" } as any },
   ];
   const actions: AssistantAction[] = [];
   let reply = "";
@@ -320,8 +335,8 @@ async function streamChat(userId: string, history: StoredMessage[], workflowId: 
         }
       }
       message = await stream.finalMessage();
-      // Every round is billed by what it actually used.
-      await chargeAssistant(userId, assistantCost(message.usage ?? {})).catch(() => undefined);
+      // What this round really cost on Claude (the model that answered, in case of a fallback).
+      meter.usd += assistantUsd(String(message.model ?? model), message.usage ?? {});
     } catch (error) {
       if (signal.aborted) throw error;
       if (error instanceof Anthropic.RateLimitError) throw httpError(429, "المساعد عليه ضغط دلوقتي - جرّب كمان دقيقة");
@@ -377,13 +392,13 @@ const TOOL_STATUS: Record<string, string> = {
 export async function assistantRoutes(app: FastifyInstance) {
   app.get("/api/assistant/status", async (req) => {
     const access = await assistantAccess(req);
-    return access.ok ? { available: true, defaultModel: DEFAULT_MODEL } : { available: false, reason: access.reason };
+    return access.ok ? { available: true, defaultModel: await defaultModel() } : { available: false, reason: access.reason };
   });
 
   app.get("/api/assistant/models", async (req) => {
     const access = await assistantAccess(req);
-    if (!access.ok) return { models: [], defaultModel: DEFAULT_MODEL };
-    return { models: await availableModels(), defaultModel: DEFAULT_MODEL };
+    if (!access.ok) return { models: [], defaultModel: await defaultModel() };
+    return { models: (await availableModels()).map((m) => ({ ...m, cost: modelCostLabel(m.id) })), defaultModel: await defaultModel() };
   });
 
   app.get("/api/assistant/conversations", async (req) =>
@@ -423,7 +438,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     const text = String(body.message ?? "").trim();
     if (!text) throw httpError(400, "ابعت رسالة الأول");
     if (text.length > 8000) throw httpError(400, "الرسالة طويلة جداً");
-    const model = /^claude-[a-z0-9.-]+$/i.test(String(body.model ?? "")) ? String(body.model) : DEFAULT_MODEL;
+    const model = /^claude-[a-z0-9.-]+$/i.test(String(body.model ?? "")) ? String(body.model) : await defaultModel();
 
     const existing = body.conversationId ? await loadConversation(req.user.id, String(body.conversationId)) : undefined;
     const conversationId = existing?.id ?? newId();
@@ -448,6 +463,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     });
     emit({ type: "conversation", id: conversationId, title, model });
 
+    const meter = { usd: 0 };
     try {
       const result = await streamChat(
         req.user.id,
@@ -456,6 +472,7 @@ export async function assistantRoutes(app: FastifyInstance) {
         model,
         emit,
         controller.signal,
+        meter,
       );
       history.push({ role: "assistant", text: result.reply, actions: result.actions });
       await saveConversation(req.user.id, conversationId, title, model, history, false);
@@ -466,6 +483,10 @@ export async function assistantRoutes(app: FastifyInstance) {
       await saveConversation(req.user.id, conversationId, title, model, history, false).catch(() => undefined);
       emit({ type: "error", message });
     } finally {
+      // 1 assistant credit = 1 cent of Claude usage, rounded up per message.
+      const credits = Math.ceil(meter.usd / ASSISTANT_CREDIT_USD - 1e-9);
+      if (credits > 0) await chargeAssistant(req.user.id, credits).catch(() => undefined);
+      emit({ type: "credits", spent: credits });
       res.end();
     }
   });

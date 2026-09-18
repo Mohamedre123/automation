@@ -129,6 +129,18 @@ export function UserMenu() {
           <Link className="menu-item" to="/app/billing" onClick={() => setOpen(false)} role="menuitem">
             <Icon name="crown" size={16} /> الاشتراك والكريديت
           </Link>
+          <Link className="menu-item" to="/app/usage" onClick={() => setOpen(false)} role="menuitem">
+            <Icon name="coins" size={16} /> استهلاك الكريديت
+          </Link>
+          <Link className="menu-item" to="/app/links" onClick={() => setOpen(false)} role="menuitem">
+            <Icon name="webhook" size={16} /> الروابط والـ Webhooks
+          </Link>
+          <Link className="menu-item" to="/app/settings" onClick={() => setOpen(false)} role="menuitem">
+            <Icon name="tools" size={16} /> إعدادات الحساب
+          </Link>
+          <Link className="menu-item" to="/help" onClick={() => setOpen(false)} role="menuitem">
+            <Icon name="search" size={16} /> مركز المساعدة
+          </Link>
           {user.isAdmin && (
             <Link className="menu-item" to="/app/admin" onClick={() => setOpen(false)} role="menuitem">
               <Icon name="users" size={16} /> لوحة الأدمن

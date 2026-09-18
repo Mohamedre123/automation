@@ -36,7 +36,7 @@ export const PLANS: Record<PlanKey, Plan> = {
   free: {
     key: "free",
     name: "مجاني",
-    tagline: "للتجربة وأول سيناريو ليك",
+    tagline: "جرّب وابني أول بوت أو أتمتة ليك",
     price: { monthly: 0, yearly: 0 },
     credits: 1_000,
     assistantCredits: 0,
@@ -45,7 +45,7 @@ export const PLANS: Record<PlanKey, Plan> = {
     assistant: false,
     logDays: 7,
     priority: false,
-    features: ["1,000 كريديت في الشهر", "2 سيناريو شغالين في نفس الوقت", "كل التطبيقات والتيمبلت", "أقل فترة بين التشغيلات 15 دقيقة", "خادم MCP لسيناريوهاتك"],
+    features: ["1,000 كريديت كل شهر", "2 سيناريو شغالين", "كل التطبيقات والتيمبلت العربي", "بوتات واتساب وتيليجرام بالذكاء الاصطناعي", "تشغيل كل 15 دقيقة"],
     public: true,
   },
   trial: {
@@ -54,63 +54,76 @@ export const PLANS: Record<PlanKey, Plan> = {
     tagline: "3 أيام بكل مميزات الاحترافي",
     price: { monthly: 0, yearly: 0 },
     credits: 1_000,
-    assistantCredits: 150,
+    assistantCredits: 50,
     maxActiveScenarios: 0,
     minIntervalMinutes: 1,
     assistant: true,
     logDays: 30,
     priority: true,
-    features: ["كل مميزات الاحترافي لمدة 3 أيام", "1,000 كريديت للمنصة + 150 للمساعد الذكي"],
+    features: ["كل مميزات الاحترافي لمدة 3 أيام", "1,000 كريديت للمنصة + 50 للمساعد الذكي"],
     public: false,
   },
   core: {
     key: "core",
-    name: "أساسي",
-    tagline: "لأتمتة شغلك اليومي من غير حدود",
-    price: { monthly: 10.59, yearly: 9 },
-    credits: 10_000,
+    name: "انطلاقة",
+    tagline: "لمشروعك الصغير أو متجرك وهو بيكبر",
+    price: { monthly: 5, yearly: 4 },
+    credits: 5_000,
     assistantCredits: 0,
-    maxActiveScenarios: 0,
-    minIntervalMinutes: 1,
+    maxActiveScenarios: 10,
+    minIntervalMinutes: 5,
     assistant: false,
     logDays: 30,
     priority: false,
-    features: ["10,000 كريديت في الشهر", "سيناريوهات شغالة بلا حدود", "جدولة كل دقيقة", "سجل تشغيل 30 يوم", "خادم MCP + ربط بأي API"],
+    features: [
+      "5,000 كريديت كل شهر",
+      "10 سيناريوهات شغالين",
+      "استوديو المحتوى: صور وكابشن ونشر على كل المنصات",
+      "تشغيل كل 5 دقايق",
+      "خادم MCP + ربط بأي API",
+    ],
     public: true,
   },
   pro: {
     key: "pro",
     name: "احترافي",
     tagline: "المساعد الذكي بيبني ويصلّح معاك",
-    price: { monthly: 18.82, yearly: 16 },
-    credits: 8_000,
-    assistantCredits: 2_000,
+    price: { monthly: 10, yearly: 8 },
+    credits: 12_000,
+    assistantCredits: 200,
     maxActiveScenarios: 0,
     minIntervalMinutes: 1,
     assistant: true,
     logDays: 30,
     priority: true,
     features: [
-      "10,000 كريديت في الشهر: 8,000 للمنصة + 2,000 للمساعد",
-      "المساعد الذكي: يبني السيناريو من وصفك ويصلّح الأخطاء",
+      "12,000 كريديت للمنصة + 200 للمساعد الذكي",
+      "المساعد الذكي بالعربي: يبني السيناريو من وصفك ويصلّح الأخطاء",
+      "سيناريوهات بلا حدود وتشغيل كل دقيقة",
       "أولوية في التنفيذ",
-      "كل مميزات الأساسي",
+      "كل مميزات انطلاقة",
     ],
     public: true,
   },
   max: {
     key: "max",
-    name: "ماكس",
-    tagline: "للوكالات والشغل الكبير",
-    price: { monthly: 34.12, yearly: 29 },
-    credits: 16_000,
-    assistantCredits: 4_000,
+    name: "أعمال",
+    tagline: "للوكالات والفرق والشغل الكبير",
+    price: { monthly: 25, yearly: 20 },
+    credits: 40_000,
+    assistantCredits: 600,
     maxActiveScenarios: 0,
     minIntervalMinutes: 1,
     assistant: true,
     logDays: 60,
     priority: true,
-    features: ["20,000 كريديت في الشهر: 16,000 للمنصة + 4,000 للمساعد", "سجل تشغيل 60 يوم", "دعم مباشر بأولوية", "كل مميزات الاحترافي"],
+    features: [
+      "40,000 كريديت للمنصة + 600 للمساعد الذكي",
+      "سجل تشغيل 60 يوم",
+      "مساعدة مباشرة منّا في بناء أول سيناريوهات",
+      "دعم على واتساب بأولوية",
+      "كل مميزات الاحترافي",
+    ],
     public: true,
   },
 };
@@ -127,18 +140,66 @@ export interface CreditPack {
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
-  { key: "c2k", name: "2,000 كريديت", credits: 2_000, assistantCredits: 0, price: 4 },
-  { key: "c5k", name: "5,000 كريديت", credits: 5_000, assistantCredits: 0, price: 9 },
-  { key: "c12k", name: "12,000 كريديت", credits: 12_000, assistantCredits: 0, price: 18 },
-  { key: "a500", name: "500 كريديت للمساعد", credits: 0, assistantCredits: 500, price: 5 },
-  { key: "a1500", name: "1,500 كريديت للمساعد", credits: 0, assistantCredits: 1_500, price: 12 },
+  { key: "c5k", name: "5,000 كريديت", credits: 5_000, assistantCredits: 0, price: 3 },
+  { key: "c15k", name: "15,000 كريديت", credits: 15_000, assistantCredits: 0, price: 7 },
+  { key: "c40k", name: "40,000 كريديت", credits: 40_000, assistantCredits: 0, price: 15 },
+  { key: "a200", name: "200 كريديت للمساعد", credits: 0, assistantCredits: 200, price: 4 },
+  { key: "a600", name: "600 كريديت للمساعد", credits: 0, assistantCredits: 600, price: 10 },
 ];
 
-export const paymentInfo = () => ({
-  phone: config.payment.phone,
-  egpRate: config.payment.egpRate,
-  methods: ["محفظة إلكترونية (فودافون كاش / اتصالات / أورانج / وي)", "إنستاباي InstaPay"],
-});
+/*
+ * The assistant runs on the owner's Claude key, so its credits are real money: 1 assistant credit = 1 US cent
+ * of Claude usage, priced per model (per million tokens). Cache reads cost 10% of input, cache writes 125% (5 min) or 200% (1 hour).
+ */
+export const ASSISTANT_CREDIT_USD = 0.01;
+const MODEL_PRICES: [RegExp, { input: number; output: number }][] = [
+  [/fable|mythos/, { input: 10, output: 50 }],
+  [/opus/, { input: 5, output: 25 }],
+  [/sonnet-5/, { input: 2, output: 10 }],
+  [/sonnet/, { input: 3, output: 15 }],
+  [/haiku/, { input: 1, output: 5 }],
+];
+
+type Usage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation?: { ephemeral_1h_input_tokens?: number; ephemeral_5m_input_tokens?: number };
+};
+
+/** What one Claude reply cost, in dollars (unknown models are priced like the most expensive tier). */
+export function assistantUsd(model: string, usage: Usage) {
+  const price = MODEL_PRICES.find(([pattern]) => pattern.test(model))?.[1] ?? { input: 10, output: 50 };
+  // Cache writes: 1.25x input for the 5-minute cache, 2x for the 1-hour one.
+  const written = usage.cache_creation_input_tokens ?? 0;
+  const hour = Math.min(written, usage.cache_creation?.ephemeral_1h_input_tokens ?? 0);
+  const input = (usage.input_tokens ?? 0) + 2 * hour + 1.25 * (written - hour) + 0.1 * (usage.cache_read_input_tokens ?? 0);
+  return (input * price.input + (usage.output_tokens ?? 0) * price.output) / 1_000_000;
+}
+
+/** Owner-editable settings (admin console), falling back to env / defaults. */
+let settingsCache: { at: number; values: Record<string, string> } | null = null;
+async function settings() {
+  if (settingsCache && Date.now() - settingsCache.at < 30_000) return settingsCache.values;
+  const rows = await query<{ key: string; value: string }>("SELECT key, value FROM app_settings");
+  settingsCache = { at: Date.now(), values: Object.fromEntries(rows.map((r) => [r.key, r.value])) };
+  return settingsCache.values;
+}
+
+export async function getSetting(key: string): Promise<string | undefined> {
+  return (await settings())[key] || undefined;
+}
+
+export async function paymentInfo() {
+  const values = await settings();
+  const rate = Number(values.egpRate);
+  return {
+    phone: values.paymentPhone || config.payment.phone,
+    egpRate: rate > 0 ? rate : config.payment.egpRate,
+    methods: ["محفظة إلكترونية (فودافون كاش / اتصالات / أورانج / وي)", "إنستاباي InstaPay"],
+  };
+}
 
 /** Steps that talk to an app or an AI cost a credit; logic, data and "typing..." steps are free. */
 export function billableSteps(steps: { type: string; status: string }[], groupOf: (type: string) => string | undefined) {
@@ -309,16 +370,6 @@ export async function assistantAllowance(userId: string): Promise<{ ok: true; ac
   return { ok: true, account };
 }
 
-/**
- * Assistant credits follow what a reply costs: about 1 credit per 2,000 tokens, where written tokens weigh
- * 5x and the platform's own instructions (cached) weigh a tenth - a normal message is ~2-5 credits.
- */
-export function assistantCost(usage: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number }) {
-  const weighted =
-    (usage.input_tokens ?? 0) + 0.1 * ((usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0)) + 5 * (usage.output_tokens ?? 0);
-  return Math.max(1, Math.ceil(weighted / 2000));
-}
-
 export async function chargeAssistant(userId: string, credits: number) {
   if (credits <= 0 || (await isAdminUser(userId))) return;
   await run(
@@ -378,7 +429,7 @@ const planList = () => Object.values(PLANS).filter((p) => p.public);
 
 /** Public: the pricing page. */
 export async function planRoutes(app: FastifyInstance) {
-  app.get("/api/plans", async () => ({ plans: planList(), trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: paymentInfo() }));
+  app.get("/api/plans", async () => ({ plans: planList(), trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: await paymentInfo() }));
 }
 
 /** Logged-in customer: their plan, credits and subscription requests. */
@@ -389,7 +440,24 @@ export async function billingRoutes(app: FastifyInstance) {
       `SELECT id, kind, plan, pack, amount, period, status, note, created_at AS "createdAt" FROM subscription_requests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10`,
       [req.user.id],
     );
-    return { account: publicAccount(account), plans: planList(), requests, trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: paymentInfo() };
+    return { account: publicAccount(account), plans: planList(), requests, trialDays: TRIAL_DAYS, packs: CREDIT_PACKS, payment: await paymentInfo() };
+  });
+
+  /** Where the credits went: per day and per scenario over the last 30 days. */
+  app.get("/api/billing/usage", async (req) => {
+    const since = new Date(Date.now() - 30 * DAY).toISOString();
+    const days = await query<{ day: string; credits: number; runs: number }>(
+      `SELECT substr(started_at, 1, 10) AS day, COALESCE(SUM(credits), 0)::int AS credits, COUNT(*)::int AS runs
+       FROM executions WHERE user_id = $1 AND started_at >= $2 GROUP BY 1 ORDER BY 1`,
+      [req.user.id, since],
+    );
+    const scenarios = await query<{ id: string; name: string; credits: number; runs: number }>(
+      `SELECT w.id, w.name, COALESCE(SUM(e.credits), 0)::int AS credits, COUNT(e.id)::int AS runs
+       FROM executions e JOIN workflows w ON w.id = e.workflow_id
+       WHERE e.user_id = $1 AND e.started_at >= $2 GROUP BY w.id, w.name ORDER BY credits DESC, runs DESC LIMIT 20`,
+      [req.user.id, since],
+    );
+    return { days, scenarios };
   });
 
   app.post("/api/billing/request", async (req) => {
@@ -433,6 +501,36 @@ export async function billingRoutes(app: FastifyInstance) {
 export async function adminRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (req) => {
     if (!isAdminEmail(req.user.email)) throw httpError(403, "الصفحة دي للأدمن بس");
+  });
+
+  app.get("/api/admin/settings", async () => ({
+    ...(await paymentInfo()),
+    assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5",
+    assistantCreditUsd: ASSISTANT_CREDIT_USD,
+  }));
+
+  app.put("/api/admin/settings", async (req) => {
+    const body = (req.body ?? {}) as { egpRate?: number | string; paymentPhone?: string; assistantModel?: string };
+    const updates: [string, string][] = [];
+    if (body.assistantModel !== undefined) {
+      if (!/^claude-[a-z0-9.-]+$/i.test(body.assistantModel)) throw httpError(400, "اسم الموديل مش صحيح");
+      updates.push(["assistantModel", body.assistantModel]);
+    }
+    if (body.egpRate !== undefined) {
+      const rate = Number(body.egpRate);
+      if (!(rate > 0 && rate < 10_000)) throw httpError(400, "سعر الدولار لازم يكون رقم أكبر من صفر");
+      updates.push(["egpRate", String(rate)]);
+    }
+    if (body.paymentPhone !== undefined) {
+      const phone = String(body.paymentPhone).trim();
+      if (!/^\+?\d{8,15}$/.test(phone.replace(/[\s-]/g, ""))) throw httpError(400, "رقم الدفع مش صحيح");
+      updates.push(["paymentPhone", phone.replace(/[\s-]/g, "")]);
+    }
+    for (const [key, value] of updates) {
+      await run("INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [key, value]);
+    }
+    settingsCache = null;
+    return { ...(await paymentInfo()), assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5" };
   });
 
   app.get("/api/admin/users", async () => {

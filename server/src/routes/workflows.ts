@@ -195,6 +195,27 @@ export async function updateInactiveWorkflow(userId: string, id: string, graphIn
 }
 
 export async function workflowRoutes(app: FastifyInstance) {
+  /** Every public link the account's scenarios listen on (webhooks, forms, chat bots), in one place. */
+  app.get("/api/workflows/links", async (req) => {
+    const rows = await query("SELECT id, name, active, graph FROM workflows WHERE user_id = $1 ORDER BY updated_at DESC", [req.user.id]);
+    return rows.flatMap((row) => {
+      const info = triggerInfo(parseJson<WorkflowGraph>(row.graph, { nodes: [], edges: [] }));
+      if (!info?.path || info.def.triggerType !== "webhook") return [];
+      const isForm = info.node.type === "trigger.form";
+      return [
+        {
+          workflowId: row.id,
+          workflow: row.name,
+          active: Boolean(row.active),
+          trigger: info.def.name,
+          app: info.def.app,
+          kind: isForm ? "form" : "webhook",
+          url: isForm ? `${config.publicUrl}/form/${info.path}` : `${config.publicUrl}/webhook/${info.path}`,
+        },
+      ];
+    });
+  });
+
   app.get("/api/workflows", async (req) => {
     const rows = await query(
       `SELECT w.*,

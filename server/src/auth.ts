@@ -89,6 +89,27 @@ export async function authRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  app.put("/api/auth/profile", async (req) => {
+    const user = await authenticate(req);
+    const name = requireString(((req.body ?? {}) as { name?: string }).name, "الاسم", 100);
+    await run("UPDATE users SET name = $1 WHERE id = $2", [name, user.id]);
+    return { user: { ...user, name, isAdmin: isAdminEmail(user.email) } };
+  });
+
+  /** New password: needs the current one, and signs out every other device. */
+  app.post("/api/auth/password", async (req) => {
+    const user = await authenticate(req);
+    await rateLimit(`password:${user.id}`, 5, 900, "محاولات كتير - استنى ربع ساعة");
+    const body = (req.body ?? {}) as { current?: string; next?: string };
+    const row = await one<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = $1", [user.id]);
+    if (!row || !verifyPassword(String(body.current ?? ""), row.password_hash)) throw httpError(400, "كلمة السر الحالية غلط");
+    const next = String(body.next ?? "");
+    if (next.length < 8) throw httpError(400, "كلمة السر الجديدة لازم تكون 8 حروف على الأقل");
+    await run("UPDATE users SET password_hash = $1 WHERE id = $2", [hashPassword(next), user.id]);
+    await run("DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2", [user.id, sha256(bearer(req))]);
+    return { ok: true };
+  });
+
   app.get("/api/auth/me", async (req) => {
     const user = await authenticate(req);
     return { user: { ...user, isAdmin: isAdminEmail(user.email) } };

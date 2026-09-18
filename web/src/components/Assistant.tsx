@@ -144,7 +144,8 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const workflowId = location.pathname.match(/^\/app\/workflows\/([^/]+)/)?.[1];
   const [status, setStatus] = useState<{ available: boolean; reason?: string; defaultModel?: string } | null>(null);
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<{ id: string; name: string; cost?: string }[]>([]);
+  const { refresh: refreshAccount } = useAccount();
   const [model, setModel] = useState(store.get(MODEL_KEY));
   const [conversationId, setConversationId] = useState(store.get(CURRENT_KEY));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -183,7 +184,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
       .then((res) => {
         setStatus(res);
         if (!res.available) return;
-        api<{ models: { id: string; name: string }[]; defaultModel: string }>("/assistant/models")
+        api<{ models: { id: string; name: string; cost?: string }[]; defaultModel: string }>("/assistant/models")
           .then((m) => {
             setModels(m.models);
             setModel((current) => (current && m.models.some((x) => x.id === current) ? current : m.defaultModel));
@@ -297,6 +298,9 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             setStatusLine(event.text);
           } else if (event.type === "done") {
             patchLast((message) => ({ ...message, actions: event.actions }));
+          } else if (event.type === "credits") {
+            // The reply was charged: update the credit counters right away.
+            refreshAccount();
           } else if (event.type === "error") {
             patchLast((message) => ({ ...message, text: message.text ? `${message.text}\n\n${event.message}` : event.message, error: true }));
           }
@@ -346,7 +350,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             >
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name}
+                  {m.cost ? `${m.name} · ${m.cost}` : m.name}
                 </option>
               ))}
             </select>
