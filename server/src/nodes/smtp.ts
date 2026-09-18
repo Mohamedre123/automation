@@ -74,11 +74,13 @@ class SmtpConnection {
   }
 }
 
-function connect(host: string, port: number, signal: AbortSignal): Promise<Socket> {
+/** Port 465 (or secure = "tls") = TLS from the first byte; any other port starts plain and upgrades with STARTTLS. */
+function connect(host: string, port: number, signal: AbortSignal, implicitTls = port === 465): Promise<Socket> {
   return new Promise((resolve, reject) => {
     const onError = (error: Error) => reject(new Error(`مقدرتش أوصل لسيرفر الإيميل ${host}:${port} - ${error.message}`));
-    const socket: Socket =
-      port === 465 ? tls.connect({ host, port, servername: host }, () => resolve(socket)) : net.connect({ host, port }, () => resolve(socket));
+    const socket: Socket = implicitTls
+      ? tls.connect({ host, port, servername: host }, () => resolve(socket))
+      : net.connect({ host, port }, () => resolve(socket));
     socket.setTimeout(30_000, () => socket.destroy(new Error("انتهت المهلة")));
     socket.once("error", onError);
     signal.addEventListener("abort", () => socket.destroy(new Error("اتلغى")), { once: true });
@@ -100,11 +102,13 @@ async function session(credential: CredentialValue | undefined, signal: AbortSig
   const password = String(credential?.data.password ?? "").replace(/\s+/g, "");
   if (!host || !user || !password) throw new Error("حساب الإيميل ناقص (السيرفر أو الإيميل أو كلمة السر)");
 
-  const smtp = new SmtpConnection(await connect(host, port, signal));
+  const secure = String(credential?.data.secure ?? "").toLowerCase();
+  const implicitTls = secure === "tls" || (secure !== "starttls" && port === 465);
+  const smtp = new SmtpConnection(await connect(host, port, signal, implicitTls));
   try {
     await smtp.command(null, [220], "greeting");
     let ehlo = await smtp.command("EHLO tadfuq.app", [250], "EHLO");
-    if (port !== 465) {
+    if (!implicitTls) {
       if (!ehlo.some((line) => /STARTTLS/i.test(line))) throw new Error("سيرفر الإيميل مش بيدعم تشفير STARTTLS - جرّب بورت 465");
       await smtp.command("STARTTLS", [220], "STARTTLS");
       await smtp.upgrade(host);
@@ -126,7 +130,7 @@ async function session(credential: CredentialValue | undefined, signal: AbortSig
 
 export async function sendSmtpMail(
   credential: CredentialValue | undefined,
-  mail: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; body: string; html?: boolean; replyTo?: string },
+  mail: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; body: string; html?: boolean; replyTo?: string; text?: string },
   signal: AbortSignal,
 ) {
   const { smtp, user } = await session(credential, signal);
@@ -148,10 +152,30 @@ export async function sendSmtpMail(
       `Date: ${new Date().toUTCString()}`,
       `Message-ID: ${messageId}`,
       "MIME-Version: 1.0",
-      `Content-Type: ${mail.html ? "text/html" : "text/plain"}; charset=UTF-8`,
-      "Content-Transfer-Encoding: base64",
     ];
-    const body = (Buffer.from(mail.body).toString("base64").match(/.{1,76}/g) ?? []).join("\r\n");
+    const encode = (text: string) => (Buffer.from(text).toString("base64").match(/.{1,76}/g) ?? []).join("\r\n");
+    let body: string;
+    if (mail.html && mail.text) {
+      // HTML with a plain-text twin: every mail app shows something readable.
+      const boundary = `tadfuq-${Math.random().toString(36).slice(2)}`;
+      headers.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+      body = [
+        `--${boundary}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: base64",
+        "",
+        encode(mail.text),
+        `--${boundary}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: base64",
+        "",
+        encode(mail.body),
+        `--${boundary}--`,
+      ].join("\r\n");
+    } else {
+      headers.push(`Content-Type: ${mail.html ? "text/html" : "text/plain"}; charset=UTF-8`, "Content-Transfer-Encoding: base64");
+      body = encode(mail.body);
+    }
     await smtp.command(`${headers.join("\r\n")}\r\n\r\n${body}\r\n.`, [250], "إرسال الرسالة");
     await smtp.command("QUIT", [221], "QUIT").catch(() => undefined);
     return { sent: true, messageId, to: mail.to };

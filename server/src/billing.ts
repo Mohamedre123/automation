@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { config } from "./config.js";
 import { newId, now, one, query, run } from "./db.js";
 import { httpError } from "./errors.js";
+import { codeEmail, mailAccount, saveMailAccount, sendPlatformMail } from "./mailer.js";
 
 /*
  * Plans and virtual credits. Customers pay for their own AI / app usage with their own keys, so credits
@@ -551,6 +552,35 @@ export async function adminRoutes(app: FastifyInstance) {
     }
     settingsCache = null;
     return { ...(await paymentInfo()), ...(await contactInfo()), assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5" };
+  });
+
+  /** The platform's sending account for verification codes (password never sent back). */
+  app.get("/api/admin/mail", async () => {
+    const account = await mailAccount();
+    return account ? { configured: true, host: account.host, port: account.port, user: account.user, fromName: account.fromName } : { configured: false };
+  });
+
+  app.put("/api/admin/mail", async (req) => {
+    const body = (req.body ?? {}) as Record<string, string | undefined>;
+    const current = await mailAccount();
+    const account = {
+      host: String(body.host ?? current?.host ?? "smtp.gmail.com").trim(),
+      port: String(body.port ?? current?.port ?? "465").trim(),
+      user: String(body.user ?? current?.user ?? "").trim(),
+      // Empty password box = keep the saved one.
+      password: String(body.password || current?.password || "").replace(/\s+/g, ""),
+      fromName: String(body.fromName ?? current?.fromName ?? "تدفّق").trim() || "تدفّق",
+      secure: ["tls", "starttls"].includes(String(body.secure)) ? String(body.secure) : current?.secure ?? "",
+    };
+    if (!account.host || !account.user || !account.password) throw httpError(400, "اكتب السيرفر والإيميل وكلمة سر التطبيقات");
+    // Prove it works before saving: send a sample code email to the admin.
+    try {
+      await sendPlatformMail(req.user.email, codeEmail("123456", req.user.name, "register"), account);
+    } catch (error) {
+      throw httpError(400, `ما قدرناش نبعت بالإعدادات دي: ${error instanceof Error ? error.message : error}`);
+    }
+    await saveMailAccount(account);
+    return { configured: true, host: account.host, port: account.port, user: account.user, fromName: account.fromName };
   });
 
   app.get("/api/admin/users", async () => {

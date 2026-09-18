@@ -134,6 +134,7 @@ export function Admin() {
         </div>
       </div>
 
+      <MailCard />
       <SettingsCard />
 
       {pending.length > 0 && (
@@ -232,6 +233,89 @@ export function Admin() {
       </div>
 
       {managing && <ManageModal user={managing} plans={data.plans} onClose={() => setManaging(null)} onPlan={setPlan} onCredits={load} />}
+    </div>
+  );
+}
+
+/** The Gmail (or any SMTP) account that sends sign-up codes. Saved only after a test email goes through. */
+function MailCard() {
+  const toast = useToast();
+  const [state, setState] = useState<{ configured: boolean; host?: string; port?: string; user?: string; fromName?: string } | null>(null);
+  const [form, setForm] = useState({ host: "smtp.gmail.com", port: "465", user: "", password: "", fromName: "تدفّق" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api<{ configured: boolean; host?: string; port?: string; user?: string; fromName?: string }>("/admin/mail")
+      .then((res) => {
+        setState(res);
+        if (res.configured) setForm((f) => ({ ...f, host: res.host ?? f.host, port: res.port ?? f.port, user: res.user ?? "", fromName: res.fromName ?? f.fromName }));
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!state) return null;
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await api<typeof state>("/admin/mail", { method: "PUT", body: form });
+      setState(res);
+      setForm((f) => ({ ...f, password: "" }));
+      toast("اشتغل ✓ بعتنالك إيميل تجربة - من دلوقتي أي حساب جديد لازم يأكد بكود على الإيميل", "success");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 22 }}>
+      <h3 style={{ marginBottom: 4 }}>
+        <Icon name="mail" size={17} /> إيميل المنصة (كود التحقق عند التسجيل)
+      </h3>
+      <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
+        {state.configured
+          ? `شغال من ${state.user} - أي حساب جديد بيوصله كود من 6 أرقام لازم يكتبه قبل ما يدخل.`
+          : "لسه مش متضبط، فالحسابات الجديدة بتدخل من غير تحقق. حط إيميل Gmail وكلمة سر التطبيقات (App Password) هنا."}
+      </p>
+      <div className="settings-grid">
+        <div className="field">
+          <label className="label">الإيميل اللي هيبعت</label>
+          <input className="input mono" dir="ltr" value={form.user} onChange={(e) => setForm({ ...form, user: e.target.value })} placeholder="you@gmail.com" />
+        </div>
+        <div className="field">
+          <label className="label">كلمة سر التطبيقات (App Password)</label>
+          <input
+            className="input mono"
+            dir="ltr"
+            type="password"
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder={state.configured ? "سيبها فاضية عشان تفضل زي ما هي" : "16 حرف من جوجل"}
+          />
+          <div className="help">
+            من <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a> (لازم التحقق بخطوتين يكون مفعّل).
+          </div>
+        </div>
+        <div className="field">
+          <label className="label">اسم المرسل</label>
+          <input className="input" value={form.fromName} onChange={(e) => setForm({ ...form, fromName: e.target.value })} />
+        </div>
+        <div className="field">
+          <label className="label">سيرفر SMTP والبورت</label>
+          <div className="row">
+            <input className="input mono" dir="ltr" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+            <input className="input mono" dir="ltr" style={{ width: 90 }} value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
+          </div>
+        </div>
+      </div>
+      <button className="btn primary" onClick={save} disabled={saving || !form.user || (!form.password && !state.configured)}>
+        {saving ? <Spinner size={14} /> : "جرّب واحفظ"}
+      </button>
+      <span className="faint" style={{ fontSize: 12.5, marginInlineStart: 10 }}>
+        هيتبعت إيميل تجربة على إيميلك الأول، ولو وصل بيتحفظ.
+      </span>
     </div>
   );
 }

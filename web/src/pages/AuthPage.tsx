@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Spinner } from "../components/ui";
@@ -13,6 +13,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // After sign-up (or signing in to an unconfirmed account) the email code is asked for here.
+  const [verifyEmail, setVerifyEmail] = useState("");
 
   if (user) return <Navigate to="/app" replace />;
   const isRegister = mode === "register";
@@ -22,8 +24,14 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     setBusy(true);
     setError("");
     try {
-      const res = await api<{ token: string; user: User }>(isRegister ? "/auth/register" : "/auth/login", { body: form });
-      signIn(res.token, res.user);
+      const res = await api<{ token?: string; user?: User; verify?: boolean; email?: string }>(isRegister ? "/auth/register" : "/auth/login", {
+        body: form,
+      });
+      if (res.verify) {
+        setVerifyEmail(res.email ?? form.email);
+        return;
+      }
+      signIn(res.token!, res.user!);
       navigate("/app", { replace: true });
     } catch (err) {
       setError((err as Error).message);
@@ -31,6 +39,27 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       setBusy(false);
     }
   };
+
+  if (verifyEmail) {
+    return (
+      <div className="auth-wrap">
+        <div className="auth-top">
+          <Link to="/" className="btn ghost sm">
+            <Icon name="arrowRight" size={16} /> الصفحة الرئيسية
+          </Link>
+          <ThemeToggle />
+        </div>
+        <VerifyCode
+          email={verifyEmail}
+          onBack={() => setVerifyEmail("")}
+          onDone={(token, next) => {
+            signIn(token, next);
+            navigate("/app", { replace: true });
+          }}
+        />
+      </div>
+    );
+  }
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
 
@@ -112,5 +141,134 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
         </p>
       </form>
     </div>
+  );
+}
+
+/** Six boxes for the emailed code: paste, type or autofill (iOS / Android offer the code from the email). */
+function VerifyCode({ email, onBack, onDone }: { email: string; onBack: () => void; onDone: (token: string, user: User) => void }) {
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [wait, setWait] = useState(60);
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    boxes.current[0]?.focus();
+  }, []);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [wait]);
+
+  const toLatin = (text: string) =>
+    text.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)).replace(/\D/g, "");
+
+  const submit = async (code: string) => {
+    if (code.length !== 6 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api<{ token: string; user: User }>("/auth/verify", { body: { email, code } });
+      onDone(res.token, res.user);
+    } catch (err) {
+      setError((err as Error).message);
+      setDigits(Array(6).fill(""));
+      boxes.current[0]?.focus();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const fill = (index: number, raw: string) => {
+    const value = toLatin(raw);
+    const next = [...digits];
+    if (value.length > 1) {
+      // Pasted or autofilled the whole code.
+      value.slice(0, 6 - index).split("").forEach((d, i) => (next[index + i] = d));
+    } else {
+      next[index] = value;
+    }
+    setDigits(next);
+    const firstEmpty = next.findIndex((d) => !d);
+    if (value && firstEmpty !== -1) boxes.current[firstEmpty]?.focus();
+    if (next.every(Boolean)) void submit(next.join(""));
+  };
+
+  const resend = async () => {
+    setError("");
+    setInfo("");
+    try {
+      await api("/auth/resend", { body: { email } });
+      setInfo("بعتنالك كود جديد ✓");
+      setWait(60);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <form
+      className="card auth-card"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit(digits.join(""));
+      }}
+    >
+      <div className="verify-icon">
+        <Icon name="mail" size={28} />
+      </div>
+      <h2 style={{ fontSize: 20, textAlign: "center", marginBottom: 6 }}>اكتب الكود اللي وصلك</h2>
+      <p className="muted" style={{ textAlign: "center", marginTop: 0 }}>
+        بعتنا كود من 6 أرقام على
+        <br />
+        <strong dir="ltr">{email}</strong>
+      </p>
+      <div className="otp-boxes" dir="ltr">
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={(el) => {
+              boxes.current[i] = el;
+            }}
+            className="otp-box"
+            value={d}
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            maxLength={i === 0 ? 6 : 1}
+            aria-label={`الرقم ${i + 1}`}
+            onChange={(e) => fill(i, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Backspace" && !digits[i] && i > 0) boxes.current[i - 1]?.focus();
+            }}
+            onPaste={(e) => {
+              e.preventDefault();
+              fill(0, e.clipboardData.getData("text"));
+            }}
+          />
+        ))}
+      </div>
+      {error && <div className="alert error">{error}</div>}
+      {info && <div className="alert success">{info}</div>}
+      <button className="btn primary" style={{ width: "100%" }} disabled={busy || digits.some((d) => !d)}>
+        {busy ? <Spinner size={16} /> : "تأكيد"}
+      </button>
+      <p className="muted" style={{ textAlign: "center", fontSize: 13.5 }}>
+        ما وصلكش؟ بص في الـ Spam، أو{" "}
+        {wait > 0 ? (
+          <span>اطلب كود جديد بعد {wait} ثانية</span>
+        ) : (
+          <button type="button" className="link-btn" onClick={resend}>
+            ابعت كود جديد
+          </button>
+        )}
+      </p>
+      <p style={{ textAlign: "center", margin: 0 }}>
+        <button type="button" className="link-btn" onClick={onBack}>
+          غيّر الإيميل
+        </button>
+      </p>
+    </form>
   );
 }

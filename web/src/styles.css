@@ -4462,3 +4462,58 @@ h3 {
   align-items: center;
   gap: 7px;
 }
+.verify-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 12px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--glow);
+}
+.otp-boxes {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 0 16px;
+}
+.otp-box {
+  width: 48px;
+  height: 58px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--mono);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.otp-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+@media (max-width: 400px) {
+  .otp-boxes {
+    gap: 5px;
+  }
+  .otp-box {
+    width: 40px;
+    height: 50px;
+    font-size: 20px;
+  }
+}
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

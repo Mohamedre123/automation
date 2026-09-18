@@ -111,6 +111,17 @@ const SCHEMA = `
   ALTER TABLE users ADD COLUMN IF NOT EXISTS assistant_used INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE executions ADD COLUMN IF NOT EXISTS credits INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_credits INTEGER NOT NULL DEFAULT 0;
+  -- Accounts from before email codes count as confirmed; new sign-ups start at 0.
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified INTEGER NOT NULL DEFAULT 1;
+
+  CREATE TABLE IF NOT EXISTS email_codes (
+    email TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    sent_at TEXT NOT NULL
+  );
   ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_assistant_credits INTEGER NOT NULL DEFAULT 0;
 
   CREATE TABLE IF NOT EXISTS subscription_requests (

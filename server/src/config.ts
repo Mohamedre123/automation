@@ -71,8 +71,7 @@ export const config = {
     phone: process.env.CONTACT_PHONE || "+201281762540",
   },
   /** Owner accounts: every feature, no credit limits, and the admin console. */
-  adminEmails: (process.env.ADMIN_EMAILS || "iaomn8406@gmail.com")
-    .split(",")
+  adminEmails: ["iaomn8406@gmail.com", ...(process.env.EXTRA_ADMIN_EMAILS || "").split(",")]
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),
   /** Optional Supabase Storage for large files (videos): Vercel can't serve responses over ~4.5MB from a function. */
