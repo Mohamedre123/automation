@@ -10,7 +10,8 @@ import { Landing } from "./pages/Landing";
 
 const Editor = lazy(() => import("./editor/Editor").then((m) => ({ default: m.Editor })));
 const Credentials = lazy(() => import("./pages/Credentials").then((m) => ({ default: m.Credentials })));
-const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const Scenarios = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Scenarios })));
+const Home = lazy(() => import("./pages/Home").then((m) => ({ default: m.Home })));
 const DataStore = lazy(() => import("./pages/DataStore").then((m) => ({ default: m.DataStore })));
 const Executions = lazy(() => import("./pages/Executions").then((m) => ({ default: m.Executions })));
 const FormPage = lazy(() => import("./pages/FormPage").then((m) => ({ default: m.FormPage })));
@@ -37,6 +38,10 @@ const Changelog = lazy(() => import("./pages/public/More").then((m) => ({ defaul
 const Status = lazy(() => import("./pages/public/More").then((m) => ({ default: m.Status })));
 const Security = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Security })));
 const Cookies = lazy(() => import("./pages/public/Legal").then((m) => ({ default: m.Cookies })));
+const TemplateDetail = lazy(() => import("./pages/public/Details").then((m) => ({ default: m.TemplateDetail })));
+const IntegrationDetail = lazy(() => import("./pages/public/Details").then((m) => ({ default: m.IntegrationDetail })));
+const Solutions = lazy(() => import("./pages/public/Details").then((m) => ({ default: m.Solutions })));
+const Enterprise = lazy(() => import("./pages/public/Details").then((m) => ({ default: m.Enterprise })));
 const Templates = lazy(() => import("./pages/Templates").then((m) => ({ default: m.Templates })));
 
 const PageLoading = () => (
@@ -74,6 +79,10 @@ export default function App() {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/mcp" element={<McpInfo />} />
+              <Route path="/templates/:id" element={<TemplateDetail />} />
+              <Route path="/integrations/:app" element={<IntegrationDetail />} />
+              <Route path="/solutions" element={<Solutions />} />
+              <Route path="/enterprise" element={<Enterprise />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
@@ -98,7 +107,8 @@ export default function App() {
                 </Protected>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={<Home />} />
+              <Route path="scenarios" element={<Scenarios />} />
               <Route path="workflows/:id" element={<Editor />} />
               <Route path="templates" element={<Templates />} />
               <Route path="credentials" element={<Credentials />} />

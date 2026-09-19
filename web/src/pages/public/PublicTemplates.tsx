@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { AppBadge } from "../../components/AppBadge";
 import { useReveal } from "../../components/PublicLayout";
@@ -82,46 +82,29 @@ export function PublicTemplates() {
         <div className="grid tpl-grid">
           {visible.map((t) => (
             <article className="card tpl reveal" key={t.id}>
-              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                {t.apps.map((app, i) => (
-                  <Fragment key={app.key}>
-                    {i > 0 && <Icon name="arrowRight" size={13} style={{ color: "var(--text-3)", transform: "scaleX(-1)" }} />}
-                    <span className="badge" style={{ gap: 6, paddingInlineStart: 4 }}>
-                      <AppBadge app={app.key} size={20} />
-                      {app.name}
-                    </span>
-                  </Fragment>
+              <div className="tpl-apps">
+                {t.apps.slice(0, 5).map((app) => (
+                  <AppBadge key={app.key} app={app.key} size={30} />
                 ))}
               </div>
-              <h3>{t.name}</h3>
+              <h3>
+                <Link to={`/templates/${t.id}`} className="plain-link">
+                  {t.name}
+                </Link>
+              </h3>
               <p>{t.description}</p>
-              <div className="requires">
-                <div className="mini-label">محتاج:</div>
-                <ul>
-                  {t.requires.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-              {t.howTo?.length ? (
-                <details className="guide tpl-guide">
-                  <summary>
-                    <Icon name="sparkles" size={14} /> إزاي أشغّله{t.starts ? ` (بيبدأ ${t.starts})` : ""}
-                  </summary>
-                  <ol>
-                    {t.howTo.map((step, i) => (
-                      <li key={i}>{step}</li>
-                    ))}
-                  </ol>
-                </details>
-              ) : null}
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <span className="faint" style={{ fontSize: 12 }}>
-                  {t.category} · {t.steps} خطوات
+              <div className="tpl-foot">
+                <span className="faint">
+                  {t.steps} خطوات{t.starts ? ` · بيبدأ ${t.starts}` : ""}
                 </span>
-                <button className="btn primary sm" onClick={() => use(t)} disabled={Boolean(using)}>
-                  {using === t.id ? <Spinner size={14} /> : user ? "استخدم التيمبلت" : "سجّل واستخدمه"}
-                </button>
+                <div className="row" style={{ gap: 6 }}>
+                  <Link className="btn ghost sm" to={`/templates/${t.id}`}>
+                    التفاصيل
+                  </Link>
+                  <button className="btn primary sm" onClick={() => use(t)} disabled={Boolean(using)}>
+                    {using === t.id ? <Spinner size={14} /> : user ? "استخدم" : "ابدأ بيه"}
+                  </button>
+                </div>
               </div>
             </article>
           ))}

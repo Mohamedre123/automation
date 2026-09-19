@@ -166,6 +166,29 @@ export async function publicRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/public/templates", async () => templateSummaries().map(({ graph, ...summary }) => summary));
+
+  /** One template's page: its steps in order (what runs, in which app), without the raw settings. */
+  app.get("/api/public/templates/:id", async (req, reply) => {
+    const found = templateSummaries().find((t) => t.id === (req.params as { id: string }).id);
+    if (!found) return reply.status(404).send({ error: "التيمبلت مش موجود" });
+    const { graph, ...summary } = found;
+    // Walk from the trigger along the connections so the steps read in the order they run.
+    const order: string[] = [];
+    const queue = graph.nodes.filter((n) => getNode(n.type)?.kind === "trigger").map((n) => n.id);
+    while (queue.length) {
+      const id = queue.shift()!;
+      if (order.includes(id)) continue;
+      order.push(id);
+      queue.push(...graph.edges.filter((e) => e.source === id).map((e) => e.target));
+    }
+    for (const node of graph.nodes) if (!order.includes(node.id)) order.push(node.id);
+    const flow = order.map((id) => {
+      const node = graph.nodes.find((n) => n.id === id)!;
+      const def = getNode(node.type);
+      return { app: def?.app ?? "http", appName: def?.appName ?? "", name: def?.name ?? node.type, kind: def?.kind ?? "action", description: def?.description ?? "" };
+    });
+    return { ...summary, flow };
+  });
 }
 
 /** Fires due schedules. Called by Vercel Cron / cron-job.org (or the local ticker). */

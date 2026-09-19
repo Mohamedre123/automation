@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AppBadge } from "../../components/AppBadge";
 import { useReveal } from "../../components/PublicLayout";
 import { Spinner } from "../../components/ui";
@@ -56,7 +57,11 @@ export function Integrations() {
             <article className="card integration reveal" key={app.key}>
               <div className="row" style={{ gap: 12 }}>
                 <AppBadge app={app.key} color={app.color} size={46} />
-                <h3>{app.name}</h3>
+                <h3>
+                  <Link to={`/integrations/${app.key}`} className="plain-link">
+                    {app.name}
+                  </Link>
+                </h3>
               </div>
               {app.triggers.length > 0 && (
                 <div>

@@ -2,71 +2,21 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { AppIcon, Empty, Spinner, StatusBadge, Toggle, timeAgo, useToast } from "../components/ui";
-import { useAuth } from "../context";
 import { Icon } from "../icons";
 import type { Workflow } from "../types";
 
-interface Stats {
-  workflows: number;
-  activeWorkflows: number;
-  executions24h: number;
-  successRate: number | null;
-  daily: { day: string; status: string; count: number }[];
-}
+type Filter = "all" | "active" | "paused" | "issues";
 
-function UsageChart({ daily }: { daily: Stats["daily"] }) {
-  const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10));
-  const byDay = days.map((day) => ({
-    day,
-    success: daily.find((d) => d.day === day && d.status === "success")?.count ?? 0,
-    error: daily.find((d) => d.day === day && d.status === "error")?.count ?? 0,
-  }));
-  const max = Math.max(1, ...byDay.map((d) => d.success + d.error));
-  return (
-    <div className="card chart-card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 style={{ fontSize: 15 }}>التشغيلات آخر 14 يوم</h3>
-        <div className="row faint" style={{ fontSize: 12, gap: 14 }}>
-          <span className="row" style={{ gap: 5 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--success)" }} /> نجح
-          </span>
-          <span className="row" style={{ gap: 5 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--danger)" }} /> فشل
-          </span>
-        </div>
-      </div>
-      <div className="bars">
-        {byDay.map((d) => (
-          <div className="bar-col" key={d.day} title={`${d.day}: ${d.success} نجح، ${d.error} فشل`}>
-            <div className="seg" style={{ height: `${(d.error / max) * 100}%`, background: "var(--danger)" }} />
-            <div
-              className="seg"
-              style={{ height: `${(d.success / max) * 100}%`, background: d.success ? "var(--success)" : "transparent" }}
-            />
-            {d.success + d.error === 0 && <div className="seg" style={{ height: 3, background: "var(--border)" }} />}
-          </div>
-        ))}
-      </div>
-      <div className="bar-labels">
-        {byDay.map((d) => (
-          <span key={d.day}>{d.day.slice(8)}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function Dashboard() {
-  const { user } = useAuth();
+export function Scenarios() {
   const toast = useToast();
   const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[] | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     api<Workflow[]>("/workflows").then(setWorkflows).catch((e: Error) => toast(e.message, "error"));
-    api<Stats>("/stats").then(setStats).catch(() => {});
   }, [toast]);
 
   useEffect(load, [load]);
@@ -103,12 +53,22 @@ export function Dashboard() {
     load();
   };
 
+  const term = query.trim().toLowerCase();
+  const shown = (workflows ?? []).filter(
+    (wf) =>
+      (!term || wf.name.toLowerCase().includes(term)) &&
+      (filter === "all" ||
+        (filter === "active" && wf.active) ||
+        (filter === "paused" && !wf.active) ||
+        (filter === "issues" && (Boolean(wf.triggerError) || wf.lastStatus === "error"))),
+  );
+
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>أهلاً {user?.name} 👋</h1>
-          <p>ابني سيناريوهات أتمتة تربط تطبيقاتك ببعض وتشتغل لوحدها.</p>
+          <h1>السيناريوهات</h1>
+          <p>{workflows ? `${workflows.length} سيناريو · ${workflows.filter((w) => w.active).length} شغالين دلوقتي` : "بتحمّل..."}</p>
         </div>
         <div className="row">
           <Link className="btn" to="/app/templates">
@@ -120,30 +80,27 @@ export function Dashboard() {
         </div>
       </div>
 
-      {stats && (
-        <>
-          <div className="stats">
-            <div className="card stat">
-              <div className="stat-label">السيناريوهات</div>
-              <div className="stat-value">{stats.workflows}</div>
-            </div>
-            <div className="card stat">
-              <div className="stat-label">المفعّلة دلوقتي</div>
-              <div className="stat-value" style={{ color: "var(--success)" }}>
-                {stats.activeWorkflows}
-              </div>
-            </div>
-            <div className="card stat">
-              <div className="stat-label">تشغيلات آخر 24 ساعة</div>
-              <div className="stat-value">{stats.executions24h}</div>
-            </div>
-            <div className="card stat">
-              <div className="stat-label">نسبة النجاح (14 يوم)</div>
-              <div className="stat-value">{stats.successRate === null ? "—" : `${stats.successRate}%`}</div>
-            </div>
+      {workflows && workflows.length > 0 && (
+        <div className="list-toolbar">
+          <div className="search-box">
+            <Icon name="search" size={16} />
+            <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="دوّر باسم السيناريو" />
           </div>
-          <UsageChart daily={stats.daily} />
-        </>
+          <div className="seg" role="tablist">
+            {(
+              [
+                ["all", "الكل"],
+                ["active", "شغال"],
+                ["paused", "متوقف"],
+                ["issues", "فيه مشكلة"],
+              ] as [Filter, string][]
+            ).map(([key, label]) => (
+              <button key={key} className={filter === key ? "on" : ""} onClick={() => setFilter(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="card">
@@ -180,7 +137,7 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {workflows.map((wf) => (
+                {shown.map((wf) => (
                   <tr key={wf.id} className="clickable" onClick={() => navigate(`/app/workflows/${wf.id}`)}>
                     <td>
                       <div className="row" style={{ gap: 12 }}>

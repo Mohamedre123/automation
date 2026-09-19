@@ -488,7 +488,7 @@ function EditorCanvas() {
               className="btn ghost icon sm"
               title="رجوع للسيناريوهات"
               onClick={() => {
-                if (!dirty || window.confirm("فيه تغييرات مش محفوظة. تخرج من غير حفظ؟")) navigate("/app");
+                if (!dirty || window.confirm("فيه تغييرات مش محفوظة. تخرج من غير حفظ؟")) navigate("/app/scenarios");
               }}
             >
               <Icon name="arrowRight" size={18} />

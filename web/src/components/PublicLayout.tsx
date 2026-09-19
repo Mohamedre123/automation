@@ -8,13 +8,25 @@ import { useAutoHideHeader } from "./useAutoHideHeader";
 import { ThemeToggle, UserMenu } from "./UserMenu";
 
 export const PUBLIC_LINKS = [
-  { to: "/features", label: "المميزات", icon: "sparkles" },
-  { to: "/integrations", label: "التطبيقات", icon: "templates" },
+  { to: "/features", label: "المنتج", icon: "sparkles" },
+  { to: "/solutions", label: "الحلول", icon: "users" },
   { to: "/templates", label: "التيمبلت", icon: "flows" },
-  { to: "/mcp", label: "MCP", icon: "plug" },
-  { to: "/pricing", label: "الأسعار", icon: "key" },
-  { to: "/contact", label: "تواصل معنا", icon: "send" },
+  { to: "/integrations", label: "التطبيقات", icon: "templates" },
+  { to: "/pricing", label: "الأسعار", icon: "coins" },
+  { to: "/help", label: "المساعدة", icon: "search" },
 ];
+
+/** Tiny live indicator in the footer, from the same health check as the status page. */
+function useServiceStatus() {
+  const [ok, setOk] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((h) => setOk(Boolean(h.ok && h.database === "connected")))
+      .catch(() => setOk(false));
+  }, []);
+  return ok;
+}
 
 export function PublicLayout() {
   const { user, loading } = useAuth();
@@ -23,6 +35,7 @@ export function PublicLayout() {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const bar = useAutoHideHeader(menuOpen);
   const contact = useSiteContact();
+  const status = useServiceStatus();
 
   useEffect(() => {
     setMenuOpen(false);
@@ -38,48 +51,47 @@ export function PublicLayout() {
       </div>
 
       <div className="landing-inner">
-        <header className={`topbar ${bar.hidden ? "is-hidden" : ""} ${bar.scrolled ? "is-scrolled" : ""}`}>
-          <Link to="/" className="brand">
-            <img className="brand-logo" src="/logo.png" alt="تدفّق" />
-            <span className="brand-name">تدفّق</span>
-          </Link>
-
-          <nav className="nav-links" aria-label="أقسام الموقع">
-            {PUBLIC_LINKS.map((link) => (
-              <NavLink key={link.to} to={link.to} className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-                <Icon name={link.icon} size={16} />
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="nav-side">
-            <ThemeToggle />
-            {loading ? null : user ? (
-              <>
-                <Link className="btn primary sm hide-sm" to="/app">
-                  لوحة التحكم
-                </Link>
-                <UserMenu />
-              </>
-            ) : (
-              <>
-                <Link className="btn ghost sm hide-sm" to="/login">
-                  دخول
-                </Link>
-                <Link className="btn primary sm hide-sm" to="/register">
-                  ابدأ مجاناً
-                </Link>
-              </>
-            )}
-            <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
+        <header className={`site-header ${bar.hidden ? "is-hidden" : ""} ${bar.scrolled ? "is-scrolled" : ""}`}>
+          <div className="site-header-inner">
+            <Link to="/" className="brand">
+              <img className="brand-logo" src="/logo.png" alt="" />
+              <span className="brand-name">تدفّق</span>
+            </Link>
+            <nav className="site-nav" aria-label="أقسام الموقع">
+              {PUBLIC_LINKS.map((link) => (
+                <NavLink key={link.to} to={link.to} className={({ isActive }) => (isActive ? "active" : "")}>
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="site-actions">
+              <ThemeToggle />
+              {loading ? null : user ? (
+                <>
+                  <Link className="btn primary sm hide-sm" to="/app">
+                    لوحة التحكم
+                  </Link>
+                  <UserMenu />
+                </>
+              ) : (
+                <>
+                  <Link className="btn ghost sm hide-sm" to="/login">
+                    دخول
+                  </Link>
+                  <Link className="btn primary sm hide-sm" to="/register">
+                    ابدأ مجاناً
+                  </Link>
+                </>
+              )}
+              <BurgerButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
+            </div>
           </div>
         </header>
 
         <NavDrawer
           open={menuOpen}
           onClose={closeMenu}
-          links={[{ to: "/", label: "الرئيسية", icon: "home", end: true }, ...PUBLIC_LINKS]}
+          links={[{ to: "/", label: "الرئيسية", icon: "home", end: true }, ...PUBLIC_LINKS, { to: "/contact", label: "تواصل معنا", icon: "send" }]}
           homeTo="/"
           footer={
             loading ? null : user ? (
@@ -105,41 +117,39 @@ export function PublicLayout() {
           <div className="footer-grid">
             <div>
               <Link to="/" className="brand" style={{ marginBottom: 10 }}>
-                <img className="brand-logo" src="/logo.png" alt="تدفّق" />
+                <img className="brand-logo" src="/logo.png" alt="" />
                 تدفّق
               </Link>
-              <p className="faint" style={{ margin: 0, fontSize: 13.5 }}>
-                منصة أتمتة عربية بتربط تطبيقاتك ببعض وبالذكاء الاصطناعي.
+              <p className="faint" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>
+                منصة أتمتة عربية بتربط تطبيقاتك ببعض وبالذكاء الاصطناعي، وبتشتغل لوحدها.
               </p>
+              <Link to="/status" className={`footer-status ${status === false ? "down" : ""}`}>
+                {status === false ? "في مشكلة بنشتغل عليها" : "كل الأنظمة شغالة"}
+              </Link>
             </div>
             <div>
-              <h4>المنصة</h4>
-              {PUBLIC_LINKS.slice(0, 4).map((link) => (
-                <Link key={link.to} to={link.to}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <div>
-              <h4>الشركة</h4>
-              <Link to="/about">عن تدفّق</Link>
+              <h4>المنتج</h4>
+              <Link to="/features">المميزات</Link>
               <Link to="/ai-agents">AI Agents</Link>
+              <Link to="/mcp">MCP</Link>
+              <Link to="/integrations">التطبيقات</Link>
+              <Link to="/templates">التيمبلت</Link>
+              <Link to="/pricing">الأسعار</Link>
+            </div>
+            <div>
+              <h4>الحلول</h4>
+              <Link to="/solutions#stores">المتاجر الإلكترونية</Link>
+              <Link to="/solutions#support">خدمة العملاء</Link>
+              <Link to="/solutions#content">صناعة المحتوى</Link>
+              <Link to="/solutions#agencies">الوكالات والفرق</Link>
+              <Link to="/enterprise">الشركات</Link>
+            </div>
+            <div>
+              <h4>موارد</h4>
               <Link to="/help">مركز المساعدة</Link>
               <Link to="/changelog">الجديد</Link>
               <Link to="/status">حالة الخدمة</Link>
-              {PUBLIC_LINKS.slice(4).map((link) => (
-                <Link key={link.to} to={link.to}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <div>
-              <h4>السياسات</h4>
-              <Link to="/privacy">سياسة الخصوصية</Link>
-              <Link to="/terms">شروط الاستخدام</Link>
-              <Link to="/refund">سياسة الاسترداد</Link>
-              <Link to="/security">الأمان</Link>
-              <Link to="/cookies">الكوكيز</Link>
+              <Link to="/about">عن تدفّق</Link>
             </div>
             <div>
               <h4>كلّمنا</h4>
@@ -151,19 +161,17 @@ export function PublicLayout() {
               </a>
               <Link to="/contact">ابعتلنا رسالة</Link>
             </div>
-            <div>
-              <h4>حسابك</h4>
-              {user ? (
-                <Link to="/app">لوحة التحكم</Link>
-              ) : (
-                <>
-                  <Link to="/login">تسجيل الدخول</Link>
-                  <Link to="/register">إنشاء حساب</Link>
-                </>
-              )}
-            </div>
           </div>
-          <div className="footer-bottom">تدفّق © {new Date().getFullYear()} - كل الحقوق محفوظة</div>
+          <div className="footer-bottom footer-legal">
+            <span>تدفّق © {new Date().getFullYear()}</span>
+            <nav>
+              <Link to="/privacy">الخصوصية</Link>
+              <Link to="/terms">الشروط</Link>
+              <Link to="/refund">الاسترداد</Link>
+              <Link to="/security">الأمان</Link>
+              <Link to="/cookies">الكوكيز</Link>
+            </nav>
+          </div>
         </footer>
       </div>
     </div>
