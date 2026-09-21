@@ -26,6 +26,8 @@ export interface LlmRunOptions {
   maxTokens: number;
   /** How much the model thinks before answering: "low" for chat replies (much faster). */
   effort?: "low" | "medium";
+  /** Let the model look things up on the web itself (each provider has its own search). */
+  webSearch?: boolean;
   signal: AbortSignal;
 }
 
@@ -102,7 +104,9 @@ async function openaiRun(o: LlmRunOptions): Promise<LlmRunResult> {
   for (let step = 0; step <= o.maxSteps; step++) {
     const body: Record<string, unknown> = { model: o.model, input, max_output_tokens: o.maxTokens };
     if (o.system) body.instructions = o.system;
-    if (tools.length) body.tools = tools;
+    // OpenAI hosts its own search tool, so it sits alongside ours.
+    const withSearch = o.webSearch ? [...tools, { type: "web_search" }] : tools;
+    if (withSearch.length) body.tools = withSearch;
     if (o.effort && reasoningAllowed !== false && /^(gpt-5|gpt-6|o\d)/.test(o.model)) body.reasoning = { effort: o.effort };
     const send = () => postJson("https://api.openai.com/v1/responses", body, { authorization: `Bearer ${o.apiKey}` }, o.signal, "OpenAI");
     const data = await send().catch((error) => {
@@ -169,6 +173,7 @@ async function geminiRun(o: LlmRunOptions): Promise<LlmRunResult> {
     const body: Record<string, unknown> = { contents, generationConfig };
     if (o.system) body.systemInstruction = { parts: [{ text: o.system }] };
     if (declarations.length) body.tools = [{ functionDeclarations: declarations }];
+    else if (o.webSearch) body.tools = [{ google_search: {} }];
     if (thinking) generationConfig.thinkingConfig = thinking;
     const send = () => postJson(url, body, { "x-goog-api-key": o.apiKey }, o.signal, "Gemini");
     const data = await send().catch((error) => {

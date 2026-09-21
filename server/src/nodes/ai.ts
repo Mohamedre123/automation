@@ -204,6 +204,13 @@ export const aiNodes: NodeDefinition[] = [
         placeholder: "اكتب @ واختار صورة",
         help: "بيكتب عن المنتج اللي في الصورة بالظبط. لو فاضية بتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها",
       },
+      {
+        key: "search",
+        label: "يدوّر على النت بنفسه",
+        type: "boolean",
+        default: false,
+        help: "بيخلي الذكاء الاصطناعي يبحث ويقرا مواقع حقيقية قبل ما يرد، بدل ما يجاوب من معلوماته القديمة. شغال مع Gemini وChatGPT وClaude",
+      },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false, help: "هيظهر في {{N.json}} - اطلب في التعليمات إن الرد يكون JSON" },
     ],
@@ -227,7 +234,9 @@ export const aiNodes: NodeDefinition[] = [
         images: images.map((img) => ({ mimeType: img.data ? img.mimeType : "image/jpeg", data: img.data })),
         tools: [],
         runTool: async () => null,
-        maxSteps: 1,
+        webSearch: params.search === true,
+        // Searching means reading pages and coming back, so it needs more than one turn.
+        maxSteps: params.search === true ? 6 : 1,
         maxTokens: Math.max(1, Math.floor(toNumber(params.maxTokens, 16000))),
         signal,
       });

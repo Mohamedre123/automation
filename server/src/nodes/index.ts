@@ -18,6 +18,7 @@ import { mediaNodes, videoNode } from "./media.js";
 import { messagingCredentials, messagingNodes } from "./messaging.js";
 import { productivityCredentials, productivityNodes } from "./productivity.js";
 import { publishAllNode } from "./publishAll.js";
+import { reportNodes } from "./reports.js";
 import { publishingCredentials, publishingNodes } from "./publishing.js";
 import { facebookCredential, instagramCredential, socialNodes } from "./social.js";
 import { telegramCredential, telegramNodes } from "./telegram.js";
@@ -32,6 +33,7 @@ export const nodeDefinitions: NodeDefinition[] = [
   ...aiNodes,
   ...mediaNodes,
   videoNode,
+  ...reportNodes,
   ...wasenderNodes,
   ...whatsappCloudNodes,
   ...telegramNodes,

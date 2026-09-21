@@ -58,7 +58,8 @@ export async function claudeRun(o: LlmRunOptions): Promise<LlmRunResult> {
   for (let step = 0; step <= o.maxSteps; step++) {
     const request: Anthropic.MessageCreateParamsNonStreaming = { model: o.model, max_tokens: o.maxTokens, messages };
     if (o.system) request.system = o.system;
-    if (tools.length) request.tools = tools;
+    const searchTool = o.webSearch ? [{ type: "web_search_20250305", name: "web_search", max_uses: 8 }] : [];
+    if (tools.length || searchTool.length) request.tools = [...tools, ...searchTool] as Anthropic.Tool[];
     // Chat replies: think less (much faster first answer). Haiku 4.5 has no effort setting.
     if (o.effort && !/haiku/.test(o.model)) (request as any).output_config = { effort: o.effort };
     // Reuse the processed persona / knowledge / earlier turns between messages: faster and cheaper.
