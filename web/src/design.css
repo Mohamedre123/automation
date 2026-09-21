@@ -428,11 +428,9 @@ h4,
   transition: border-color 0.3s, box-shadow 0.3s;
   position: relative;
 }
-.pw-node:nth-child(odd) {
+/* Every step sits on the same side, in one column, with the connector running under the icons. */
+.pw-node {
   align-self: flex-start;
-}
-.pw-node:nth-child(even) {
-  align-self: flex-end;
 }
 .pw-node small {
   display: block;
@@ -459,7 +457,8 @@ h4,
 .pw-link {
   height: 18px;
   width: 2px;
-  margin: 0 auto;
+  /* Lines up with the middle of each step's icon: 12px of padding + half of a 32px badge. */
+  margin-inline-start: 27px;
   background: var(--hairline-2);
 }
 .pw-link.lit {
