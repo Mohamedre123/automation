@@ -1136,9 +1136,12 @@ h4,
   padding-bottom: 0 !important;
   overflow: hidden;
 }
-/* The sidebar collapses to icons so the canvas keeps its room. */
+/* The sidebar collapses to icons so the canvas keeps its room - the menu button opens it back up. */
 .app-shell.editor-mode:not(.expanded) {
   --sidebar-w: 64px;
+}
+.app-shell.editor-mode .side-open {
+  display: inline-flex;
 }
 .app-shell.editor-mode:not(.expanded) .side-label,
 .app-shell.editor-mode:not(.expanded) .side-link span,
