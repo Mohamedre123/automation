@@ -106,6 +106,8 @@ const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>
   "whatsapp.send": { text: "caption", mediaUrl: "image" },
   "email.send": { body: "caption" },
   "email.smtpSend": { body: "caption" },
+  "slack.message": { text: "caption" },
+  "discord.message": { content: "caption" },
   "ai.image": { referenceImage: "sourceImage" },
   "ai.video": { referenceImage: "sourceImage" },
   "ai.generate": { images: "sourceImage" },
