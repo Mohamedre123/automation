@@ -20,7 +20,7 @@ export const anthropicCredential: CredentialType = {
   key: "anthropicApi",
   name: "Anthropic (Claude)",
   app: "anthropic",
-  description: "هات المفتاح من console.anthropic.com ← API Keys.",
+  description: "هات المفتاح من console.anthropic.com ← API Keys",
   docsUrl: "https://console.anthropic.com/settings/keys",
   fields: [{ key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "sk-ant-..." }],
   models: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5", "claude-fable-5-1"],
@@ -124,7 +124,7 @@ export const anthropicNodes: NodeDefinition[] = [
   {
     type: "anthropic.message",
     name: "اسأل Claude",
-    description: "خطوة مخصوصة لـ Claude (للمهام اللي محتاجة Claude تحديداً).",
+    description: "خطوة مخصوصة لـ Claude (للمهام اللي محتاجة Claude تحديداً)",
     app: "anthropic",
     appName: "Anthropic Claude",
     color: "#d97757",
@@ -134,12 +134,12 @@ export const anthropicNodes: NodeDefinition[] = [
     fields: [
       { key: "model", label: "الموديل", type: "model", modelKind: "text" },
       { key: "system", label: "تعليمات النظام (System prompt)", type: "textarea", placeholder: "أنت موظف خدمة عملاء لشركة ..." },
-      { key: "prompt", label: "البرومبت", type: "textarea", required: true, placeholder: "{{1.message.text}}" },
+      { key: "prompt", label: "البرومبت", type: "textarea", required: true, placeholder: "اكتب البرومبت هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false, help: "هيظهر في {{N.json}}" },
     ],
     sampleOutput: {
-      text: "أهلاً بيك! الأسعار بتبدأ من 500 جنيه.",
+      text: "أهلاً بيك! الأسعار بتبدأ من 500 جنيه",
       json: null,
       model: "claude-opus-5",
       usage: { inputTokens: 120, outputTokens: 40 },

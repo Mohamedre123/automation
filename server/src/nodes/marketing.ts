@@ -14,7 +14,7 @@ export const marketingCredentials: CredentialType[] = [
     key: "hubspotToken",
     name: "HubSpot",
     app: "hubspot",
-    description: "من HubSpot ← Settings ← Integrations ← Private Apps: اعمل App بصلاحية crm.objects.contacts.write وهات الـ Access token.",
+    description: "من HubSpot ← Settings ← Integrations ← Private Apps: اعمل App بصلاحية crm.objects.contacts.write وهات الـ Access token",
     docsUrl: "https://developers.hubspot.com/docs/api/private-apps",
     fields: [{ key: "token", label: "Private App access token", secret: true, required: true, placeholder: "pat-..." }],
     test: (data) =>
@@ -24,7 +24,7 @@ export const marketingCredentials: CredentialType[] = [
     key: "mailchimpApi",
     name: "Mailchimp",
     app: "mailchimp",
-    description: "من Mailchimp ← Profile ← Extras ← API keys ← Create A Key.",
+    description: "من Mailchimp ← Profile ← Extras ← API keys ← Create A Key",
     docsUrl: "https://mailchimp.com/help/about-api-keys/",
     fields: [{ key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "xxxxxxxx-us21" }],
     test: (data) => checkAuth("Mailchimp", `${mailchimpBase(data.apiKey)}/ping`, mailchimpAuth(data.apiKey)),
@@ -35,7 +35,7 @@ export const marketingNodes: NodeDefinition[] = [
   {
     type: "hubspot.contact",
     name: "إضافة / تحديث عميل في HubSpot",
-    description: "بيضيف جهة اتصال جديدة أو يحدّث الموجودة بنفس الإيميل.",
+    description: "بيضيف جهة اتصال جديدة أو يحدّث الموجودة بنفس الإيميل",
     app: "hubspot",
     appName: "HubSpot",
     color: "#ff7a59",
@@ -47,7 +47,7 @@ export const marketingNodes: NodeDefinition[] = [
       { key: "firstname", label: "الاسم الأول", type: "text" },
       { key: "lastname", label: "اسم العائلة", type: "text" },
       { key: "phone", label: "التليفون", type: "text" },
-      { key: "properties", label: "خصائص إضافية (JSON)", type: "json", placeholder: '{ "company": "{{1.data.company}}" }' },
+      { key: "properties", label: "خصائص إضافية (JSON)", type: "json", placeholder: '{ "company": "شركة النور" }', help: "ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها" },
     ],
     sampleOutput: { id: "1234567", email: "ahmed@example.com", created: false },
     async run({ params, credential, signal }) {
@@ -67,7 +67,7 @@ export const marketingNodes: NodeDefinition[] = [
   {
     type: "mailchimp.subscribe",
     name: "إضافة مشترك في Mailchimp",
-    description: "بيضيف إيميل لقايمة المشتركين (أو يحدّثه) مع Tags اختيارية.",
+    description: "بيضيف إيميل لقايمة المشتركين (أو يحدّثه) مع Tags اختيارية",
     app: "mailchimp",
     appName: "Mailchimp",
     color: "#d4a300",
@@ -75,7 +75,7 @@ export const marketingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["mailchimpApi"],
     fields: [
-      { key: "listId", label: "Audience ID", type: "text", required: true, help: "Audience ← Settings ← Audience name and defaults." },
+      { key: "listId", label: "Audience ID", type: "text", required: true, help: "من Mailchimp: Audience ← Settings ← Audience name and defaults" },
       { key: "email", label: "الإيميل", type: "text", required: true },
       { key: "firstName", label: "الاسم الأول", type: "text" },
       { key: "lastName", label: "اسم العائلة", type: "text" },

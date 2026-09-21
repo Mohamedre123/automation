@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { GuideLauncher } from "../components/ScenarioGuide";
 import { AppIcon, Empty, Spinner, useToast } from "../components/ui";
 import { Icon } from "../icons";
 import type { Template } from "../types";
@@ -48,7 +49,7 @@ export function Templates() {
       <div className="page-head">
         <div>
           <h1>التيمبلت</h1>
-          <p>سيناريوهات جاهزة. كل واحدة مكتوب عليها بتربط أنهي تطبيقات وإيه اللي محتاجه عشان تشتغل.</p>
+          <p>سيناريوهات جاهزة. كل واحدة مكتوب عليها بتربط أنهي تطبيقات وإيه اللي محتاجه عشان تشتغل</p>
         </div>
       </div>
 
@@ -75,7 +76,7 @@ export function Templates() {
         </div>
       ) : visible.length === 0 ? (
         <div className="card">
-          <Empty icon="search" title="مفيش تيمبلت بالمواصفات دي" text="جرّب كلمة تانية أو تصفّح كل الأقسام." />
+          <Empty icon="search" title="مفيش تيمبلت بالمواصفات دي" text="جرّب كلمة تانية أو تصفّح كل الأقسام" />
         </div>
       ) : (
         <div className="grid tpl-grid">
@@ -97,6 +98,7 @@ export function Templates() {
                   {t.steps} خطوات{t.starts ? ` · بيبدأ ${t.starts}` : ""}
                 </span>
                 <div className="row" style={{ gap: 6 }}>
+                  <GuideLauncher graph={t.graph} name={t.name} storageKey={`tpl:${t.id}`} compact autoOpen={false} />
                   <Link className="btn ghost sm" to={`/templates/${t.id}`}>
                     التفاصيل
                   </Link>

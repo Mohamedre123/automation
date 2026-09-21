@@ -94,7 +94,7 @@ export const storeCredentials: CredentialType[] = [
     name: "سلة",
     app: "salla",
     description:
-      "من بوابة شركاء سلة (salla.partners): اعمل تطبيق خاص لمتجرك بصلاحيات الطلبات والمنتجات، وثبّته على متجرك، وهات Access Token.",
+      "من بوابة شركاء سلة (salla.partners): اعمل تطبيق خاص لمتجرك بصلاحيات الطلبات والمنتجات، وثبّته على متجرك، وهات Access Token",
     docsUrl: "https://docs.salla.dev/",
     fields: [{ key: "accessToken", label: "Access Token", secret: true, required: true }],
     async test(data) {
@@ -106,7 +106,7 @@ export const storeCredentials: CredentialType[] = [
     key: "zidApi",
     name: "زد",
     app: "zid",
-    description: "من بوابة شركاء زد (partner.zid.sa): اعمل تطبيق واربطه بمتجرك، وهات Authorization token و Access (Manager) token.",
+    description: "من بوابة شركاء زد (partner.zid.sa): اعمل تطبيق واربطه بمتجرك، وهات Authorization token و Access (Manager) token",
     docsUrl: "https://docs.zid.sa/",
     fields: [
       { key: "authorizationToken", label: "Authorization token", secret: true, required: true },
@@ -118,7 +118,7 @@ export const storeCredentials: CredentialType[] = [
     key: "wixApi",
     name: "Wix",
     app: "wix",
-    description: "من Wix ← Account settings ← API Keys: اعمل API key بصلاحية Wix Stores / eCommerce، وهات Site ID من رابط لوحة الموقع.",
+    description: "من Wix ← Account settings ← API Keys: اعمل API key بصلاحية Wix Stores / eCommerce، وهات Site ID من رابط لوحة الموقع",
     docsUrl: "https://dev.wix.com/docs/rest/articles/getting-started/api-keys",
     fields: [
       { key: "apiKey", label: "API key", secret: true, required: true },
@@ -142,7 +142,7 @@ export const storeNodes: NodeDefinition[] = [
     ...salla,
     type: "salla.orderTrigger",
     name: "طلب جديد في سلة",
-    description: "بيشتغل مع كل طلب جديد في متجرك على سلة.",
+    description: "بيشتغل مع كل طلب جديد في متجرك على سلة",
     group: "trigger",
     kind: "trigger",
     triggerType: "schedule",
@@ -163,10 +163,10 @@ export const storeNodes: NodeDefinition[] = [
     ...salla,
     type: "salla.getOrder",
     name: "جلب طلب من سلة",
-    description: "بيجيب تفاصيل طلب برقمه.",
+    description: "بيجيب تفاصيل طلب برقمه",
     group: "apps",
     kind: "action",
-    fields: [{ key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "{{1.id}}" }],
+    fields: [{ key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "رقم الطلب", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" }],
     sampleOutput: { id: 1024567, status: "قيد التنفيذ", total: 350 },
     async run({ params, credential, signal }) {
       const res = await apiRequest("سلة", `${SALLA}/orders/${encodeURIComponent(str(params.orderId))}`, { headers: sallaHeaders(credential), signal });
@@ -177,11 +177,11 @@ export const storeNodes: NodeDefinition[] = [
     ...salla,
     type: "salla.updateOrderStatus",
     name: "تغيير حالة طلب في سلة",
-    description: "بيغيّر حالة الطلب (مثلاً قيد التنفيذ أو تم الشحن).",
+    description: "بيغيّر حالة الطلب (مثلاً قيد التنفيذ أو تم الشحن)",
     group: "apps",
     kind: "action",
     fields: [
-      { key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "{{1.id}}" },
+      { key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "رقم الطلب", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       {
         key: "slug",
         label: "الحالة الجديدة",
@@ -214,7 +214,7 @@ export const storeNodes: NodeDefinition[] = [
     ...salla,
     type: "salla.createProduct",
     name: "إضافة منتج في سلة",
-    description: "بيضيف منتج جديد لمتجرك.",
+    description: "بيضيف منتج جديد لمتجرك",
     group: "apps",
     kind: "action",
     fields: [
@@ -247,7 +247,7 @@ export const storeNodes: NodeDefinition[] = [
     ...zid,
     type: "zid.orderTrigger",
     name: "طلب جديد في زد",
-    description: "بيشتغل مع كل طلب جديد في متجرك على زد.",
+    description: "بيشتغل مع كل طلب جديد في متجرك على زد",
     group: "trigger",
     kind: "trigger",
     triggerType: "schedule",
@@ -268,10 +268,10 @@ export const storeNodes: NodeDefinition[] = [
     ...zid,
     type: "zid.getOrder",
     name: "جلب طلب من زد",
-    description: "بيجيب تفاصيل طلب برقمه.",
+    description: "بيجيب تفاصيل طلب برقمه",
     group: "apps",
     kind: "action",
-    fields: [{ key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "{{1.id}}" }],
+    fields: [{ key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "رقم الطلب", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" }],
     sampleOutput: { id: 5566778, status: "جاري التجهيز", total: "220.00" },
     async run({ params, credential, signal }) {
       const res = await apiRequest("زد", `${ZID}/managers/store/orders/${encodeURIComponent(str(params.orderId))}/view`, {
@@ -285,11 +285,11 @@ export const storeNodes: NodeDefinition[] = [
     ...zid,
     type: "zid.updateOrderStatus",
     name: "تغيير حالة طلب في زد",
-    description: "بيغيّر حالة الطلب (جاري التجهيز، جاهز، جاري التوصيل...).",
+    description: "بيغيّر حالة الطلب (جاري التجهيز، جاهز، جاري التوصيل...)",
     group: "apps",
     kind: "action",
     fields: [
-      { key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "{{1.id}}" },
+      { key: "orderId", label: "رقم الطلب (ID)", type: "text", required: true, placeholder: "رقم الطلب", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       {
         key: "status",
         label: "الحالة الجديدة",
@@ -320,7 +320,7 @@ export const storeNodes: NodeDefinition[] = [
   {
     type: "wix.orderTrigger",
     name: "طلب جديد في Wix Stores",
-    description: "بيشتغل مع كل طلب جديد في متجر Wix.",
+    description: "بيشتغل مع كل طلب جديد في متجر Wix",
     app: "wix",
     appName: "Wix",
     color: "#1b1f2e",

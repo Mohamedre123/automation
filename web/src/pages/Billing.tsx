@@ -29,9 +29,9 @@ export function CreditMeter({ label, left, total, icon }: { label: string; left:
 }
 
 function statusLine(account: AccountInfo) {
-  if (account.isAdmin) return "حساب الأدمن: كل المميزات مفتوحة ومن غير حدود.";
+  if (account.isAdmin) return "حساب الأدمن: كل المميزات مفتوحة ومن غير حدود";
   if (account.plan.key === "trial") return `فترة التجربة المجانية - باقي ${daysLeft(account.trialEndsAt)} يوم (لحد ${formatDateTime(account.trialEndsAt)})`;
-  if (account.plan.key === "free") return "الباقة المجانية - اترقّى عشان تشغّل سيناريوهات أكتر وتفتح المساعد الذكي.";
+  if (account.plan.key === "free") return "الباقة المجانية - اترقّى عشان تشغّل سيناريوهات أكتر وتفتح المساعد الذكي";
   return `${account.period === "yearly" ? "اشتراك سنوي" : "اشتراك شهري"} - شغال لحد ${formatDateTime(account.expiresAt)}`;
 }
 
@@ -74,7 +74,7 @@ export function Billing() {
 
       {outOfCredits && (
         <div className="alert error" style={{ marginBottom: 18 }}>
-          الكريديت بتاعك خلص - السيناريوهات والمساعد واقفين لحد ما الرصيد يتجدد أو تترقّى لباقة أعلى.
+          الكريديت بتاعك خلص - السيناريوهات والمساعد واقفين لحد ما الرصيد يتجدد أو تترقّى لباقة أعلى
         </div>
       )}
 
@@ -119,7 +119,7 @@ export function Billing() {
           </a>
           <div className="faint" style={{ fontSize: 12.5 }}>
             {account.plan.key === "trial"
-              ? "رصيد التجربة مش بيتجدد - بعد التجربة بتاخد رصيد الباقة المجانية كل شهر."
+              ? "رصيد التجربة مش بيتجدد - بعد التجربة بتاخد رصيد الباقة المجانية كل شهر"
               : account.resetsAt
                 ? `الرصيد بيتجدد ${formatDateTime(account.resetsAt)} · استخدمت الشهر ده ${number(account.creditsUsed)} كريديت${account.assistantUsed ? ` + ${number(account.assistantUsed)} للمساعد` : ""}`
                 : ""}
@@ -132,7 +132,7 @@ export function Billing() {
           {r.kind === "credits"
             ? `طلب شراء «${packs.find((p) => p.key === r.pack)?.name ?? r.pack}» (${r.amount}) مستني مراجعة التحويل`
             : `طلب اشتراك «${plans.find((p) => p.key === r.plan)?.name ?? r.plan}» (${r.period === "yearly" ? "سنوي" : "شهري"} - ${r.amount}) مستني مراجعة التحويل`}{" "}
-          - أول ما يتأكد بيتفعّل على حسابك فوراً.
+          - أول ما يتأكد بيتفعّل على حسابك فوراً
         </div>
       ))}
 
@@ -161,7 +161,7 @@ export function Billing() {
         <div>
           <h2 style={{ fontSize: 20 }}>شراء كريديت إضافي</h2>
           <p className="faint" style={{ margin: "4px 0 0", fontSize: 13.5 }}>
-            بيتضاف فوق باقتك وما بينتهيش، وبيتصرف بعد كريديت الشهر.
+            بيتضاف فوق باقتك وما بينتهيش، وبيتصرف بعد كريديت الشهر
           </p>
         </div>
       </div>

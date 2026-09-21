@@ -166,6 +166,19 @@ const paths: Record<string, ReactElement> = {
     </>
   ),
   arrowRight: <path d="M5 12h14M12 5l7 7-7 7" />,
+  arrowLeft: <path d="M19 12H5m7-7-7 7 7 7" />,
+  info: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-5M12 8h.01" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4" />
+    </>
+  ),
   check: <path d="M20 6 9 17l-5-5" />,
   alert: (
     <>

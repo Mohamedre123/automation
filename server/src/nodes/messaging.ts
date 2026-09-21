@@ -6,7 +6,7 @@ export const messagingCredentials: CredentialType[] = [
     key: "resendApi",
     name: "إيميل (Resend)",
     app: "email",
-    description: "إرسال إيميلات من دومينك. اعمل حساب مجاني على resend.com، وثّق الدومين، وهات API Key.",
+    description: "إرسال إيميلات من دومينك. اعمل حساب مجاني على resend.com، وثّق الدومين، وهات API Key",
     docsUrl: "https://resend.com/api-keys",
     fields: [
       { key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "re_..." },
@@ -18,7 +18,7 @@ export const messagingCredentials: CredentialType[] = [
     key: "slackBot",
     name: "Slack",
     app: "slack",
-    description: "اعمل Slack App وضيف صلاحية chat:write، وهات Bot User OAuth Token. متنساش تضيف البوت للقناة.",
+    description: "اعمل Slack App وضيف صلاحية chat:write، وهات Bot User OAuth Token. متنساش تضيف البوت للقناة",
     docsUrl: "https://api.slack.com/apps",
     fields: [{ key: "botToken", label: "Bot Token", secret: true, required: true, placeholder: "xoxb-..." }],
     async test(data) {
@@ -35,7 +35,7 @@ export const messagingCredentials: CredentialType[] = [
     key: "discordWebhook",
     name: "Discord",
     app: "discord",
-    description: "من إعدادات القناة ← Integrations ← Webhooks ← New Webhook ← Copy URL.",
+    description: "من إعدادات القناة ← Integrations ← Webhooks ← New Webhook ← Copy URL",
     fields: [{ key: "webhookUrl", label: "Webhook URL", secret: true, required: true, placeholder: "https://discord.com/api/webhooks/..." }],
     test: (data) => checkAuth("Discord", data.webhookUrl, {}),
   },
@@ -45,7 +45,7 @@ export const messagingNodes: NodeDefinition[] = [
   {
     type: "email.send",
     name: "إرسال إيميل",
-    description: "بيبعت إيميل (نص أو HTML) لعميل أو ليك.",
+    description: "بيبعت إيميل (نص أو HTML) لعميل أو ليك",
     app: "email",
     appName: "إيميل",
     color: "#f43f5e",
@@ -53,7 +53,7 @@ export const messagingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["resendApi"],
     fields: [
-      { key: "to", label: "إلى", type: "text", required: true, placeholder: "{{1.data.email}} (أكتر من واحد بفاصلة)" },
+      { key: "to", label: "إلى", type: "text", required: true, placeholder: "customer@example.com", help: "أكتر من إيميل؟ افصل بينهم بفاصلة. أو دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       { key: "subject", label: "العنوان", type: "text", required: true },
       { key: "body", label: "المحتوى", type: "textarea", required: true },
       {
@@ -88,7 +88,7 @@ export const messagingNodes: NodeDefinition[] = [
   {
     type: "slack.message",
     name: "إرسال رسالة Slack",
-    description: "بيبعت رسالة لقناة أو شخص في Slack.",
+    description: "بيبعت رسالة لقناة أو شخص في Slack",
     app: "slack",
     appName: "Slack",
     color: "#4a154b",
@@ -115,7 +115,7 @@ export const messagingNodes: NodeDefinition[] = [
   {
     type: "discord.message",
     name: "إرسال رسالة Discord",
-    description: "بيبعت رسالة لقناة Discord عن طريق Webhook.",
+    description: "بيبعت رسالة لقناة Discord عن طريق Webhook",
     app: "discord",
     appName: "Discord",
     color: "#5865f2",

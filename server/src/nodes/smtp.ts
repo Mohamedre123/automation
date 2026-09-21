@@ -188,20 +188,20 @@ export const smtpCredential: CredentialType = {
   key: "smtpAccount",
   name: "إيميل (Gmail / Outlook / أي إيميل بـ SMTP)",
   app: "gmail",
-  description: "إرسال إيميلات من إيميلك نفسه بكلمة سر التطبيقات - من غير أي تطبيقات أو تسجيل دخول.",
+  description: "إرسال إيميلات من إيميلك نفسه بكلمة سر التطبيقات - من غير أي تطبيقات أو تسجيل دخول",
   fields: [
     { key: "host", label: "سيرفر SMTP", required: true, placeholder: "smtp.gmail.com" },
-    { key: "port", label: "البورت", placeholder: "465", help: "465 (الأشهر) أو 587." },
+    { key: "port", label: "البورت", placeholder: "465", help: "465 (الأشهر) أو 587" },
     { key: "user", label: "الإيميل", required: true, placeholder: "you@gmail.com" },
     { key: "password", label: "كلمة السر (App Password)", secret: true, required: true },
     { key: "fromName", label: "اسم المرسل (اختياري)", placeholder: "متجر تدفّق" },
   ],
   steps: [
-    "Gmail: افتح myaccount.google.com ← Security وفعّل 2-Step Verification لو مش متفعّل.",
-    "افتح myaccount.google.com/apppasswords، اكتب اسم (مثلاً تدفق) ودوس Create - هيطلعلك باسورد من 16 حرف، انسخه.",
-    "هنا: السيرفر smtp.gmail.com والبورت 465 والإيميل بتاعك، والصق الباسورد اللي نسخته.",
-    "Outlook / Hotmail: السيرفر smtp.office365.com والبورت 587.",
-    "إيميل الدومين (Hostinger / cPanel / Zoho): هتلاقي سيرفر SMTP والبورت في إعدادات الإيميل عند الاستضافة.",
+    "Gmail: افتح myaccount.google.com ← Security وفعّل 2-Step Verification لو مش متفعّل",
+    "افتح myaccount.google.com/apppasswords، اكتب اسم (مثلاً تدفق) ودوس Create - هيطلعلك باسورد من 16 حرف، انسخه",
+    "هنا: السيرفر smtp.gmail.com والبورت 465 والإيميل بتاعك، والصق الباسورد اللي نسخته",
+    "Outlook / Hotmail: السيرفر smtp.office365.com والبورت 587",
+    "إيميل الدومين (Hostinger / cPanel / Zoho): هتلاقي سيرفر SMTP والبورت في إعدادات الإيميل عند الاستضافة",
   ],
   async test(data) {
     const { smtp, user } = await session({ id: "", type: "smtpAccount", data }, AbortSignal.timeout(30_000));
@@ -214,7 +214,7 @@ export const smtpCredential: CredentialType = {
 export const smtpNode: NodeDefinition = {
   type: "email.smtpSend",
   name: "إرسال إيميل (Gmail / SMTP)",
-  description: "بيبعت إيميل من إيميلك (Gmail أو Outlook أو إيميل الدومين) - نص أو HTML.",
+  description: "بيبعت إيميل من إيميلك (Gmail أو Outlook أو إيميل الدومين) - نص أو HTML",
   app: "gmail",
   appName: "إيميل",
   color: "#ea4335",
@@ -222,7 +222,7 @@ export const smtpNode: NodeDefinition = {
   kind: "action",
   credentialTypes: ["smtpAccount"],
   fields: [
-    { key: "to", label: "إلى", type: "text", required: true, placeholder: "{{1.data.email}}" },
+    { key: "to", label: "إلى", type: "text", required: true, placeholder: "customer@example.com", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
     { key: "subject", label: "العنوان", type: "text", required: true },
     { key: "body", label: "المحتوى", type: "textarea", required: true },
     {

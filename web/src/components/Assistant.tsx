@@ -134,9 +134,9 @@ export function AssistantLauncher() {
 }
 
 const LOCKED: Record<string, { title: string; text: string }> = {
-  plan: { title: "المساعد الذكي في باقة احترافي وماكس", text: "المساعد بيبنيلك السيناريو كامل من وصف بسيط، وبيقرا سجل التشغيل ويقولك سبب أي خطأ وإزاي تحلّه." },
-  credits: { title: "الكريديت خلص", text: "رصيد المنصة خلص، فالسيناريوهات والمساعد واقفين لحد ما الرصيد يتجدد أو تترقّى لباقة أعلى." },
-  assistant_credits: { title: "كريديت المساعد خلص الشهر ده", text: "رصيد المساعد هيتجدد مع باقتك الشهر الجاي، أو تقدر تترقّى لباقة ماكس." },
+  plan: { title: "المساعد الذكي في باقة احترافي وماكس", text: "المساعد بيبنيلك السيناريو كامل من وصف بسيط، وبيقرا سجل التشغيل ويقولك سبب أي خطأ وإزاي تحلّه" },
+  credits: { title: "الكريديت خلص", text: "رصيد المنصة خلص، فالسيناريوهات والمساعد واقفين لحد ما الرصيد يتجدد أو تترقّى لباقة أعلى" },
+  assistant_credits: { title: "كريديت المساعد خلص الشهر ده", text: "رصيد المساعد هيتجدد مع باقتك الشهر الجاي، أو تقدر تترقّى لباقة ماكس" },
 };
 
 function AssistantPanel({ onClose }: { onClose: () => void }) {
@@ -310,7 +310,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
       const stopped = controller.signal.aborted;
       patchLast((message) => ({
         ...message,
-        text: stopped ? message.text || "اتوقف الرد." : `${message.text ? `${message.text}\n\n` : ""}${(e as Error).message}`,
+        text: stopped ? message.text || "اتوقف الرد" : `${message.text ? `${message.text}\n\n` : ""}${(e as Error).message}`,
         error: !stopped,
       }));
     } finally {
@@ -393,7 +393,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             <Icon name="sparkles" size={28} />
           </div>
           <h3>{LOCKED[status.reason ?? ""]?.title ?? "المساعد لسه مش متفعّل"}</h3>
-          <p className="muted">{LOCKED[status.reason ?? ""]?.text ?? "صاحب المنصة محتاج يضيف مفتاح Claude (ANTHROPIC_API_KEY) في إعدادات السيرفر."}</p>
+          <p className="muted">{LOCKED[status.reason ?? ""]?.text ?? "صاحب المنصة محتاج يضيف مفتاح Claude (ANTHROPIC_API_KEY) في إعدادات السيرفر"}</p>
           {status.reason && LOCKED[status.reason] && (
             <Link className="btn primary" to="/app/billing" onClick={onClose}>
               صفحة الاشتراك
@@ -408,7 +408,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
           ) : history.length === 0 ? (
             <p className="muted" style={{ textAlign: "center" }}>
-              مفيش محادثات سابقة لسه.
+              مفيش محادثات سابقة لسه
             </p>
           ) : (
             <div className="assistant-history">
@@ -444,7 +444,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
               messages.length === 0 && (
                 <div className="assistant-welcome">
                   <p>
-                    أهلاً! قولي عايز تأتمت إيه وأنا هبنيلك السيناريو بالظبط زي ما تطلب، أو اسألني عن أي خطأ في سيناريوهاتك.
+                    أهلاً! قولي عايز تأتمت إيه وأنا هبنيلك السيناريو بالظبط زي ما تطلب، أو اسألني عن أي خطأ في سيناريوهاتك
                     {workflowId && " (شايف إنك فاتح سيناريو دلوقتي - تقدر تسألني عنه مباشرة.)"}
                   </p>
                   <div className="suggestions">

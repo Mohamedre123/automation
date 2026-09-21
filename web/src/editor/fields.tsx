@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api";
 import { AppIcon, Toggle, copyText, useToast } from "../components/ui";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
 import { CredentialModal } from "../pages/Credentials";
 import type { Credential, FieldDef } from "../types";
-import { useEditor } from "./FlowNode";
+import { useEditor, type VariableSource } from "./FlowNode";
 import { filterLibrary, loadLibrary, MentionChips, MentionMenu, openMention, type LibraryItem } from "./MediaMention";
 import { pathSegment } from "./graph";
 
@@ -32,6 +32,78 @@ const OPERATORS = [
   ["not_empty", "مش فاضي"],
   ["regex", "يطابق Regex"],
 ];
+
+/*
+ * A field can hold a reference to an earlier step, which is stored as {{3.url}}. Nobody should have
+ * to read that: under the field we say it in words - "الصورة · من خطوة 3 (صورة AI)".
+ */
+const PATH_WORDS: Record<string, string> = {
+  text: "النص",
+  "message.text": "نص الرسالة",
+  "message.chat.id": "رقم المحادثة",
+  "message.message_id": "رقم الرسالة",
+  "message.from.first_name": "اسم العميل",
+  url: "الرابط",
+  caption: "الكابشن",
+  name: "الاسم",
+  names: "أسماء الصور",
+  idea: "الفكرة",
+  phone: "رقم الموبايل",
+  email: "الإيميل",
+  id: "الرقم",
+  title: "العنوان",
+  status: "الحالة",
+  price: "السعر",
+  total: "الإجمالي",
+  rows: "الصفوف",
+  link: "اللينك",
+  "json.post": "البوست",
+  "json.caption": "الكابشن",
+  "json.imagePrompt": "وصف التصميم",
+  postUrl: "رابط البوست",
+  index: "رقم الصورة",
+};
+const SYSTEM_WORDS: Record<string, string> = {
+  $now: "الوقت الحالي",
+  $today: "تاريخ النهاردة",
+  $timestamp: "الطابع الزمني",
+  "$workflow.name": "اسم السيناريو",
+  "$execution.id": "رقم التشغيلة",
+};
+
+function inWords(token: string, sources: VariableSource[]) {
+  const body = token.replace(/^\{\{\s*|\s*\}\}$/g, "");
+  if (body.startsWith("$")) return { what: SYSTEM_WORDS[body] ?? body, from: "" };
+  const dot = body.indexOf(".");
+  const id = dot < 0 ? body : body.slice(0, dot);
+  const path = dot < 0 ? "" : body.slice(dot + 1);
+  const source = sources.find((s) => s.id === id);
+  const last = path.split(".").filter((part) => !/^\d+$/.test(part)).pop() ?? "";
+  const what = PATH_WORDS[path] ?? PATH_WORDS[last] ?? (path ? path : "نتيجة الخطوة");
+  return { what, from: source ? `من خطوة ${id} · ${source.name}` : `من خطوة ${id}` };
+}
+
+/** Everything this field pulls from earlier steps, in plain words. */
+function ExprHints({ value, nodeId }: { value: string; nodeId: string }) {
+  const { variableSources } = useEditor();
+  const tokens = useMemo(() => [...new Set(cleanText(value ?? "").match(/\{\{[^{}]+\}\}/g) ?? [])], [value]);
+  if (!tokens.length) return null;
+  const sources = variableSources(nodeId);
+  return (
+    <div className="expr-hints">
+      {tokens.map((token) => {
+        const { what, from } = inWords(token, sources);
+        return (
+          <span className="expr-hint" key={token} title={token}>
+            <Icon name="braces" size={11} />
+            {what}
+            {from && <small>{from}</small>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function preview(value: unknown): string {
   if (value === null) return "null";
@@ -105,7 +177,7 @@ function VariablePicker({ nodeId, onPick }: { nodeId: string; onPick: (token: st
     <div className="picker" onMouseDown={(e) => e.preventDefault()}>
       {sources.length === 0 && (
         <div className="faint" style={{ padding: 8 }}>
-          مفيش خطوات قبل الخطوة دي - وصّلها بخطوة سابقة الأول.
+          مفيش خطوات قبل الخطوة دي - وصّلها بخطوة سابقة الأول
         </div>
       )}
       {sources.map((source) => (
@@ -269,6 +341,7 @@ export function ExprInput({
       )}
       {mention && <MentionMenu query={mention.query} activeIndex={mentionIndex} onPick={pickMention} onHover={setMentionIndex} />}
       {open && <VariablePicker nodeId={nodeId} onPick={insert} />}
+      <ExprHints value={value ?? ""} nodeId={nodeId} />
       <MentionChips value={value ?? ""} />
     </div>
   );
@@ -370,7 +443,7 @@ function ModelSelect({
     };
   }, [credentialId]);
 
-  if (!credentialId) return <div className="help">اختار الحساب الأول عشان تظهر الموديلات المتاحة فيه.</div>;
+  if (!credentialId) return <div className="help">اختار الحساب الأول عشان تظهر الموديلات المتاحة فيه</div>;
 
   const available = state.models.filter((m) =>
     kind === "image" ? /image/i.test(m) : kind === "video" ? /veo|sora/i.test(m) : !NON_TEXT_MODEL.test(m),
@@ -406,7 +479,7 @@ function ModelSelect({
       )}
       {state.error && (
         <div className="help" style={{ color: "var(--warning)" }}>
-          مقدرتش أجيب القايمة من حسابك ({state.error}) - بعرض الموديلات المقترحة.
+          مقدرتش أجيب القايمة من حسابك ({state.error}) - بعرض الموديلات المقترحة
         </div>
       )}
       {!state.loading && !state.error && options.length > 0 && (
@@ -448,7 +521,7 @@ function CredentialSelect({
         </button>
       </div>
       {matching.length === 0 && (
-        <div className="help">مفيش حساب {types?.map((t) => credType(t)?.name ?? t).join(" أو ")} لسه - دوس «ربط» وهتلاقي الشرح خطوة بخطوة.</div>
+        <div className="help">مفيش حساب {types?.map((t) => credType(t)?.name ?? t).join(" أو ")} لسه - دوس «ربط» وهتلاقي الشرح خطوة بخطوة</div>
       )}
       {adding && (
         <CredentialModal

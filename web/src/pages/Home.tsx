@@ -87,7 +87,7 @@ export function Home() {
           <h1>
             {greeting()}، {firstName}
           </h1>
-          <p>ده ملخص اللي بيحصل في سيناريوهاتك.</p>
+          <p>ده ملخص اللي بيحصل في سيناريوهاتك</p>
         </div>
         <div className="row">
           <Link className="btn" to="/app/templates">
@@ -139,7 +139,7 @@ export function Home() {
               <Spinner />
             ) : recent.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
-                لسه مفيش سيناريوهات. ابدأ من تيمبلت جاهز - أسرع طريقة.
+                لسه مفيش سيناريوهات. ابدأ من تيمبلت جاهز - أسرع طريقة
               </p>
             ) : (
               <div className="ov-list">

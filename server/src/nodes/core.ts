@@ -8,7 +8,7 @@ export const newWebhookPath = () => randomToken(18);
 const manualTrigger: NodeDefinition = {
   type: "trigger.manual",
   name: "تشغيل يدوي",
-  description: "بتشغّل السيناريو بنفسك من زرار «تشغيل مرة».",
+  description: "بتشغّل السيناريو بنفسك من زرار «تشغيل مرة»",
   app: "manual",
   appName: "يدوي",
   color: "#64748b",
@@ -21,7 +21,7 @@ const manualTrigger: NodeDefinition = {
       label: "بيانات تجريبية (JSON)",
       type: "json",
       placeholder: '{ "name": "Ahmed" }',
-      help: "اختياري: البيانات دي هتبقى مخرجات الخطوة.",
+      help: "اختياري: البيانات دي هتبقى مخرجات الخطوة",
     },
   ],
   sampleOutput: { triggeredAt: "2026-01-01T10:00:00.000Z", data: {} },
@@ -30,7 +30,7 @@ const manualTrigger: NodeDefinition = {
 const webhookTrigger: NodeDefinition = {
   type: "trigger.webhook",
   name: "Webhook",
-  description: "رابط خاص بيستقبل بيانات من أي موقع أو نظام (فورم، متجر، CRM...).",
+  description: "رابط خاص بيستقبل بيانات من أي موقع أو نظام (فورم، متجر، CRM...)",
   app: "webhook",
   appName: "Webhooks",
   color: "#e5487a",
@@ -42,7 +42,7 @@ const webhookTrigger: NodeDefinition = {
       key: "path",
       label: "رابط الـ Webhook",
       type: "readonly",
-      help: "ابعت أي طلب (GET/POST) للرابط ده. لو فيه خطوة «رد على الـ Webhook» الرد هيستنى نتيجتها.",
+      help: "ابعت أي طلب (GET/POST) للرابط ده. لو فيه خطوة «رد على الـ Webhook» الرد هيستنى نتيجتها",
     },
   ],
   webhook: { parse: (request) => [request] },
@@ -57,13 +57,13 @@ const webhookTrigger: NodeDefinition = {
 const formTrigger: NodeDefinition = {
   type: "trigger.form",
   name: "فورم",
-  description: "صفحة فورم جاهزة برابط: أي حد يملاها يشغّل السيناريو، والنتيجة (نص أو صورة) تظهرله فوراً.",
+  description: "صفحة فورم جاهزة برابط: أي حد يملاها يشغّل السيناريو، والنتيجة (نص أو صورة) تظهرله فوراً",
   guide: [
-    "الفورم ده صفحة جاهزة برابط - مش محتاج موقع ولا برمجة.",
-    "الأسئلة بتتكتب في «الحقول» تحت: المفتاح بالإنجليزي والسؤال بالعربي. ضيف في آخر السؤال (صورة) لرفع صورة، (نعم/لا) للاختيار، (ساعة) لميعاد، (اختياري) لحقل مش إجباري.",
-    "للتجربة: دوس «تشغيل مرة» فوق، وبعدين «افتح الفورم» واملاه خلال دقيقتين.",
-    "عشان يشتغل على طول: فعّل السيناريو، وابعت «رابط الفورم» لعملاءك أو حطه في موقعك.",
-    "كل إجابة بتوصل للخطوات اللي بعده في {{1.data.اسم_المفتاح}}.",
+    "الفورم ده صفحة جاهزة برابط - مش محتاج موقع ولا برمجة",
+    "الأسئلة بتتكتب في «الحقول» تحت: المفتاح بالإنجليزي والسؤال بالعربي. ضيف في آخر السؤال (صورة) لرفع صورة، (نعم/لا) للاختيار، (ساعة) لميعاد، (اختياري) لحقل مش إجباري",
+    "للتجربة: دوس «تشغيل مرة» فوق، وبعدين «افتح الفورم» واملاه خلال دقيقتين",
+    "عشان يشتغل على طول: فعّل السيناريو، وابعت «رابط الفورم» لعملاءك أو حطه في موقعك",
+    "كل إجابة بتوصل للخطوات اللي بعده في {{1.data.اسم_المفتاح}}",
   ],
   app: "form",
   appName: "فورم",
@@ -72,7 +72,7 @@ const formTrigger: NodeDefinition = {
   kind: "trigger",
   triggerType: "webhook",
   fields: [
-    { key: "path", label: "رابط الفورم", type: "readonly", urlKind: "form", help: "افتحه وجرّب بنفسك، أو ابعته لعملاءك." },
+    { key: "path", label: "رابط الفورم", type: "readonly", urlKind: "form", help: "افتحه وجرّب بنفسك، أو ابعته لعملاءك" },
     { key: "title", label: "عنوان الفورم", type: "text", default: "اطلب خدمتك" },
     { key: "description", label: "وصف قصير", type: "textarea" },
     {
@@ -80,7 +80,7 @@ const formTrigger: NodeDefinition = {
       label: "الحقول",
       type: "keyvalue",
       default: [{ key: "name", value: "الاسم" }],
-      help: "المفتاح = اسم الحقل بالإنجليزي، والقيمة = السؤال. الإجابة بتوصل في {{1.data.name}}. ضيف في آخر السؤال: (صورة) لرفع صورة، (نعم/لا) للاختيار، (ساعة) لميعاد، (اختياري) لحقل مش إجباري.",
+      help: "المفتاح = اسم الحقل بالإنجليزي، والقيمة = السؤال. الإجابة بتوصل في {{1.data.name}}. ضيف في آخر السؤال: (صورة) لرفع صورة، (نعم/لا) للاختيار، (ساعة) لميعاد، (اختياري) لحقل مش إجباري",
     },
     { key: "submitLabel", label: "نص زرار الإرسال", type: "text", default: "إرسال" },
     {
@@ -88,7 +88,7 @@ const formTrigger: NodeDefinition = {
       label: "رسالة بعد الإرسال",
       type: "text",
       default: "تم الإرسال بنجاح ✓",
-      help: "لو في آخر السيناريو خطوة «رد على الـ Webhook»، ردها هو اللي هيظهر (نص أو صور).",
+      help: "لو في آخر السيناريو خطوة «رد على الـ Webhook»، ردها هو اللي هيظهر (نص أو صور)",
     },
   ],
   webhook: {
@@ -104,11 +104,11 @@ const formTrigger: NodeDefinition = {
 const scheduleTrigger: NodeDefinition = {
   type: "trigger.schedule",
   name: "جدولة",
-  description: "بيشغّل السيناريو كل فترة أو في مواعيد محددة.",
+  description: "بيشغّل السيناريو كل فترة أو في مواعيد محددة",
   guide: [
-    "اختار «كل يوم في ساعة معينة» وحدد ساعة البداية - السيناريو هيبدأ يشتغل فيها.",
-    "لو السيناريو بينشر: حط «ساعة النشر» - البوست هيتجهز في ساعة البداية وينزل في ساعة النشر.",
-    "جرّب بزرار «تشغيل مرة»، وبعدين فعّل السيناريو عشان يشتغل لوحده كل يوم.",
+    "اختار «كل يوم في ساعة معينة» وحدد ساعة البداية - السيناريو هيبدأ يشتغل فيها",
+    "لو السيناريو بينشر: حط «ساعة النشر» - البوست هيتجهز في ساعة البداية وينزل في ساعة النشر",
+    "جرّب بزرار «تشغيل مرة»، وبعدين فعّل السيناريو عشان يشتغل لوحده كل يوم",
   ],
   app: "schedule",
   appName: "جدولة",
@@ -159,7 +159,7 @@ const scheduleTrigger: NodeDefinition = {
       label: "ساعة النشر (اختياري)",
       type: "text",
       placeholder: "19:00",
-      help: "لو السيناريو بيجهّز بوست: يبدأ الشغل في ساعة البداية وينزل البوست الساعة دي (تلقائي في خطوات النشر). فاضي = ينزل أول ما يخلص.",
+      help: "لو السيناريو بيجهّز بوست: يبدأ الشغل في ساعة البداية وينزل البوست الساعة دي (تلقائي في خطوات النشر). فاضي = ينزل أول ما يخلص",
     },
     { key: "minutes", label: "كل كام دقيقة", type: "number", default: 15, showIf: { field: "mode", values: ["interval"] } },
     {
@@ -178,7 +178,7 @@ const scheduleTrigger: NodeDefinition = {
 const ifNode: NodeDefinition = {
   type: "logic.if",
   name: "شرط (If)",
-  description: "بيقسّم المسار حسب شرط: فرع «نعم» وفرع «لا».",
+  description: "بيقسّم المسار حسب شرط: فرع «نعم» وفرع «لا»",
   app: "logic",
   appName: "التحكم في المسار",
   color: "#16a34a",
@@ -258,7 +258,7 @@ export function compare(left: unknown, op: string, right: unknown): boolean {
 const setNode: NodeDefinition = {
   type: "logic.set",
   name: "تجهيز بيانات",
-  description: "بتبني object جديد من بيانات الخطوات اللي قبلها.",
+  description: "بتبني object جديد من بيانات الخطوات اللي قبلها",
   app: "tools",
   appName: "أدوات",
   color: "#0f766e",
@@ -270,7 +270,7 @@ const setNode: NodeDefinition = {
       label: "الحقول",
       type: "keyvalue",
       default: [],
-      help: "لو القيمة متغير واحد بس زي {{1.body}} هيتحفظ بنوعه الأصلي (رقم/Object).",
+      help: "لو القيمة متغير واحد بس زي {{1.body}} هيتحفظ بنوعه الأصلي (رقم/Object)",
     },
   ],
   sampleOutput: { field: "value" },
@@ -282,7 +282,7 @@ const setNode: NodeDefinition = {
 const delayNode: NodeDefinition = {
   type: "logic.delay",
   name: "انتظار",
-  description: "بيستنى عدد ثواني قبل الخطوة اللي بعده.",
+  description: "بيستنى عدد ثواني قبل الخطوة اللي بعده",
   app: "tools",
   appName: "أدوات",
   color: "#0f766e",
@@ -300,7 +300,7 @@ const delayNode: NodeDefinition = {
 const respondNode: NodeDefinition = {
   type: "logic.respond",
   name: "رد على الـ Webhook",
-  description: "بيرجّع رد مخصص للي بعت الطلب على الـ Webhook (مثلاً API بيرجع نتيجة AI).",
+  description: "بيرجّع رد مخصص للي بعت الطلب على الـ Webhook (مثلاً API بيرجع نتيجة AI)",
   app: "webhook",
   appName: "Webhooks",
   color: "#e5487a",
@@ -354,7 +354,7 @@ export async function datastoreRead(userId: string, store: string, key: string):
 const datastoreSet: NodeDefinition = {
   type: "datastore.set",
   name: "حفظ في مخزن البيانات",
-  description: "بيحفظ قيمة بمفتاح (عميل، رصيد، آخر رسالة...) عشان تستخدمها بعدين.",
+  description: "بيحفظ قيمة بمفتاح (عميل، رصيد، آخر رسالة...) عشان تستخدمها بعدين",
   app: "datastore",
   appName: "مخزن البيانات",
   color: "#0284c7",
@@ -362,8 +362,8 @@ const datastoreSet: NodeDefinition = {
   kind: "action",
   fields: [
     storeField,
-    { key: "key", label: "المفتاح", type: "text", required: true, placeholder: "{{1.body.email}}" },
-    { key: "value", label: "القيمة", type: "json", placeholder: '{ "name": "{{1.body.name}}" }', help: "JSON أو نص بين علامات تنصيص." },
+    { key: "key", label: "المفتاح", type: "text", required: true, placeholder: "إيميل العميل أو رقمه", help: "أي حاجة تميّز الصف ده - دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
+    { key: "value", label: "القيمة", type: "json", placeholder: '{ "name": "أحمد", "phone": "01000000000" }', help: "JSON أو نص بين علامات تنصيص" },
   ],
   sampleOutput: { store: "default", key: "ahmed@example.com", value: { name: "Ahmed" } },
   async run({ params, workflow }) {
@@ -378,7 +378,7 @@ const datastoreSet: NodeDefinition = {
 const datastoreGet: NodeDefinition = {
   type: "datastore.get",
   name: "قراءة من مخزن البيانات",
-  description: "بيجيب القيمة المحفوظة بمفتاح معيّن.",
+  description: "بيجيب القيمة المحفوظة بمفتاح معيّن",
   app: "datastore",
   appName: "مخزن البيانات",
   color: "#0284c7",
@@ -395,7 +395,7 @@ const datastoreGet: NodeDefinition = {
 const datastoreDelete: NodeDefinition = {
   type: "datastore.delete",
   name: "حذف من مخزن البيانات",
-  description: "بيمسح مفتاح من المخزن.",
+  description: "بيمسح مفتاح من المخزن",
   app: "datastore",
   appName: "مخزن البيانات",
   color: "#0284c7",

@@ -87,8 +87,8 @@ const simplifyWpPost = (p: any) => ({
 });
 
 const wpPostFields = [
-  { key: "title", label: "العنوان", type: "text" as const, required: true, placeholder: "{{2.title}}" },
-  { key: "content", label: "المحتوى (نص أو HTML)", type: "textarea" as const, placeholder: "{{2.text}}" },
+  { key: "title", label: "العنوان", type: "text" as const, required: true, placeholder: "اكتب العنوان" },
+  { key: "content", label: "المحتوى (نص أو HTML)", type: "textarea" as const, placeholder: "اكتب المحتوى هنا" },
   { key: "excerpt", label: "المقتطف (اختياري)", type: "textarea" as const },
   {
     key: "status",
@@ -105,7 +105,7 @@ const wpPostFields = [
   { key: "date", label: "ميعاد النشر", type: "text" as const, placeholder: "2026-10-01T09:00:00", showIf: { field: "status", values: ["future"] } },
   { key: "categories", label: "التصنيفات", type: "text" as const, placeholder: "أخبار، عروض (أسماء أو أرقام)" },
   { key: "tags", label: "الوسوم", type: "text" as const, placeholder: "تسويق، منتجات" },
-  { key: "imageUrl", label: "رابط الصورة البارزة (اختياري)", type: "text" as const, placeholder: "{{3.url}}", help: "بتترفع لمكتبة ووردبريس وتتحط صورة بارزة للمقال." },
+  { key: "imageUrl", label: "الصورة البارزة (اختياري)", type: "text" as const, placeholder: "@{اسم الصورة} أو رابط صورة", help: "بتترفع لمكتبة ووردبريس وتتحط صورة بارزة للمقال" },
 ];
 
 async function wpPostBody(c: CredentialValue | undefined, params: Record<string, any>, signal: AbortSignal) {
@@ -216,7 +216,7 @@ export const publishingCredentials: CredentialType[] = [
     name: "WordPress",
     app: "wordpress",
     description:
-      "من لوحة ووردبريس ← Users ← Profile ← Application Passwords: اكتب اسم (مثلاً تدفق) واضغط Add. انسخ الباسورد اللي هيظهر (مش باسورد الدخول).",
+      "من لوحة ووردبريس ← Users ← Profile ← Application Passwords: اكتب اسم (مثلاً تدفق) واضغط Add. انسخ الباسورد اللي هيظهر (مش باسورد الدخول)",
     docsUrl: "https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/",
     fields: [
       { key: "siteUrl", label: "رابط الموقع", required: true, placeholder: "https://myblog.com" },
@@ -232,7 +232,7 @@ export const publishingCredentials: CredentialType[] = [
     key: "ghostAdmin",
     name: "Ghost",
     app: "ghost",
-    description: "من Ghost Admin ← Settings ← Integrations ← Add custom integration: انسخ Admin API key و API URL.",
+    description: "من Ghost Admin ← Settings ← Integrations ← Add custom integration: انسخ Admin API key و API URL",
     docsUrl: "https://ghost.org/docs/admin-api/",
     fields: [
       { key: "siteUrl", label: "API URL", required: true, placeholder: "https://myblog.ghost.io" },
@@ -247,7 +247,7 @@ export const publishingCredentials: CredentialType[] = [
     key: "webflowApi",
     name: "Webflow",
     app: "webflow",
-    description: "من Webflow ← Site settings ← Apps & integrations ← API access: اعمل Site token بصلاحية CMS (read & write).",
+    description: "من Webflow ← Site settings ← Apps & integrations ← API access: اعمل Site token بصلاحية CMS (read & write)",
     docsUrl: "https://developers.webflow.com/data/reference/authentication",
     fields: [{ key: "token", label: "Site API token", secret: true, required: true }],
     test: (data) => checkAuth("Webflow", "https://api.webflow.com/v2/sites", { authorization: `Bearer ${data.token}` }),
@@ -257,7 +257,7 @@ export const publishingCredentials: CredentialType[] = [
     name: "LinkedIn",
     app: "linkedin",
     description:
-      "اعمل App على LinkedIn Developers وفعّل منتج Share on LinkedIn و Sign In with OpenID، وهات Access token بصلاحيات openid profile w_member_social (صالح 60 يوم). للنشر باسم صفحة شركة حط Organization URN.",
+      "اعمل App على LinkedIn Developers وفعّل منتج Share on LinkedIn و Sign In with OpenID، وهات Access token بصلاحيات openid profile w_member_social (صالح 60 يوم). للنشر باسم صفحة شركة حط Organization URN",
     docsUrl: "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
     fields: [
       { key: "accessToken", label: "Access token", secret: true, required: true },
@@ -270,7 +270,7 @@ export const publishingCredentials: CredentialType[] = [
     name: "X (تويتر)",
     app: "x",
     description:
-      "من developer.x.com ← Projects & Apps ← App ← Keys and tokens: هات API Key & Secret، وبعد ما تخلي صلاحية التطبيق Read and write اعمل Access Token & Secret.",
+      "من developer.x.com ← Projects & Apps ← App ← Keys and tokens: هات API Key & Secret، وبعد ما تخلي صلاحية التطبيق Read and write اعمل Access Token & Secret",
     docsUrl: "https://docs.x.com/x-api/posts/creation-of-a-post",
     fields: [
       { key: "apiKey", label: "API Key", required: true },
@@ -288,7 +288,7 @@ export const publishingCredentials: CredentialType[] = [
     key: "pinterestApi",
     name: "Pinterest",
     app: "pinterest",
-    description: "من developers.pinterest.com ← My apps: هات Access token بصلاحيات boards:read و pins:write.",
+    description: "من developers.pinterest.com ← My apps: هات Access token بصلاحيات boards:read و pins:write",
     docsUrl: "https://developers.pinterest.com/docs/api/v5/pins-create/",
     fields: [{ key: "accessToken", label: "Access token", secret: true, required: true }],
     test: (data) => checkAuth("Pinterest", "https://api.pinterest.com/v5/user_account", { authorization: `Bearer ${data.accessToken}` }),
@@ -297,7 +297,7 @@ export const publishingCredentials: CredentialType[] = [
     key: "threadsApi",
     name: "Threads",
     app: "threads",
-    description: "من Meta for Developers: اعمل App بـ Threads API وهات Access token (threads_basic, threads_content_publish) و Threads user ID.",
+    description: "من Meta for Developers: اعمل App بـ Threads API وهات Access token (threads_basic, threads_content_publish) و Threads user ID",
     docsUrl: "https://developers.facebook.com/docs/threads/posts",
     fields: [
       { key: "userId", label: "Threads user ID", required: true },
@@ -314,7 +314,7 @@ export const publishingCredentials: CredentialType[] = [
     key: "blueskyApi",
     name: "Bluesky",
     app: "bluesky",
-    description: "من Bluesky ← Settings ← Privacy and security ← App passwords: اعمل App password.",
+    description: "من Bluesky ← Settings ← Privacy and security ← App passwords: اعمل App password",
     docsUrl: "https://docs.bsky.app/docs/advanced-guides/posts",
     fields: [
       { key: "handle", label: "الحساب (handle)", required: true, placeholder: "name.bsky.social" },
@@ -339,7 +339,7 @@ export const publishingNodes: NodeDefinition[] = [
     ...wp,
     type: "wordpress.postTrigger",
     name: "مقال جديد في WordPress",
-    description: "بيشتغل مع كل مقال جديد بيتنشر على موقعك.",
+    description: "بيشتغل مع كل مقال جديد بيتنشر على موقعك",
     group: "trigger",
     kind: "trigger",
     triggerType: "schedule",
@@ -371,7 +371,7 @@ export const publishingNodes: NodeDefinition[] = [
     ...wp,
     type: "wordpress.createPost",
     name: "نشر مقال على WordPress",
-    description: "بينشر مقال (أو مسودة) بتصنيفات ووسوم وصورة بارزة.",
+    description: "بينشر مقال (أو مسودة) بتصنيفات ووسوم وصورة بارزة",
     group: "apps",
     kind: "action",
     fields: wpPostFields,
@@ -387,11 +387,11 @@ export const publishingNodes: NodeDefinition[] = [
     ...wp,
     type: "wordpress.updatePost",
     name: "تعديل مقال في WordPress",
-    description: "بيعدّل مقال موجود برقمه (اللي تسيبه فاضي مش بيتغير).",
+    description: "بيعدّل مقال موجود برقمه (اللي تسيبه فاضي مش بيتغير)",
     group: "apps",
     kind: "action",
     fields: [
-      { key: "postId", label: "رقم المقال", type: "text", required: true, placeholder: "{{1.id}}" },
+      { key: "postId", label: "رقم المقال", type: "text", required: true, placeholder: "رقم المقال", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       ...wpPostFields.map((field) =>
         field.key === "status"
           ? { ...field, default: "", options: [{ value: "", label: "بدون تغيير" }, ...(field.options ?? [])] }
@@ -413,7 +413,7 @@ export const publishingNodes: NodeDefinition[] = [
     ...wp,
     type: "wordpress.getPosts",
     name: "جلب مقالات من WordPress",
-    description: "بيجيب آخر المقالات أو يدوّر بكلمة.",
+    description: "بيجيب آخر المقالات أو يدوّر بكلمة",
     group: "apps",
     kind: "action",
     fields: [
@@ -433,11 +433,11 @@ export const publishingNodes: NodeDefinition[] = [
     ...wp,
     type: "wordpress.uploadMedia",
     name: "رفع صورة على WordPress",
-    description: "بيرفع صورة من رابط (أو من مكتبة صورك) لمكتبة وسائط ووردبريس.",
+    description: "بيرفع صورة من رابط (أو من مكتبة صورك) لمكتبة وسائط ووردبريس",
     group: "apps",
     kind: "action",
     fields: [
-      { key: "imageUrl", label: "رابط الصورة", type: "text", required: true, placeholder: "{{2.url}}" },
+      { key: "imageUrl", label: "الصورة", type: "text", required: true, placeholder: "@{اسم الصورة} أو رابط صورة" },
       { key: "title", label: "اسم الصورة", type: "text" },
     ],
     sampleOutput: { id: 77, url: "https://myblog.com/wp-content/uploads/2026/09/image.jpg" },
@@ -451,7 +451,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "ghost.createPost",
     name: "نشر مقال على Ghost",
-    description: "بينشر مقال أو مسودة على مدونة Ghost.",
+    description: "بينشر مقال أو مسودة على مدونة Ghost",
     app: "ghost",
     appName: "Ghost",
     color: "#15171a",
@@ -507,7 +507,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "webflow.createItem",
     name: "إضافة عنصر في Webflow CMS",
-    description: "بيضيف مقال / منتج / أي عنصر في Collection على موقع Webflow وينشره.",
+    description: "بيضيف مقال / منتج / أي عنصر في Collection على موقع Webflow وينشره",
     app: "webflow",
     appName: "Webflow",
     color: "#146ef5",
@@ -515,10 +515,10 @@ export const publishingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["webflowApi"],
     fields: [
-      { key: "collectionId", label: "Collection ID", type: "text", required: true, help: "من CMS ← إعدادات الـ Collection." },
+      { key: "collectionId", label: "Collection ID", type: "text", required: true, help: "من CMS ← إعدادات الـ Collection" },
       { key: "name", label: "الاسم (name)", type: "text", required: true },
       { key: "slug", label: "الـ slug (اختياري)", type: "text" },
-      { key: "fields", label: "باقي الحقول", type: "keyvalue", help: "اسم الحقل كما في Webflow (slug الحقل) وقيمته." },
+      { key: "fields", label: "باقي الحقول", type: "keyvalue", help: "اسم الحقل كما في Webflow (slug الحقل) وقيمته" },
       { key: "publish", label: "انشره على الموقع فوراً", type: "boolean", default: true },
     ],
     sampleOutput: { id: "580e64008c9a982ac9b8b754", fieldData: { name: "مقال جديد", slug: "new-post" } },
@@ -540,7 +540,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "linkedin.post",
     name: "نشر بوست على LinkedIn",
-    description: "بينشر بوست نصي (مع رابط اختياري) على حسابك أو صفحة شركتك.",
+    description: "بينشر بوست نصي (مع رابط اختياري) على حسابك أو صفحة شركتك",
     app: "linkedin",
     appName: "LinkedIn",
     color: "#0a66c2",
@@ -548,8 +548,8 @@ export const publishingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["linkedinApi"],
     fields: [
-      { key: "text", label: "نص البوست", type: "textarea", required: true, placeholder: "{{2.text}}" },
-      { key: "link", label: "رابط مقال (اختياري)", type: "text", placeholder: "{{3.link}}" },
+      { key: "text", label: "نص البوست", type: "textarea", required: true, placeholder: "اكتب البوست هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
+      { key: "link", label: "رابط مقال (اختياري)", type: "text", placeholder: "https://myblog.com/post" },
       { key: "linkTitle", label: "عنوان الرابط (اختياري)", type: "text" },
     ],
     sampleOutput: { id: "urn:li:share:7240000000000000000", postUrl: "https://www.linkedin.com/feed/update/urn:li:share:7240000000000000000" },
@@ -594,7 +594,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "x.post",
     name: "نشر تغريدة على X",
-    description: "بينشر تغريدة (أو رد على تغريدة).",
+    description: "بينشر تغريدة (أو رد على تغريدة)",
     app: "x",
     appName: "X (تويتر)",
     color: "#1b1f2e",
@@ -602,8 +602,8 @@ export const publishingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["xOAuth1"],
     fields: [
-      { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 280 حرف للحسابات العادية." },
-      { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", placeholder: "{{3.url}}" },
+      { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 280 حرف للحسابات العادية" },
+      { key: "imageUrl", label: "صورة (اختياري)", type: "text", placeholder: "@{اسم الصورة} أو رابط صورة" },
       { key: "replyTo", label: "رد على تغريدة رقم (اختياري)", type: "text" },
     ],
     sampleOutput: { id: "1835000000000000000", text: "نص التغريدة", postUrl: "https://x.com/i/web/status/1835000000000000000" },
@@ -647,7 +647,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "pinterest.createPin",
     name: "نشر Pin على Pinterest",
-    description: "بينشر صورة برابط على لوحة (Board).",
+    description: "بينشر صورة برابط على لوحة (Board)",
     app: "pinterest",
     appName: "Pinterest",
     color: "#e60023",
@@ -656,7 +656,7 @@ export const publishingNodes: NodeDefinition[] = [
     credentialTypes: ["pinterestApi"],
     fields: [
       { key: "boardId", label: "Board ID", type: "text", required: true },
-      { key: "imageUrl", label: "رابط الصورة", type: "text", required: true, placeholder: "{{2.url}}" },
+      { key: "imageUrl", label: "الصورة", type: "text", required: true, placeholder: "@{اسم الصورة} أو رابط صورة" },
       { key: "title", label: "العنوان", type: "text" },
       { key: "description", label: "الوصف", type: "textarea" },
       { key: "link", label: "رابط المنتج / المقال", type: "text" },
@@ -682,7 +682,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "threads.post",
     name: "نشر بوست على Threads",
-    description: "بينشر نص أو صورة بتعليق على Threads.",
+    description: "بينشر نص أو صورة بتعليق على Threads",
     app: "threads",
     appName: "Threads",
     color: "#1b1f2e",
@@ -729,7 +729,7 @@ export const publishingNodes: NodeDefinition[] = [
   {
     type: "bluesky.post",
     name: "نشر بوست على Bluesky",
-    description: "بينشر نص (والروابط بتبقى قابلة للضغط) مع صورة اختيارية.",
+    description: "بينشر نص (والروابط بتبقى قابلة للضغط) مع صورة اختيارية",
     app: "bluesky",
     appName: "Bluesky",
     color: "#1185fe",
@@ -737,8 +737,8 @@ export const publishingNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["blueskyApi"],
     fields: [
-      { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 300 حرف." },
-      { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", help: "الحد الأقصى لحجم الصورة 1 ميجا." },
+      { key: "text", label: "النص", type: "textarea", required: true, help: "الحد 300 حرف" },
+      { key: "imageUrl", label: "رابط صورة (اختياري)", type: "text", help: "الحد الأقصى لحجم الصورة 1 ميجا" },
       { key: "imageAlt", label: "وصف الصورة", type: "text" },
     ],
     sampleOutput: { uri: "at://did:plc:abc/app.bsky.feed.post/3l...", postUrl: "https://bsky.app/profile/name.bsky.social/post/3l..." },

@@ -117,11 +117,11 @@ export function NodePanel({
                   </button>
                 </div>
                 {matching.length === 0 && (
-                  <div className="help">مفيش حساب مربوط لسه - دوس «ربط» وهتلاقي شرح إزاي تجيب المفتاح خطوة بخطوة.</div>
+                  <div className="help">مفيش حساب مربوط لسه - دوس «ربط» وهتلاقي شرح إزاي تجيب المفتاح خطوة بخطوة</div>
                 )}
                 {def.credentialTypes.length > 1 && (
                   <div className="help">
-                    اختار الحساب اللي عندك مفتاحه ({def.credentialTypes.map((t) => credType(t)?.name ?? t).join(" أو ")}) - الخطوة هتشتغل بيه.
+                    اختار الحساب اللي عندك مفتاحه ({def.credentialTypes.map((t) => credType(t)?.name ?? t).join(" أو ")}) - الخطوة هتشتغل بيه
                   </div>
                 )}
               </div>
@@ -130,7 +130,7 @@ export function NodePanel({
             {def.fields.some((f) => f.autoFill) && (
               <div className="autofill-bar">
                 <Icon name="zap" size={14} />
-                <span>الكابشن والصورة والفيديو بيتربطوا تلقائي بالخطوات اللي قبلها - سيب الخانة فاضية، أو اكتب فيها لو عايز حاجة معينة.</span>
+                <span>الكابشن والصورة والفيديو بيتربطوا تلقائي بالخطوات اللي قبلها - سيب الخانة فاضية، أو اكتب فيها لو عايز حاجة معينة</span>
               </div>
             )}
 
@@ -194,7 +194,7 @@ export function NodePanel({
                 </div>
                 <div className="alert info" style={{ marginTop: 14 }}>
                   <Icon name="braces" size={16} />
-                  <span>دوس على الزرار ده جنب أي حقل عشان تستخدم بيانات من الخطوات اللي قبلها.</span>
+                  <span>دوس على الزرار ده جنب أي حقل عشان تستخدم بيانات من الخطوات اللي قبلها</span>
                 </div>
               </>
             )}

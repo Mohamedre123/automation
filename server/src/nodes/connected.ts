@@ -40,7 +40,7 @@ export const connectedNodes: NodeDefinition[] = [
   {
     type: "drive.upload",
     name: "رفع ملف على Google Drive",
-    description: "بيرفع صورة أو فيديو أو أي ملف من رابط لفولدر في Drive مشارك مع مفتاح Google، ويقدر يعمله رابط عام.",
+    description: "بيرفع صورة أو فيديو أو أي ملف من رابط لفولدر في Drive مشارك مع مفتاح Google، ويقدر يعمله رابط عام",
     app: "drive",
     appName: "Google Drive",
     color: "#1a73e8",
@@ -48,14 +48,14 @@ export const connectedNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["googleServiceAccount"],
     fields: [
-      { key: "fileUrl", label: "رابط الملف", type: "text", required: true, placeholder: "{{3.url}}" },
+      { key: "fileUrl", label: "رابط الملف", type: "text", required: true, placeholder: "@{اسم الملف} أو رابط مباشر" },
       { key: "name", label: "اسم الملف", type: "text", placeholder: "صورة المنتج.png" },
       {
         key: "folderId",
         label: "ID الفولدر",
         type: "text",
         required: true,
-        help: "لازم يكون فولدر جوه Shared Drive (Google Workspace) ومشارك مع إيميل مفتاح Google كـ Content manager - جوجل مش بيسمح لمفاتيح الخدمة تخزّن ملفات في Drive عادي.",
+        help: "لازم يكون فولدر جوه Shared Drive (Google Workspace) ومشارك مع إيميل مفتاح Google كـ Content manager - جوجل مش بيسمح لمفاتيح الخدمة تخزّن ملفات في Drive عادي",
       },
       { key: "share", label: "أي حد معاه الرابط يقدر يشوفه", type: "boolean", default: false },
     ],
@@ -91,7 +91,7 @@ export const connectedNodes: NodeDefinition[] = [
   {
     type: "drive.trigger",
     name: "ملف جديد في فولدر Google Drive",
-    description: "بيشتغل لما يتضاف ملف جديد في فولدر معين (مثلاً صور منتجات جديدة).",
+    description: "بيشتغل لما يتضاف ملف جديد في فولدر معين (مثلاً صور منتجات جديدة)",
     app: "drive",
     appName: "Google Drive",
     color: "#1a73e8",
@@ -100,7 +100,7 @@ export const connectedNodes: NodeDefinition[] = [
     triggerType: "schedule",
     credentialTypes: ["googleServiceAccount"],
     fields: [
-      { key: "folderId", label: "ID الفولدر", type: "text", required: true, help: "شارك الفولدر مع إيميل مفتاح Google (Viewer كفاية)." },
+      { key: "folderId", label: "ID الفولدر", type: "text", required: true, help: "شارك الفولدر مع إيميل مفتاح Google (Viewer كفاية)" },
       checkEveryField,
     ],
     sampleOutput: { id: "1AbC...", name: "منتج جديد.jpg", mimeType: "image/jpeg", createdTime: "2026-09-16T10:00:00Z", webViewLink: "https://drive.google.com/..." },
@@ -124,7 +124,7 @@ export const connectedNodes: NodeDefinition[] = [
   {
     type: "calendar.createEvent",
     name: "إضافة ميعاد في Google Calendar",
-    description: "بيضيف ميعاد (حجز، مكالمة، اجتماع) ويبعت دعوة للحضور.",
+    description: "بيضيف ميعاد (حجز، مكالمة، اجتماع) ويبعت دعوة للحضور",
     app: "gcalendar",
     appName: "Google Calendar",
     color: "#4285f4",
@@ -138,7 +138,7 @@ export const connectedNodes: NodeDefinition[] = [
         type: "text",
         required: true,
         placeholder: "you@gmail.com",
-        help: "للتقويم الأساسي: إيميلك. شارك التقويم مع إيميل مفتاح Google بصلاحية «Make changes to events».",
+        help: "للتقويم الأساسي: إيميلك. شارك التقويم مع إيميل مفتاح Google بصلاحية «Make changes to events»",
       },
       { key: "title", label: "العنوان", type: "text", required: true },
       { key: "start", label: "البداية", type: "text", required: true, placeholder: "2026-10-01 15:00" },
@@ -180,7 +180,7 @@ export const connectedNodes: NodeDefinition[] = [
   {
     type: "calendar.upcomingTrigger",
     name: "ميعاد قرّب في Google Calendar",
-    description: "بيشتغل قبل كل ميعاد بوقت تحدده - مثلاً تبعت تذكير للعميل على واتساب.",
+    description: "بيشتغل قبل كل ميعاد بوقت تحدده - مثلاً تبعت تذكير للعميل على واتساب",
     app: "gcalendar",
     appName: "Google Calendar",
     color: "#4285f4",
@@ -189,7 +189,7 @@ export const connectedNodes: NodeDefinition[] = [
     triggerType: "schedule",
     credentialTypes: ["googleServiceAccount"],
     fields: [
-      { key: "calendarId", label: "التقويم (Calendar ID)", type: "text", required: true, placeholder: "you@gmail.com", help: "شارك التقويم مع إيميل مفتاح Google." },
+      { key: "calendarId", label: "التقويم (Calendar ID)", type: "text", required: true, placeholder: "you@gmail.com", help: "شارك التقويم مع إيميل مفتاح Google" },
       { key: "minutesBefore", label: "قبل الميعاد بكام دقيقة", type: "number", default: 60 },
       { key: "minutes", label: "يشيّك كل كام دقيقة", type: "number", default: 10 },
     ],

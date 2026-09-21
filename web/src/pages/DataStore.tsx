@@ -49,7 +49,7 @@ export function DataStore() {
       <div className="page-head">
         <div>
           <h1>مخازن البيانات</h1>
-          <p>البيانات اللي السيناريوهات بتحفظها بخطوة «حفظ في مخزن البيانات».</p>
+          <p>البيانات اللي السيناريوهات بتحفظها بخطوة «حفظ في مخزن البيانات»</p>
         </div>
       </div>
       {!stores ? (
@@ -58,7 +58,7 @@ export function DataStore() {
         </div>
       ) : stores.length === 0 ? (
         <div className="card">
-          <Empty icon="database" title="مفيش بيانات محفوظة" text="استخدم خطوة «حفظ في مخزن البيانات» في أي سيناريو." />
+          <Empty icon="database" title="مفيش بيانات محفوظة" text="استخدم خطوة «حفظ في مخزن البيانات» في أي سيناريو" />
         </div>
       ) : (
         <>

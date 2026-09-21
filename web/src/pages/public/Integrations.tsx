@@ -39,7 +39,7 @@ export function Integrations() {
           <Icon name="templates" size={15} /> التطبيقات
         </span>
         <h2>التطبيقات اللي تقدر تربطها</h2>
-        <p>ولو التطبيق اللي عايزه مش موجود، خطوة HTTP بتربط أي خدمة عندها API.</p>
+        <p>ولو التطبيق اللي عايزه مش موجود، خطوة HTTP بتربط أي خدمة عندها API</p>
       </div>
 
       <div className="search-box reveal">

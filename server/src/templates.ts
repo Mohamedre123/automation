@@ -1,5 +1,6 @@
 import type { WorkflowGraph } from "./engine/types.js";
 import { moreTemplates } from "./templates-more.js";
+import { publishTemplates } from "./templates-publish.js";
 
 export interface Template {
   id: string;
@@ -34,7 +35,7 @@ export const templates: Template[] = [
   {
     id: "whatsapp-ai-agent",
     name: "بوت واتساب ذكي يرد على العملاء",
-    description: "أي رسالة واتساب توصل، الـ AI Agent يرد عليها من معلومات شركتك ويفتكر كلام كل عميل لوحده.",
+    description: "أي رسالة واتساب توصل، الـ AI Agent يرد عليها من معلومات شركتك ويفتكر كلام كل عميل لوحده",
     category: "واتساب",
     requires: [AI_ACCOUNT, "حساب WasenderAPI (أرخص طريقة لربط واتساب)", "بوت تيليجرام أو واتساب يوصلك عليه إشعار لما عميل يطلب موظف"],
     graph: {
@@ -45,7 +46,7 @@ export const templates: Template[] = [
           type: "ai.agent",
           position: at(1),
           params: {
-            system: "أنت موظف خدمة عملاء لطيف. رد باللهجة المصرية وباختصار، واعتمد على المعلومات المرجعية بس. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
+            system: "أنت موظف خدمة عملاء لطيف. رد باللهجة المصرية وباختصار، واعتمد على المعلومات المرجعية بس. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human",
             knowledge:
               "اسم الشركة: (اكتب اسم شركتك)\nالخدمات والأسعار:\n- خدمة 1: 500 جنيه\n- خدمة 2: 1200 جنيه\nمواعيد العمل: من السبت للخميس 10 ص - 8 م\nطرق الدفع: كاش، فودافون كاش، إنستاباي",
             prompt: "{{1.text}}",
@@ -63,7 +64,7 @@ export const templates: Template[] = [
   {
     id: "whatsapp-official-support",
     name: "بوت واتساب الرسمي (Meta Cloud API)",
-    description: "نفس بوت خدمة العملاء بس على رقم واتساب الرسمي المعتمد من Meta.",
+    description: "نفس بوت خدمة العملاء بس على رقم واتساب الرسمي المعتمد من Meta",
     category: "واتساب",
     requires: [AI_ACCOUNT, "رقم واتساب رسمي على Meta Cloud API", "بوت تيليجرام أو واتساب يوصلك عليه إشعار لما عميل يطلب موظف"],
     graph: {
@@ -74,8 +75,8 @@ export const templates: Template[] = [
           type: "ai.agent",
           position: at(1),
           params: {
-            system: "أنت موظف خدمة عملاء محترف. رد باختصار وباللهجة المصرية. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
-            knowledge: "اكتب هنا معلومات شركتك: الخدمات، الأسعار، المواعيد، سياسة الاسترجاع.",
+            system: "أنت موظف خدمة عملاء محترف. رد باختصار وباللهجة المصرية. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human",
+            knowledge: "اكتب هنا معلومات شركتك: الخدمات، الأسعار، المواعيد، سياسة الاسترجاع",
             prompt: "{{1.text}}",
             memoryKey: "{{1.phone}}",
             memoryLength: 14,
@@ -91,7 +92,7 @@ export const templates: Template[] = [
   {
     id: "whatsapp-order-collector",
     name: "استقبال طلبات على واتساب وحفظها",
-    description: "الـ Agent بيجمع اسم العميل ورقمه وتفاصيل طلبه، بيحفظهم في مخزن البيانات، ويبعتلك إشعار على تيليجرام.",
+    description: "الـ Agent بيجمع اسم العميل ورقمه وتفاصيل طلبه، بيحفظهم في مخزن البيانات، ويبعتلك إشعار على تيليجرام",
     category: "واتساب",
     requires: [AI_ACCOUNT, "حساب WasenderAPI", "بوت تيليجرام (للإشعارات)"],
     graph: {
@@ -103,7 +104,7 @@ export const templates: Template[] = [
           position: at(1),
           params: {
             system:
-              "أنت مندوب مبيعات. اجمع من العميل: الاسم، المنتج المطلوب، والعنوان. لما تكمّل البيانات استخدم أداة save_data (المفتاح = رقم العميل) واحفظها، وبعدين أكّد الطلب للعميل واكتب في آخر ردك [ORDER_DONE].",
+              "أنت مندوب مبيعات. اجمع من العميل: الاسم، المنتج المطلوب، والعنوان. لما تكمّل البيانات استخدم أداة save_data (المفتاح = رقم العميل) واحفظها، وبعدين أكّد الطلب للعميل واكتب في آخر ردك [ORDER_DONE]",
             prompt: "{{1.text}}",
             memoryKey: "{{1.phone}}",
             memoryLength: 20,
@@ -133,7 +134,7 @@ export const templates: Template[] = [
   {
     id: "social-publish-all",
     name: "بوست واحد ينشر على كل المنصات",
-    description: "اكتب الموضوع في فورم: الذكاء الاصطناعي يكتب البوست ويعمل الصورة، وينشرهم على فيسبوك وإنستجرام وتيليجرام.",
+    description: "اكتب الموضوع في فورم: الذكاء الاصطناعي يكتب البوست ويعمل الصورة، وينشرهم على فيسبوك وإنستجرام وتيليجرام",
     category: "سوشيال ميديا",
     requires: [AI_ACCOUNT, "صفحة فيسبوك", "حساب إنستجرام بيزنس", "بوت/قناة تيليجرام"],
     graph: {
@@ -144,7 +145,7 @@ export const templates: Template[] = [
           position: at(0),
           params: {
             title: "انشر بوست جديد",
-            description: "اكتب موضوع البوست وهيتنشر على كل المنصات.",
+            description: "اكتب موضوع البوست وهيتنشر على كل المنصات",
             formFields: [{ key: "topic", value: "موضوع البوست" }],
             submitLabel: "انشر",
             successMessage: "اتنشر ✓",
@@ -155,7 +156,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "أنت كاتب محتوى تسويقي مصري. اكتب بوست قصير وجذاب مع هاشتاجات مناسبة، من غير أي مقدمات أو شرح.",
+            system: "أنت كاتب محتوى تسويقي مصري. اكتب بوست قصير وجذاب مع هاشتاجات مناسبة، من غير أي مقدمات أو شرح",
             prompt: "اكتب بوست سوشيال ميديا عن: {{1.data.topic}}",
             maxTokens: 1500,
           },
@@ -182,7 +183,7 @@ export const templates: Template[] = [
   {
     id: "daily-instagram-post",
     name: "بوست إنستجرام يومي تلقائي",
-    description: "كل يوم في ميعاد ثابت: فكرة بوست جديدة + صورة بالذكاء الاصطناعي + نشر على إنستجرام.",
+    description: "كل يوم في ميعاد ثابت: فكرة بوست جديدة + صورة بالذكاء الاصطناعي + نشر على إنستجرام",
     category: "سوشيال ميديا",
     requires: [AI_ACCOUNT, "حساب إنستجرام بيزنس"],
     graph: {
@@ -209,7 +210,7 @@ export const templates: Template[] = [
   {
     id: "ai-image-form",
     name: "اعمل صورة بالذكاء الاصطناعي من فورم",
-    description: "فورم بسيط تكتب فيه وصف الصورة، والصورة تتعمل وتظهرلك قدامك وتتحفظ في مكتبة الصور.",
+    description: "فورم بسيط تكتب فيه وصف الصورة، والصورة تتعمل وتظهرلك قدامك وتتحفظ في مكتبة الصور",
     category: "سوشيال ميديا",
     requires: ["حساب Gemini أو OpenAI"],
     graph: {
@@ -220,7 +221,7 @@ export const templates: Template[] = [
           position: at(0),
           params: {
             title: "اعمل صورتك بالذكاء الاصطناعي",
-            description: "اكتب وصف الصورة اللي في بالك بالتفصيل.",
+            description: "اكتب وصف الصورة اللي في بالك بالتفصيل",
             formFields: [{ key: "idea", value: "وصف الصورة" }],
             submitLabel: "اعمل الصورة",
             successMessage: "الصورة جاهزة ✓",
@@ -236,7 +237,7 @@ export const templates: Template[] = [
     id: "product-posts-daily",
     name: "انشر منتج كل يوم بصورة إعلانية احترافية",
     description:
-      "ارفع صور منتجاتك في مكتبة الصور مرة واحدة: كل يوم بياخد منتج بالترتيب، يعمل منه صورة إعلانية بالـ AI، يكتب البوست، وينشر على إنستجرام وفيسبوك.",
+      "ارفع صور منتجاتك في مكتبة الصور مرة واحدة: كل يوم بياخد منتج بالترتيب، يعمل منه صورة إعلانية بالـ AI، يكتب البوست، وينشر على إنستجرام وفيسبوك",
     category: "سوشيال ميديا",
     requires: ["صور منتجاتك في مكتبة الصور (فولدر «منتجات»)", "حساب Gemini (للصور والكتابة)", "حساب إنستجرام بيزنس", "صفحة فيسبوك"],
     graph: {
@@ -260,7 +261,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(3),
           params: {
-            system: "أنت مسؤول سوشيال ميديا مصري شاطر. اكتب بوست قصير جذاب مع دعوة للشراء وهاشتاجات، من غير مقدمات.",
+            system: "أنت مسؤول سوشيال ميديا مصري شاطر. اكتب بوست قصير جذاب مع دعوة للشراء وهاشتاجات، من غير مقدمات",
             prompt: "اكتب بوست لمنتج اسمه: {{2.name}}",
             maxTokens: 1500,
           },
@@ -274,7 +275,7 @@ export const templates: Template[] = [
   {
     id: "social-content-writer",
     name: "كاتب بوستات سوشيال ميديا",
-    description: "ابعت موضوع ومنصة، يرجعلك 3 بوستات جاهزة للنشر تختار منهم.",
+    description: "ابعت موضوع ومنصة، يرجعلك 3 بوستات جاهزة للنشر تختار منهم",
     category: "سوشيال ميديا",
     requires: [AI_ACCOUNT],
     graph: {
@@ -301,7 +302,7 @@ export const templates: Template[] = [
   {
     id: "telegram-ai-agent",
     name: "بوت تيليجرام ذكي بيفتكر المحادثة",
-    description: "AI Agent بيرد على أي رسالة في تيليجرام ويفتكر كلام كل عميل لوحده.",
+    description: "AI Agent بيرد على أي رسالة في تيليجرام ويفتكر كلام كل عميل لوحده",
     category: "تيليجرام",
     requires: [AI_ACCOUNT, "بوت تيليجرام من BotFather"],
     graph: {
@@ -313,7 +314,7 @@ export const templates: Template[] = [
           type: "ai.agent",
           position: at(2),
           params: {
-            system: "أنت مساعد ودود ومفيد. رد باللهجة المصرية وباختصار (مش أكتر من 6 سطور).",
+            system: "أنت مساعد ودود ومفيد. رد باللهجة المصرية وباختصار (مش أكتر من 6 سطور)",
             prompt: "{{1.message.text}}",
             memoryKey: "{{1.message.chat.id}}",
             memoryLength: 12,
@@ -328,7 +329,7 @@ export const templates: Template[] = [
   {
     id: "telegram-support-agent",
     name: "موظف خدمة عملاء على تيليجرام",
-    description: "بيجاوب من معلومات شركتك بس، ولو العميل عايز يطلب بيسجل بياناته في مخزن البيانات.",
+    description: "بيجاوب من معلومات شركتك بس، ولو العميل عايز يطلب بيسجل بياناته في مخزن البيانات",
     category: "خدمة العملاء",
     requires: [AI_ACCOUNT, "بوت تيليجرام من BotFather"],
     graph: {
@@ -342,7 +343,7 @@ export const templates: Template[] = [
           params: {
             system:
               "أنت موظف خدمة عملاء محترف ولطيف. جاوب من المعلومات المرجعية فقط، ولو السؤال مش موجود فيها قول إنك هتحوّله لزميل. " +
-              "لو العميل عايز يطلب: اجمع اسمه ورقم تليفونه وتفاصيل الطلب، واحفظهم بأداة save_data (المفتاح = رقم التليفون)، وبعدين أكّد له الطلب. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human.",
+              "لو العميل عايز يطلب: اجمع اسمه ورقم تليفونه وتفاصيل الطلب، واحفظهم بأداة save_data (المفتاح = رقم التليفون)، وبعدين أكّد له الطلب. لو العميل طلب يكلم خدمة العملاء أو موظف أو اشتكى: خد اسمه ورقمه واستخدم أداة handoff_to_human",
             knowledge:
               "اسم الشركة: (اكتب اسم شركتك)\nالخدمات والأسعار:\n- خدمة 1: 500 جنيه\n- خدمة 2: 1200 جنيه\nمواعيد العمل: من السبت للخميس 10 ص - 8 م\nالعنوان: ...",
             prompt: "{{1.message.text}}",
@@ -361,7 +362,7 @@ export const templates: Template[] = [
   {
     id: "telegram-commands-ai",
     name: "بوت تيليجرام بأوامر + AI",
-    description: "لو الرسالة /start يبعت ترحيب، غير كده الذكاء الاصطناعي يرد. مثال على التفرّع بالشروط.",
+    description: "لو الرسالة /start يبعت ترحيب، غير كده الذكاء الاصطناعي يرد. مثال على التفرّع بالشروط",
     category: "تيليجرام",
     requires: [AI_ACCOUNT, "بوت تيليجرام من BotFather"],
     graph: {
@@ -373,12 +374,12 @@ export const templates: Template[] = [
           position: at(1),
           params: { combine: "all", conditions: [{ left: "{{1.message.text}}", op: "starts_with", right: "/start" }] },
         },
-        replyToChat("3", 2, "أهلاً {{1.message.from.first_name}} 👋\nابعتلي أي سؤال وهرد عليك فوراً.", -130),
+        replyToChat("3", 2, "أهلاً {{1.message.from.first_name}} 👋\nابعتلي أي سؤال وهرد عليك فوراً", -130),
         {
           id: "4",
           type: "ai.generate",
           position: at(2, 130),
-          params: { system: "أنت مساعد مفيد. رد بالعربي وباختصار.", prompt: "{{1.message.text}}", maxTokens: 2000 },
+          params: { system: "أنت مساعد مفيد. رد بالعربي وباختصار", prompt: "{{1.message.text}}", maxTokens: 2000 },
         },
         replyToChat("5", 3, "{{4.text}}", 130),
       ],
@@ -390,7 +391,7 @@ export const templates: Template[] = [
   {
     id: "shopify-order-whatsapp",
     name: "طلب Shopify جديد ← رسالة واتساب للعميل + إشعار للفريق",
-    description: "مع كل طلب جديد: العميل يستلم رسالة تأكيد على واتساب، والفريق يوصله ملخص الطلب على Slack.",
+    description: "مع كل طلب جديد: العميل يستلم رسالة تأكيد على واتساب، والفريق يوصله ملخص الطلب على Slack",
     category: "المتاجر الإلكترونية",
     requires: ["متجر Shopify (Admin API token)", "حساب WasenderAPI", "Slack"],
     graph: {
@@ -403,7 +404,7 @@ export const templates: Template[] = [
           params: {
             to: "{{1.customer.phone}}",
             messageType: "text",
-            text: "أهلاً {{1.customer.name}} 👋\nطلبك رقم {{1.name}} اتسجل بنجاح بإجمالي {{1.total}} {{1.currency}}.\nهنتواصل معاك قريب لتأكيد الشحن.",
+            text: "أهلاً {{1.customer.name}} 👋\nطلبك رقم {{1.name}} اتسجل بنجاح بإجمالي {{1.total}} {{1.currency}}.\nهنتواصل معاك قريب لتأكيد الشحن",
           },
         },
         {
@@ -419,7 +420,7 @@ export const templates: Template[] = [
   {
     id: "woocommerce-order-telegram",
     name: "طلب WooCommerce جديد ← إشعار تيليجرام",
-    description: "كل طلب جديد في متجر ووردبريس يوصلك فوراً على تيليجرام بالتفاصيل.",
+    description: "كل طلب جديد في متجر ووردبريس يوصلك فوراً على تيليجرام بالتفاصيل",
     category: "المتاجر الإلكترونية",
     requires: ["متجر WooCommerce (REST API key)", "بوت تيليجرام"],
     graph: {
@@ -441,7 +442,7 @@ export const templates: Template[] = [
   {
     id: "stripe-payment-crm",
     name: "دفع Stripe ناجح ← HubSpot + إيميل شكر",
-    description: "لما عميل يدفع: يتسجل أو يتحدّث في HubSpot، ويوصله إيميل شكر تلقائي.",
+    description: "لما عميل يدفع: يتسجل أو يتحدّث في HubSpot، ويوصله إيميل شكر تلقائي",
     category: "المتاجر الإلكترونية",
     requires: ["Stripe (Secret key)", "HubSpot (Private App)", "إيميل عن طريق Resend"],
     graph: {
@@ -473,7 +474,7 @@ export const templates: Template[] = [
   {
     id: "form-to-sheets-welcome",
     name: "فورم تسجيل ← Google Sheets + إيميل ترحيب",
-    description: "أي حد يسجّل من الفورم بيتضاف صف في الشيت، ويوصله إيميل ترحيب فوراً.",
+    description: "أي حد يسجّل من الفورم بيتضاف صف في الشيت، ويوصله إيميل ترحيب فوراً",
     category: "المبيعات والتسويق",
     requires: ["Google Sheets (Service Account)", "إيميل عن طريق Resend"],
     graph: {
@@ -503,7 +504,7 @@ export const templates: Template[] = [
           id: "3",
           type: "email.send",
           position: at(2),
-          params: { to: "{{1.data.email}}", subject: "أهلاً بيك!", body: "أهلاً {{1.data.name}},\n\nتم تسجيلك بنجاح وهنتواصل معاك قريب.", format: "text" },
+          params: { to: "{{1.data.email}}", subject: "أهلاً بيك!", body: "أهلاً {{1.data.name}},\n\nتم تسجيلك بنجاح وهنتواصل معاك قريب", format: "text" },
         },
       ],
       edges: [edge("1", "2"), edge("2", "3")],
@@ -512,7 +513,7 @@ export const templates: Template[] = [
   {
     id: "sheet-daily-reminders",
     name: "تذكير يومي على واتساب من Google Sheets",
-    description: "كل يوم الصبح يقرأ الشيت، ويبعت رسالة تذكير على واتساب لكل عميل ميعاده النهارده. مثال على التكرار والفلتر.",
+    description: "كل يوم الصبح يقرأ الشيت، ويبعت رسالة تذكير على واتساب لكل عميل ميعاده النهارده. مثال على التكرار والفلتر",
     category: "أدوات",
     requires: ["Google Sheets فيه أعمدة: الاسم، الموبايل، الميعاد (YYYY-MM-DD)", "حساب WasenderAPI"],
     graph: {
@@ -540,7 +541,7 @@ export const templates: Template[] = [
   {
     id: "rss-ai-digest",
     name: "أخبار RSS ← ملخص بالذكاء الاصطناعي ← تيليجرام",
-    description: "أي خبر جديد في موقع أو مدونة بيتلخّص في سطرين وينزل على قناة التيليجرام بتاعتك.",
+    description: "أي خبر جديد في موقع أو مدونة بيتلخّص في سطرين وينزل على قناة التيليجرام بتاعتك",
     category: "المحتوى",
     requires: ["رابط RSS", AI_ACCOUNT, "بوت تيليجرام (أدمن في القناة)"],
     graph: {
@@ -551,7 +552,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "لخّص الخبر في سطرين بالعربي بأسلوب جذاب، من غير مقدمات.",
+            system: "لخّص الخبر في سطرين بالعربي بأسلوب جذاب، من غير مقدمات",
             prompt: "العنوان: {{1.title}}\nالتفاصيل: {{1.description}}",
             maxTokens: 800,
           },
@@ -570,7 +571,7 @@ export const templates: Template[] = [
   {
     id: "ai-blog-wordpress-social",
     name: "مقال أسبوعي بالذكاء الاصطناعي ← WordPress ← LinkedIn و X و فيسبوك",
-    description: "كل أسبوع: الذكاء الاصطناعي يكتب مقال عن مجالك بصورة بارزة، ينزل على موقعك، ويتشارك رابطه على LinkedIn و X وفيسبوك.",
+    description: "كل أسبوع: الذكاء الاصطناعي يكتب مقال عن مجالك بصورة بارزة، ينزل على موقعك، ويتشارك رابطه على LinkedIn و X وفيسبوك",
     category: "المحتوى",
     requires: [AI_ACCOUNT, "موقع WordPress (Application Password)", "LinkedIn", "X (تويتر)", "صفحة فيسبوك"],
     graph: {
@@ -611,7 +612,7 @@ export const templates: Template[] = [
   {
     id: "wordpress-post-everywhere",
     name: "مقال جديد على WordPress ← انشره على كل المنصات",
-    description: "أول ما تنشر مقال على موقعك، الذكاء الاصطناعي يكتب له بوست مناسب وينزل على تيليجرام و LinkedIn و Bluesky و Threads.",
+    description: "أول ما تنشر مقال على موقعك، الذكاء الاصطناعي يكتب له بوست مناسب وينزل على تيليجرام و LinkedIn و Bluesky و Threads",
     category: "سوشيال ميديا",
     requires: ["موقع WordPress", AI_ACCOUNT, "بوت تيليجرام (أدمن في القناة)", "LinkedIn", "Bluesky", "Threads"],
     graph: {
@@ -622,7 +623,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "اكتب بوست سوشيال ميديا قصير (أقل من 250 حرف) بالعربي يشوّق لقراءة المقال، بدون روابط وبدون مقدمات.",
+            system: "اكتب بوست سوشيال ميديا قصير (أقل من 250 حرف) بالعربي يشوّق لقراءة المقال، بدون روابط وبدون مقدمات",
             prompt: "عنوان المقال: {{1.title}}\nملخص: {{1.excerpt}}",
             maxTokens: 800,
           },
@@ -638,7 +639,7 @@ export const templates: Template[] = [
   {
     id: "salla-order-whatsapp",
     name: "طلب جديد في سلة ← تأكيد واتساب للعميل + تحديث الحالة",
-    description: "مع كل طلب في متجرك على سلة: العميل يستلم رسالة تأكيد على واتساب، والطلب يتحوّل لـ «قيد التنفيذ» تلقائياً.",
+    description: "مع كل طلب في متجرك على سلة: العميل يستلم رسالة تأكيد على واتساب، والطلب يتحوّل لـ «قيد التنفيذ» تلقائياً",
     category: "المتاجر الإلكترونية",
     requires: ["متجر سلة (Access Token)", "حساب WasenderAPI"],
     graph: {
@@ -662,7 +663,7 @@ export const templates: Template[] = [
   {
     id: "zid-order-telegram",
     name: "طلب جديد في زد ← إشعار تيليجرام + واتساب للعميل",
-    description: "كل طلب في متجر زد يوصلك على تيليجرام، والعميل يستلم رسالة شكر على واتساب.",
+    description: "كل طلب في متجر زد يوصلك على تيليجرام، والعميل يستلم رسالة شكر على واتساب",
     category: "المتاجر الإلكترونية",
     requires: ["متجر زد", "بوت تيليجرام", "حساب WasenderAPI"],
     graph: {
@@ -678,7 +679,7 @@ export const templates: Template[] = [
           id: "3",
           type: "wasender.send",
           position: at(1, 90),
-          params: { to: "{{1.customer.phone}}", messageType: "text", text: "شكراً {{1.customer.name}} 🌷 طلبك {{1.code}} وصلنا وهنبدأ نجهّزه فوراً." },
+          params: { to: "{{1.customer.phone}}", messageType: "text", text: "شكراً {{1.customer.name}} 🌷 طلبك {{1.code}} وصلنا وهنبدأ نجهّزه فوراً" },
         },
       ],
       edges: [edge("1", "2"), edge("1", "3")],
@@ -687,7 +688,7 @@ export const templates: Template[] = [
   {
     id: "product-image-pinterest",
     name: "صورة منتج من مكتبتك ← Pin يومي على Pinterest",
-    description: "كل يوم بياخد صورة منتج من مكتبة صورك، يكتب لها عنوان ووصف بالذكاء الاصطناعي، وينشرها Pin برابط متجرك.",
+    description: "كل يوم بياخد صورة منتج من مكتبة صورك، يكتب لها عنوان ووصف بالذكاء الاصطناعي، وينشرها Pin برابط متجرك",
     category: "سوشيال ميديا",
     requires: ["صور منتجات في مكتبة الصور", AI_ACCOUNT, "Pinterest"],
     graph: {
@@ -720,7 +721,7 @@ export const templates: Template[] = [
     id: "content-studio-daily",
     name: "استوديو المحتوى اليومي: صور + فيديو + كابشن ← ينزل على كل المنصات في ميعاده",
     description:
-      "كل يوم في ميعاد بتحدده: ياخد صورة منتج من مكتبتك، يكتب بوست احترافي بـ CTA وهاشتاجات، يعمل صورة إعلانية و/أو فيديو ريلز، وينشرهم في الساعة اللي تختارها على كل منصة ربطتها بس.",
+      "كل يوم في ميعاد بتحدده: ياخد صورة منتج من مكتبتك، يكتب بوست احترافي بـ CTA وهاشتاجات، يعمل صورة إعلانية و/أو فيديو ريلز، وينشرهم في الساعة اللي تختارها على كل منصة ربطتها بس",
     category: "المحتوى",
     requires: [
       "صور منتجاتك في مكتبة الصور (فولدر «منتجات»)",
@@ -758,7 +759,7 @@ export const templates: Template[] = [
               "أنت كاتب محتوى وكوبي رايتر محترف للسوشيال ميديا. اكتب بوست بيع احترافي: جملة افتتاحية تشد (Hook)، فايدة المنتج بإيجاز، CTA واضح (اطلب دلوقتي / ابعتلنا رسالة / الرابط)، و8-12 هاشتاج مناسبين للسوق. ممنوع أي مقدمات. رد بـ JSON فقط بالشكل:\n" +
               '{"post":"البوست كامل بالـ CTA والهاشتاجات","imagePrompt":"English prompt for a professional advertising photo of this exact product, studio lighting, no text on image","videoPrompt":"English prompt for an 8-second cinematic vertical product reel of this exact product, smooth camera motion, no text"}',
             prompt:
-              "البراند: {{2.brand}}\nالجمهور: {{2.audience}}\nالأسلوب: {{2.tone}}\nالأفكار والعروض: {{2.ideas}}\nالمنتج (اسم الصورة): {{3.name}}\nالتاريخ: {{$today}}\nاكتب بوست جديد ومختلف عن أي يوم قبل كده.",
+              "البراند: {{2.brand}}\nالجمهور: {{2.audience}}\nالأسلوب: {{2.tone}}\nالأفكار والعروض: {{2.ideas}}\nالمنتج (اسم الصورة): {{3.name}}\nالتاريخ: {{$today}}\nاكتب بوست جديد ومختلف عن أي يوم قبل كده",
             parseJson: true,
             maxTokens: 3000,
           },
@@ -799,7 +800,7 @@ export const templates: Template[] = [
     id: "content-studio-form",
     name: "استوديو المحتوى عند الطلب: ارفع صورة المنتج والفكرة ← محتوى كامل ينزل في ميعاده",
     description:
-      "فورم بسيط: ترفع صورة المنتج، تكتب الفكرة، تختار صور ولا فيديو ولا الاتنين، وتحدد ساعة النشر. الذكاء الاصطناعي يكتب الكابشن بالـ CTA والهاشتاجات ويعمل الميديا وينشر على المنصات المربوطة.",
+      "فورم بسيط: ترفع صورة المنتج، تكتب الفكرة، تختار صور ولا فيديو ولا الاتنين، وتحدد ساعة النشر. الذكاء الاصطناعي يكتب الكابشن بالـ CTA والهاشتاجات ويعمل الميديا وينشر على المنصات المربوطة",
     category: "المحتوى",
     requires: ["حساب Gemini (للنص والصور وفيديو Veo) - أو OpenAI", "حسابات المنصات اللي عايز تنشر عليها بس"],
     graph: {
@@ -810,7 +811,7 @@ export const templates: Template[] = [
           position: at(0),
           params: {
             title: "بوست جديد لمنتج",
-            description: "ارفع صورة المنتج واكتب الفكرة - والباقي علينا.",
+            description: "ارفع صورة المنتج واكتب الفكرة - والباقي علينا",
             formFields: [
               { key: "productImage", value: "صورة المنتج (صورة)" },
               { key: "idea", value: "فكرة المحتوى أو العرض" },
@@ -820,7 +821,7 @@ export const templates: Template[] = [
               { key: "link", value: "رابط المنتج (اختياري)" },
             ],
             submitLabel: "ابدأ",
-            successMessage: "استلمنا طلبك ✓ المحتوى بيتعمل وهينزل في ميعاده - تابع النتيجة من «التشغيلات».",
+            successMessage: "استلمنا طلبك ✓ المحتوى بيتعمل وهينزل في ميعاده - تابع النتيجة من «التشغيلات»",
           },
         },
         {
@@ -874,7 +875,7 @@ export const templates: Template[] = [
   {
     id: "calendar-whatsapp-reminder",
     name: "ميعاد في Google Calendar ← تذكير واتساب للعميل قبلها بساعة",
-    description: "قبل كل حجز أو مكالمة بساعة، العميل يوصله تذكير على واتساب (رقمه مكتوب في وصف الميعاد).",
+    description: "قبل كل حجز أو مكالمة بساعة، العميل يوصله تذكير على واتساب (رقمه مكتوب في وصف الميعاد)",
     category: "خدمة العملاء",
     requires: ["مفتاح Google (Service Account) والتقويم مشارك معاه", "حساب WasenderAPI"],
     graph: {
@@ -911,7 +912,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "اكتب كابشن قصير جذاب لفيديو قصير بالعربي مع CTA و8 هاشتاجات. من غير مقدمات.",
+            system: "اكتب كابشن قصير جذاب لفيديو قصير بالعربي مع CTA و8 هاشتاجات. من غير مقدمات",
             prompt: "اسم الفيديو: {{1.name}}",
             maxTokens: 800,
           },
@@ -980,7 +981,7 @@ export const templates: Template[] = [
   {
     id: "contact-form-telegram",
     name: "فورم الموقع ← إشعار تيليجرام",
-    description: "أي حد يملا فورم التواصل في موقعك يوصلك إشعار فوري على تيليجرام.",
+    description: "أي حد يملا فورم التواصل في موقعك يوصلك إشعار فوري على تيليجرام",
     category: "المبيعات والتسويق",
     requires: ["بوت تيليجرام من BotFather"],
     graph: {
@@ -1003,7 +1004,7 @@ export const templates: Template[] = [
   {
     id: "lead-qualification",
     name: "تقييم العملاء المحتملين",
-    description: "Lead جديد يوصل ← الذكاء الاصطناعي يقيّمه من 10 ← يتحفظ ← لو مهم يوصلك تنبيه.",
+    description: "Lead جديد يوصل ← الذكاء الاصطناعي يقيّمه من 10 ← يتحفظ ← لو مهم يوصلك تنبيه",
     category: "المبيعات والتسويق",
     requires: [AI_ACCOUNT, "بوت تيليجرام (للتنبيهات)"],
     graph: {
@@ -1049,7 +1050,7 @@ export const templates: Template[] = [
   {
     id: "support-ticket-triage",
     name: "تصنيف تذاكر الدعم وتنبيه العاجل",
-    description: "رسالة دعم توصل ← تتصنف ويتحدد استعجالها ← تتحفظ ← لو عاجلة يوصلك تنبيه.",
+    description: "رسالة دعم توصل ← تتصنف ويتحدد استعجالها ← تتحفظ ← لو عاجلة يوصلك تنبيه",
     category: "خدمة العملاء",
     requires: [AI_ACCOUNT, "بوت تيليجرام (للتنبيهات)"],
     graph: {
@@ -1096,7 +1097,7 @@ export const templates: Template[] = [
   {
     id: "review-auto-reply",
     name: "رد تلقائي على تقييمات العملاء",
-    description: "تقييم جديد يوصل ← الذكاء الاصطناعي يحدد رأي العميل ويكتب رد مناسب.",
+    description: "تقييم جديد يوصل ← الذكاء الاصطناعي يحدد رأي العميل ويكتب رد مناسب",
     category: "خدمة العملاء",
     requires: [AI_ACCOUNT],
     graph: {
@@ -1129,7 +1130,7 @@ export const templates: Template[] = [
   {
     id: "ai-summary-api",
     name: "API تلخيص نصوص",
-    description: "ابعت نص على Webhook، يرجعلك ملخص في نفس الطلب. تقدر تربطه بموقعك أو تبيعه كخدمة.",
+    description: "ابعت نص على Webhook، يرجعلك ملخص في نفس الطلب. تقدر تربطه بموقعك أو تبيعه كخدمة",
     category: "أدوات",
     requires: [AI_ACCOUNT],
     graph: {
@@ -1149,7 +1150,7 @@ export const templates: Template[] = [
   {
     id: "ai-translate-api",
     name: "API ترجمة فورية",
-    description: "ابعت { text, to } ويرجعلك الترجمة. مناسب للمتاجر والمواقع متعددة اللغات.",
+    description: "ابعت { text, to } ويرجعلك الترجمة. مناسب للمتاجر والمواقع متعددة اللغات",
     category: "أدوات",
     requires: [AI_ACCOUNT],
     graph: {
@@ -1160,7 +1161,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "أنت مترجم محترف. رجّع الترجمة بس من غير أي شرح أو علامات تنصيص.",
+            system: "أنت مترجم محترف. رجّع الترجمة بس من غير أي شرح أو علامات تنصيص",
             prompt: "ترجم النص التالي إلى {{1.body.to}}:\n\n{{1.body.text}}",
             maxTokens: 4000,
           },
@@ -1173,7 +1174,7 @@ export const templates: Template[] = [
   {
     id: "daily-ai-report",
     name: "تقرير يومي بالذكاء الاصطناعي",
-    description: "كل يوم الصبح يجيب بيانات من أي API، يلخصها في تقرير، ويبعتها لك على تيليجرام.",
+    description: "كل يوم الصبح يجيب بيانات من أي API، يلخصها في تقرير، ويبعتها لك على تيليجرام",
     category: "أدوات",
     requires: [AI_ACCOUNT, "بوت تيليجرام", "رابط API فيه بياناتك"],
     graph: {
@@ -1190,7 +1191,7 @@ export const templates: Template[] = [
           type: "ai.generate",
           position: at(2),
           params: {
-            system: "أنت محلل بيانات. اكتب تقرير قصير وواضح بالعربي لصاحب الشغل: أهم الأرقام، الملاحظات، وتوصية واحدة.",
+            system: "أنت محلل بيانات. اكتب تقرير قصير وواضح بالعربي لصاحب الشغل: أهم الأرقام، الملاحظات، وتوصية واحدة",
             prompt: "البيانات:\n{{2.data}}",
             maxTokens: 3000,
           },
@@ -1203,7 +1204,7 @@ export const templates: Template[] = [
   {
     id: "uptime-monitor",
     name: "مراقبة موقع وتنبيه لو وقع",
-    description: "كل 5 دقايق يفحص موقعك، ولو مش شغال يبعتلك تنبيه على تيليجرام.",
+    description: "كل 5 دقايق يفحص موقعك، ولو مش شغال يبعتلك تنبيه على تيليجرام",
     category: "أدوات",
     requires: ["بوت تيليجرام"],
     graph: {
@@ -1226,5 +1227,6 @@ export const templates: Template[] = [
       edges: [edge("1", "2"), edge("2", "3"), edge("3", "4", "true")],
     },
   },
+  ...publishTemplates,
   ...moreTemplates,
 ];

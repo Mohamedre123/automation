@@ -10,7 +10,7 @@ export const productivityCredentials: CredentialType[] = [
     key: "airtableToken",
     name: "Airtable",
     app: "airtable",
-    description: "من airtable.com/create/tokens: اعمل Personal Access Token بصلاحيات data.records:read و write واختار القاعدة.",
+    description: "من airtable.com/create/tokens: اعمل Personal Access Token بصلاحيات data.records:read و write واختار القاعدة",
     docsUrl: "https://airtable.com/create/tokens",
     fields: [{ key: "token", label: "Personal Access Token", secret: true, required: true, placeholder: "pat..." }],
     test: (data) => checkAuth("Airtable", "https://api.airtable.com/v0/meta/whoami", { authorization: `Bearer ${data.token}` }),
@@ -19,7 +19,7 @@ export const productivityCredentials: CredentialType[] = [
     key: "notionToken",
     name: "Notion",
     app: "notion",
-    description: "من notion.so/my-integrations اعمل Integration وهات الـ Secret، وبعدين من الصفحة/قاعدة البيانات ← Connections ضيف الـ Integration.",
+    description: "من notion.so/my-integrations اعمل Integration وهات الـ Secret، وبعدين من الصفحة/قاعدة البيانات ← Connections ضيف الـ Integration",
     docsUrl: "https://www.notion.so/my-integrations",
     fields: [{ key: "token", label: "Internal Integration Secret", secret: true, required: true, placeholder: "ntn_..." }],
     test: (data) =>
@@ -29,7 +29,7 @@ export const productivityCredentials: CredentialType[] = [
     key: "trelloApi",
     name: "Trello",
     app: "trello",
-    description: "من trello.com/power-ups/admin اعمل Power-Up وهات الـ API Key، وبعدين اعمل Token من نفس الصفحة.",
+    description: "من trello.com/power-ups/admin اعمل Power-Up وهات الـ API Key، وبعدين اعمل Token من نفس الصفحة",
     docsUrl: "https://trello.com/power-ups/admin",
     fields: [
       { key: "key", label: "API Key", required: true },
@@ -41,7 +41,7 @@ export const productivityCredentials: CredentialType[] = [
     key: "githubToken",
     name: "GitHub",
     app: "github",
-    description: "من GitHub ← Settings ← Developer settings ← Personal access tokens (صلاحية Issues).",
+    description: "من GitHub ← Settings ← Developer settings ← Personal access tokens (صلاحية Issues)",
     docsUrl: "https://github.com/settings/tokens",
     fields: [{ key: "token", label: "Personal Access Token", secret: true, required: true, placeholder: "ghp_... أو github_pat_..." }],
     test: (data) => checkAuth("GitHub", "https://api.github.com/user", { authorization: `Bearer ${data.token}`, "user-agent": "tadfuq" }),
@@ -51,7 +51,7 @@ export const productivityCredentials: CredentialType[] = [
 const airtableUrl = (baseId: string, table: string) =>
   `https://api.airtable.com/v0/${encodeURIComponent(baseId.trim())}/${encodeURIComponent(table.trim())}`;
 
-const baseField = { key: "baseId", label: "Base ID", type: "text" as const, required: true, help: "من رابط القاعدة: airtable.com/<appXXXX>/..." };
+const baseField = { key: "baseId", label: "Base ID", type: "text" as const, required: true, help: "من رابط القاعدة: الجزء اللي بيبدأ بـ app" };
 const tableField = { key: "table", label: "اسم الجدول", type: "text" as const, required: true };
 
 /** Notion property objects -> plain values. */
@@ -69,7 +69,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "airtable.create",
     name: "إضافة سجل في Airtable",
-    description: "بيضيف سجل جديد في جدول Airtable.",
+    description: "بيضيف سجل جديد في جدول Airtable",
     app: "airtable",
     appName: "Airtable",
     color: "#18bfff",
@@ -79,7 +79,14 @@ export const productivityNodes: NodeDefinition[] = [
     fields: [
       baseField,
       tableField,
-      { key: "fields", label: "الحقول (JSON)", type: "json", required: true, placeholder: '{ "Name": "{{1.data.name}}", "Phone": "{{1.data.phone}}" }' },
+      {
+        key: "fields",
+        label: "الحقول (JSON)",
+        type: "json",
+        required: true,
+        placeholder: '{ "Name": "أحمد محمد", "Phone": "201012345678" }',
+        help: "اسم العمود زي ما هو في Airtable، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
+      },
     ],
     sampleOutput: { id: "recXXXXXXXX", createdTime: "2026-09-16T10:00:00.000Z", fields: { Name: "Ahmed" } },
     async run({ params, credential, signal }) {
@@ -96,7 +103,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "airtable.search",
     name: "بحث في Airtable",
-    description: "بيجيب سجلات من جدول (مع فلتر اختياري بمعادلة Airtable).",
+    description: "بيجيب سجلات من جدول (مع فلتر اختياري بمعادلة Airtable)",
     app: "airtable",
     appName: "Airtable",
     color: "#18bfff",
@@ -106,7 +113,7 @@ export const productivityNodes: NodeDefinition[] = [
     fields: [
       baseField,
       tableField,
-      { key: "formula", label: "معادلة الفلتر (اختياري)", type: "text", placeholder: "{Phone} = '{{1.phone}}'" },
+      { key: "formula", label: "معادلة الفلتر (اختياري)", type: "text", placeholder: "{Phone} = '201012345678'", help: "ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها" },
       { key: "maxRecords", label: "أقصى عدد", type: "number", default: 20 },
     ],
     sampleOutput: { records: [{ id: "recXXXX", Name: "Ahmed" }], count: 1 },
@@ -122,7 +129,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "airtable.trigger",
     name: "سجل جديد في Airtable",
-    description: "بيشتغل لما يتضاف سجل جديد في الجدول.",
+    description: "بيشتغل لما يتضاف سجل جديد في الجدول",
     app: "airtable",
     appName: "Airtable",
     color: "#18bfff",
@@ -130,7 +137,7 @@ export const productivityNodes: NodeDefinition[] = [
     kind: "trigger",
     triggerType: "schedule",
     credentialTypes: ["airtableToken"],
-    fields: [baseField, tableField, { key: "view", label: "View (اختياري)", type: "text", help: "لو الجدول كبير، اعمل View مترتب بالأحدث." }, checkEveryField],
+    fields: [baseField, tableField, { key: "view", label: "View (اختياري)", type: "text", help: "لو الجدول كبير، اعمل View مترتب بالأحدث" }, checkEveryField],
     sampleOutput: { id: "recXXXX", createdTime: "2026-09-16T10:00:00.000Z", Name: "Ahmed" },
     async poll({ params, credential, state, signal, testMode }) {
       const url = new URL(airtableUrl(String(params.baseId), String(params.table)));
@@ -149,7 +156,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "notion.createPage",
     name: "إضافة صفحة في Notion",
-    description: "بيضيف صف/صفحة جديدة في قاعدة بيانات Notion.",
+    description: "بيضيف صف/صفحة جديدة في قاعدة بيانات Notion",
     app: "notion",
     appName: "Notion",
     color: "#52525b",
@@ -157,7 +164,7 @@ export const productivityNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["notionToken"],
     fields: [
-      { key: "databaseId", label: "Database ID", type: "text", required: true, help: "من رابط قاعدة البيانات (32 حرف)." },
+      { key: "databaseId", label: "Database ID", type: "text", required: true, help: "من رابط قاعدة البيانات (32 حرف)" },
       { key: "titleProperty", label: "اسم عمود العنوان", type: "text", default: "Name" },
       { key: "title", label: "العنوان", type: "text", required: true },
       {
@@ -195,7 +202,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "notion.query",
     name: "بحث في قاعدة بيانات Notion",
-    description: "بيجيب صفوف من قاعدة بيانات Notion (مع فلتر اختياري).",
+    description: "بيجيب صفوف من قاعدة بيانات Notion (مع فلتر اختياري)",
     app: "notion",
     appName: "Notion",
     color: "#52525b",
@@ -222,7 +229,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "trello.card",
     name: "إنشاء كارت في Trello",
-    description: "بيضيف كارت جديد في قايمة على Trello (مهمة، طلب، عميل...).",
+    description: "بيضيف كارت جديد في قايمة على Trello (مهمة، طلب، عميل...)",
     app: "trello",
     appName: "Trello",
     color: "#0079bf",
@@ -230,7 +237,7 @@ export const productivityNodes: NodeDefinition[] = [
     kind: "action",
     credentialTypes: ["trelloApi"],
     fields: [
-      { key: "listId", label: "List ID", type: "text", required: true, help: "افتح الكارت في المتصفح وضيف .json للرابط عشان تشوف idList." },
+      { key: "listId", label: "List ID", type: "text", required: true, help: "افتح الكارت في المتصفح وضيف .json للرابط عشان تشوف idList" },
       { key: "name", label: "العنوان", type: "text", required: true },
       { key: "desc", label: "الوصف", type: "textarea" },
     ],
@@ -249,7 +256,7 @@ export const productivityNodes: NodeDefinition[] = [
   {
     type: "github.issue",
     name: "إنشاء Issue في GitHub",
-    description: "بيفتح Issue جديدة في مستودع (بلاغ مشكلة، طلب ميزة...).",
+    description: "بيفتح Issue جديدة في مستودع (بلاغ مشكلة، طلب ميزة...)",
     app: "github",
     appName: "GitHub",
     color: "#6e5494",

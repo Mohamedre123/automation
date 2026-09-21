@@ -1,4 +1,5 @@
 import type { CredentialType, FieldDef, NodeDefinition } from "../engine/types.js";
+import { urlList } from "./media.js";
 import { rememberTelegramContact } from "./notify.js";
 import { withTimeout } from "./util.js";
 
@@ -22,7 +23,7 @@ export const telegramCredential: CredentialType = {
   key: "telegramBot",
   name: "Telegram Bot",
   app: "telegram",
-  description: "هات الـ token من @BotFather على تيليجرام. يُفضّل بوت مخصص للمنصة.",
+  description: "هات الـ token من @BotFather على تيليجرام. يُفضّل بوت مخصص للمنصة",
   docsUrl: "https://core.telegram.org/bots/tutorial#obtain-your-bot-token",
   fields: [{ key: "botToken", label: "Bot Token", secret: true, required: true, placeholder: "123456:ABC-DEF..." }],
   async test(data) {
@@ -36,8 +37,8 @@ const chatIdField: FieldDef = {
   label: "Chat ID",
   type: "text",
   required: true,
-  placeholder: "{{1.message.chat.id}}",
-  help: "رقم المحادثة. لو بترد على رسالة جاية من المحفّز استخدم {{1.message.chat.id}}",
+  placeholder: "@my_channel أو رقم المحادثة",
+  help: "للقناة اكتب اليوزرنيم بـ @ (والبوت لازم يكون أدمن فيها). وللرد على عميل دوس زرار البيانات واختار رقم محادثته من المحفّز",
 };
 
 const parseModeField: FieldDef = {
@@ -57,7 +58,7 @@ export const skipIfEmptyField: FieldDef = {
   label: "متبعتش حاجة لو النص فاضي",
   type: "boolean",
   default: true,
-  help: "مثلاً لما الـ AI Agent يحوّل العميل لموظف ويسكت.",
+  help: "مثلاً لما الـ AI Agent يحوّل العميل لموظف ويسكت",
 };
 
 const plainText = (text: string) =>
@@ -89,7 +90,7 @@ export const telegramNodes: NodeDefinition[] = [
   {
     type: "telegram.trigger",
     name: "مراقبة الرسائل",
-    description: "بيشتغل أول ما حد يبعت رسالة للبوت.",
+    description: "بيشتغل أول ما حد يبعت رسالة للبوت",
     app: "telegram",
     appName: "Telegram Bot",
     color: "#229ed9",
@@ -108,7 +109,7 @@ export const telegramNodes: NodeDefinition[] = [
           { value: "callback_query", label: "ضغطات الأزرار (Callback)" },
           { value: "all", label: "كل التحديثات" },
         ],
-        help: "البوت بيستقبل من مكان واحد بس. لو نفس البوت مربوط بمنصة تانية هيتفك منها.",
+        help: "البوت بيستقبل من مكان واحد بس. لو نفس البوت مربوط بمنصة تانية هيتفك منها",
       },
     ],
     sampleOutput: { update_id: 900000001, message: sampleMessage },
@@ -164,7 +165,7 @@ export const telegramNodes: NodeDefinition[] = [
   {
     type: "telegram.sendMessage",
     name: "إرسال رسالة",
-    description: "بيبعت رسالة نصية أو رد على رسالة.",
+    description: "بيبعت رسالة نصية أو رد على رسالة",
     app: "telegram",
     appName: "Telegram Bot",
     color: "#229ed9",
@@ -173,9 +174,9 @@ export const telegramNodes: NodeDefinition[] = [
     credentialTypes: ["telegramBot"],
     fields: [
       chatIdField,
-      { key: "text", label: "النص", type: "textarea", required: true, placeholder: "{{2.text}}" },
+      { key: "text", label: "النص", type: "textarea", required: true, placeholder: "اكتب الرسالة هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       parseModeField,
-      { key: "replyToMessageId", label: "رد على رسالة رقم (اختياري)", type: "text", placeholder: "{{1.message.message_id}}" },
+      { key: "replyToMessageId", label: "رد على رسالة رقم (اختياري)", type: "text", placeholder: "رقم الرسالة", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       { key: "disablePreview", label: "إخفاء معاينة الروابط", type: "boolean", default: false },
       skipIfEmptyField,
     ],
@@ -212,7 +213,7 @@ export const telegramNodes: NodeDefinition[] = [
   {
     type: "telegram.sendPhoto",
     name: "إرسال صورة",
-    description: "بيبعت صورة من رابط مع تعليق.",
+    description: "بيبعت صورة من رابط مع تعليق",
     app: "telegram",
     appName: "Telegram Bot",
     color: "#229ed9",
@@ -237,9 +238,9 @@ export const telegramNodes: NodeDefinition[] = [
     },
   },
   {
-    type: "telegram.sendVideo",
-    name: "إرسال فيديو",
-    description: "بيبعت فيديو من رابط مع تعليق (لحد 20 ميجا).",
+    type: "telegram.sendAlbum",
+    name: "إرسال ألبوم صور",
+    description: "بيبعت من صورتين لـ 10 في رسالة واحدة (ألبوم)، والتعليق بيتحط على أول صورة",
     app: "telegram",
     appName: "Telegram Bot",
     color: "#229ed9",
@@ -248,7 +249,42 @@ export const telegramNodes: NodeDefinition[] = [
     credentialTypes: ["telegramBot"],
     fields: [
       chatIdField,
-      { key: "video", label: "رابط الفيديو", type: "text", required: true, placeholder: "{{3.url}}" },
+      { key: "photos", label: "الصور", type: "textarea", required: true, placeholder: "@{تيشيرت أبيض}\n@{بنطلون جينز}", help: "اكتب @ واختار كل صورة (كل صورة في سطر)" },
+      { key: "caption", label: "التعليق", type: "textarea" },
+      parseModeField,
+    ],
+    sampleOutput: [{ message_id: 46, media_group_id: "13291..." }],
+    async run({ params, credential, signal }) {
+      const photos = urlList(params.photos).slice(0, 10);
+      if (!photos.length) throw new Error("اختار صورة واحدة على الأقل - اكتب @ واختار من مكتبة الصور");
+      const caption = String(params.caption ?? "").slice(0, 1024);
+      const media = photos.map((photo, i) => ({
+        type: "photo",
+        media: photo,
+        ...(i === 0 && caption ? { caption, ...(params.parseMode ? { parse_mode: params.parseMode } : {}) } : {}),
+      }));
+      if (media.length === 1) {
+        const body: Record<string, unknown> = { chat_id: String(params.chatId ?? "").trim(), photo: photos[0], caption };
+        if (params.parseMode) body.parse_mode = params.parseMode;
+        return { output: await telegram(credential?.data.botToken ?? "", "sendPhoto", body, signal) };
+      }
+      const body = { chat_id: String(params.chatId ?? "").trim(), media };
+      return { output: await telegram(credential?.data.botToken ?? "", "sendMediaGroup", body, signal) };
+    },
+  },
+  {
+    type: "telegram.sendVideo",
+    name: "إرسال فيديو",
+    description: "بيبعت فيديو من رابط مع تعليق (لحد 20 ميجا)",
+    app: "telegram",
+    appName: "Telegram Bot",
+    color: "#229ed9",
+    group: "apps",
+    kind: "action",
+    credentialTypes: ["telegramBot"],
+    fields: [
+      chatIdField,
+      { key: "video", label: "الفيديو", type: "text", required: true, placeholder: "@{اسم الفيديو} أو رابط فيديو" },
       { key: "caption", label: "التعليق", type: "textarea" },
       parseModeField,
     ],
@@ -267,7 +303,7 @@ export const telegramNodes: NodeDefinition[] = [
   {
     type: "telegram.typing",
     name: "إظهار «بيكتب...»",
-    description: "بيظهر للعميل إن البوت بيكتب لحد ما الرد يوصل.",
+    description: "بيظهر للعميل إن البوت بيكتب لحد ما الرد يوصل",
     app: "telegram",
     appName: "Telegram Bot",
     color: "#229ed9",

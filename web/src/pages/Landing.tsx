@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppBadge } from "../components/AppBadge";
 import { money } from "../components/PlanCards";
+import { Rail, useReveal } from "../components/Rail";
 import { useAuth } from "../context";
 import { Icon } from "../icons";
 import type { PlanDef } from "../types";
@@ -93,7 +94,7 @@ const CASES = [
     key: "stores",
     tab: "المتاجر",
     title: "كل طلب يتأكد ويتسجل من غير ما تلمسه",
-    text: "أول ما طلب ينزل على متجرك، العميل يوصله تأكيد على واتساب باسمه ورقم طلبه، والفريق يتبلّغ، والطلب يتسجل في الشيت.",
+    text: "أول ما طلب ينزل على متجرك، العميل يوصله تأكيد على واتساب باسمه ورقم طلبه، والفريق يتبلّغ، والطلب يتسجل في الشيت",
     points: ["سلة وزد وShopify وWooCommerce", "رسالة تأكيد باسم العميل وتفاصيل طلبه", "تحديث حالة الطلب في المتجر تلقائي"],
     chain: [
       ["salla", "طلب جديد في سلة", "المحفّز"],
@@ -106,7 +107,7 @@ const CASES = [
     key: "support",
     tab: "خدمة العملاء",
     title: "بوت بيرد زي أحسن موظف عندك، 24 ساعة",
-    text: "بيفهم العميل بالعامية ويرد من معلوماتك انت بس، وبيفتكر المحادثة، ولو المشكلة محتاجة حد بيحوّلها ليك ويسكت لحد ما تخلص.",
+    text: "بيفهم العميل بالعامية ويرد من معلوماتك انت بس، وبيفتكر المحادثة، ولو المشكلة محتاجة حد بيحوّلها ليك ويسكت لحد ما تخلص",
     points: ["واتساب وتيليجرام وأي قناة بـ Webhook", "ذاكرة لكل عميل", "تحويل لموظف بإشعار فوري"],
     chain: [
       ["whatsapp", "رسالة من عميل", "المحفّز"],
@@ -119,7 +120,7 @@ const CASES = [
     key: "content",
     tab: "صناعة المحتوى",
     title: "بوست كل يوم بصورة وكابشن، في ميعاده",
-    text: "ارفع صور منتجاتك مرة واحدة، وكل يوم في الميعاد اللي تحدده الذكاء الاصطناعي يكتب الكابشن ويعمل التصميم وينزل على كل منصاتك.",
+    text: "ارفع صور منتجاتك مرة واحدة، وكل يوم في الميعاد اللي تحدده الذكاء الاصطناعي يكتب الكابشن ويعمل التصميم وينزل على كل منصاتك",
     points: ["إنستجرام وفيسبوك وتيك توك وLinkedIn وX", "الصورة بتحافظ على شكل منتجك الحقيقي", "CTA وهاشتاجات مظبوطة لكل منصة"],
     chain: [
       ["schedule", "كل يوم الساعة 6", "جدولة"],
@@ -132,7 +133,7 @@ const CASES = [
     key: "teams",
     tab: "الفرق والوكالات",
     title: "العملاء المحتملين يوصلوا لمكانهم الصح",
-    text: "أي فورم أو إعلان بيجيب عميل، يتقيّم بالذكاء الاصطناعي ويتسجل في أداتك، والشخص المسؤول يتبلّغ في نفس اللحظة.",
+    text: "أي فورم أو إعلان بيجيب عميل، يتقيّم بالذكاء الاصطناعي ويتسجل في أداتك، والشخص المسؤول يتبلّغ في نفس اللحظة",
     points: ["فورمات جاهزة برابط مباشر", "تقييم وتصنيف تلقائي", "Notion وHubSpot وSlack"],
     chain: [
       ["form", "فورم عميل جديد", "المحفّز"],
@@ -144,21 +145,21 @@ const CASES = [
 ];
 
 const LOCAL = [
-  { icon: "whatsapp", h: "واتساب في دقايق", p: "اربط رقمك بـ QR من غير موافقات Meta الطويلة، أو استخدم واتساب الرسمي لو عندك حساب بزنس." },
-  { icon: "coins", h: "ادفع بالطريقة اللي تناسبك", p: "محفظة إلكترونية أو إنستاباي، والفاتورة على قد استخدامك - الذكاء الاصطناعي بمفتاحك من غير وسيط." },
-  { icon: "templates", h: "سلة وزد جاهزين", p: "متاجر المنطقة متربطة من الأول، مش مجرد Shopify وخلاص." },
-  { icon: "sparkles", h: "مساعد بيفهم كلامك", p: "اكتب اللي عايزه بالعامية، والمساعد يبني السيناريو ويقولك سبب أي خطأ بالعربي." },
-  { icon: "key", h: "مفاتيحك في إيدك", p: "كل حساب بتربطه متشفّر، وتقدر تمسحه أو تغيّره في أي وقت." },
-  { icon: "send", h: "دعم بيرد عليك فعلاً", p: "كلّمنا على واتساب، هترد عليك حد من الفريق مش بوت." },
+  { icon: "whatsapp", h: "واتساب في دقايق", p: "اربط رقمك بـ QR من غير موافقات Meta الطويلة، أو استخدم واتساب الرسمي لو عندك حساب بزنس" },
+  { icon: "coins", h: "ادفع بالطريقة اللي تناسبك", p: "محفظة إلكترونية أو إنستاباي، والفاتورة على قد استخدامك - الذكاء الاصطناعي بمفتاحك من غير وسيط" },
+  { icon: "templates", h: "سلة وزد جاهزين", p: "متاجر المنطقة متربطة من الأول، مش مجرد Shopify وخلاص" },
+  { icon: "sparkles", h: "مساعد بيفهم كلامك", p: "اكتب اللي عايزه بالعامية، والمساعد يبني السيناريو ويقولك سبب أي خطأ بالعربي" },
+  { icon: "key", h: "مفاتيحك في إيدك", p: "كل حساب بتربطه متشفّر، وتقدر تمسحه أو تغيّره في أي وقت" },
+  { icon: "send", h: "دعم بيرد عليك فعلاً", p: "كلّمنا على واتساب، هترد عليك حد من الفريق مش بوت" },
 ];
 
 const FAQ = [
-  { q: "محتاج أعرف برمجة؟", a: "لا. بتبني السيناريو بالسحب والتوصيل، أو تبدأ من تيمبلت جاهز، أو تقول للمساعد الذكي اللي عايزه ويبنيه لك." },
-  { q: "الذكاء الاصطناعي بيتحسب عليّ إزاي؟", a: "بتربط مفتاحك (Gemini فيه باقة مجانية، أو ChatGPT أو Claude) وبتدفع للخدمة مباشرة. إحنا بنحسب كريديت بسيط لتشغيل المنصة بس." },
-  { q: "أقدر أربط واتساب من غير حساب بزنس؟", a: "أيوه، عن طريق WasenderAPI بتربط رقمك العادي بـ QR. ولو عندك واتساب بزنس الرسمي تقدر تستخدمه برضو." },
-  { q: "بياناتي في أمان؟", a: "المفاتيح والتوكنات بتتشفّر قبل ما تتحفظ، والاتصال كله مشفّر، ومحدش بيشوف بياناتك غير الخدمات اللي انت ربطتها." },
-  { q: "لو الكريديت خلص إيه اللي بيحصل؟", a: "السيناريوهات بتقف لحد ما يتجدد أو تشتري كريديت إضافي، وكل حاجة بتفضل محفوظة زي ما هي." },
-  { q: "في تجربة مجانية؟", a: "أيوه، 3 أيام بكل مميزات الاحترافي من غير بطاقة، وبعدها تكمّل على الباقة المجانية أو تشترك." },
+  { q: "محتاج أعرف برمجة؟", a: "لا. بتبني السيناريو بالسحب والتوصيل، أو تبدأ من تيمبلت جاهز، أو تقول للمساعد الذكي اللي عايزه ويبنيه لك" },
+  { q: "الذكاء الاصطناعي بيتحسب عليّ إزاي؟", a: "بتربط مفتاحك (Gemini فيه باقة مجانية، أو ChatGPT أو Claude) وبتدفع للخدمة مباشرة. إحنا بنحسب كريديت بسيط لتشغيل المنصة بس" },
+  { q: "أقدر أربط واتساب من غير حساب بزنس؟", a: "أيوه، عن طريق WasenderAPI بتربط رقمك العادي بـ QR. ولو عندك واتساب بزنس الرسمي تقدر تستخدمه برضو" },
+  { q: "بياناتي في أمان؟", a: "المفاتيح والتوكنات بتتشفّر قبل ما تتحفظ، والاتصال كله مشفّر، ومحدش بيشوف بياناتك غير الخدمات اللي انت ربطتها" },
+  { q: "لو الكريديت خلص إيه اللي بيحصل؟", a: "السيناريوهات بتقف لحد ما يتجدد أو تشتري كريديت إضافي، وكل حاجة بتفضل محفوظة زي ما هي" },
+  { q: "في تجربة مجانية؟", a: "أيوه، 3 أيام بكل مميزات الاحترافي من غير بطاقة، وبعدها تكمّل على الباقة المجانية أو تشترك" },
 ];
 
 export function Landing() {
@@ -167,6 +168,14 @@ export function Landing() {
   const [plans, setPlans] = useState<PlanDef[]>([]);
   const appHref = user ? "/app" : "/register";
   const active = CASES.find((c) => c.key === caseKey) ?? CASES[0];
+  useReveal([plans.length]);
+
+  // Subscribing always ends on the plan's payment screen: signed in goes straight there,
+  // and a new customer signs up first and lands on the same screen right after.
+  const planHref = (key: string) => {
+    const target = `/app/billing?plan=${key}`;
+    return user ? target : `/register?next=${encodeURIComponent(target)}`;
+  };
 
   useEffect(() => {
     fetch("/api/plans")
@@ -179,15 +188,13 @@ export function Landing() {
     <>
       <div className="lp-wrap">
         <section className="lp-hero">
-          <div>
+          <div className="lp-hero-text">
             <span className="kicker">منصة أتمتة عربية</span>
             <h1>
-              شغلك المتكرر
-              <br />
-              <em>يشتغل لوحده.</em>
+              شغلك المتكرر <em>يشتغل لوحده</em>
             </h1>
             <p className="lp-lead">
-              تدفّق بتربط واتساب ومتجرك والسوشيال ميديا وأي API ببعض، والذكاء الاصطناعي يرد على عملاءك ويسجّل طلباتهم وينشر محتواك وانت بتعمل حاجة تانية.
+              تدفّق بتربط واتساب ومتجرك والسوشيال ميديا وأي API ببعض، والذكاء الاصطناعي يرد على عملاءك ويسجّل طلباتهم وينشر محتواك وانت بتعمل حاجة تانية
             </p>
             <div className="lp-actions">
               {!loading && (
@@ -201,7 +208,9 @@ export function Landing() {
             </div>
             <p className="lp-note">3 أيام تجربة بكل المميزات · من غير بطاقة</p>
           </div>
-          <ProductWindow />
+          <div data-reveal>
+            <ProductWindow />
+          </div>
         </section>
       </div>
 
@@ -216,10 +225,10 @@ export function Landing() {
       </div>
 
       <div className="lp-wrap">
-        <section className="lp-section">
+        <section className="lp-section" data-reveal>
           <div className="lp-head">
-            <h2>من أول رسالة لحد آخر طلب.</h2>
-            <p>اختار نوع شغلك وشوف سيناريو حقيقي بيشتغل عند ناس زيك - كلها موجودة كتيمبلت تبدأ منها في دقيقة.</p>
+            <h2>من أول رسالة لحد آخر طلب</h2>
+            <p>اختار نوع شغلك وشوف سيناريو حقيقي بيشتغل عند ناس زيك - كلها موجودة كتيمبلت تبدأ منها في دقيقة</p>
           </div>
           <div className="lp-tabs" role="tablist">
             {CASES.map((c) => (
@@ -228,7 +237,8 @@ export function Landing() {
               </button>
             ))}
           </div>
-          <div className="lp-case">
+          {/* Re-keyed on purpose: switching a tab replays the panel and the steps stagger back in. */}
+          <div className="lp-case" key={caseKey}>
             <div>
               <h3>{active.title}</h3>
               <p>{active.text}</p>
@@ -243,7 +253,7 @@ export function Landing() {
             </div>
             <div className="card lp-chain">
               {active.chain.map(([app, title, note], i) => (
-                <div className="lp-chain-step" key={title}>
+                <div className="lp-chain-step" key={title} style={{ animationDelay: `${i * 90}ms` }}>
                   <AppBadge app={app} size={34} />
                   <div>
                     <strong style={{ fontSize: 14 }}>{title}</strong>
@@ -256,15 +266,15 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="lp-section">
+        <section className="lp-section" data-reveal>
           <div className="lp-head">
-            <h2>مبني للي بيشغّل بيزنس، مش للي بيحب الأدوات.</h2>
-            <p>كل حاجة معمولة عشان توصل لنتيجة بسرعة، وتعرف بالظبط إيه اللي حصل لما حاجة ما تمشيش.</p>
+            <h2>مبني للي بيشغّل بيزنس، مش للي بيحب الأدوات</h2>
+            <p>كل حاجة معمولة عشان توصل لنتيجة بسرعة، وتعرف بالظبط إيه اللي حصل لما حاجة ما تمشيش</p>
           </div>
           <div className="lp-bento">
             <article className="card lp-tile w4">
               <h3>كل تشغيلة مكشوفة قدامك</h3>
-              <p>بتشوف كل خطوة وهي بتشتغل، وإيه اللي دخلها وطلع منها. ولو خطوة وقعت، بتعرف السبب بالعربي وتعيد التشغيل.</p>
+              <p>بتشوف كل خطوة وهي بتشتغل، وإيه اللي دخلها وطلع منها. ولو خطوة وقعت، بتعرف السبب بالعربي وتعيد التشغيل</p>
               <div className="lp-tile-visual mini-log">
                 <div>
                   <b>✓</b> trigger.webhook · 0ms
@@ -282,7 +292,7 @@ export function Landing() {
             </article>
             <article className="card lp-tile w2">
               <h3>بوتات بتفتكر</h3>
-              <p>كل عميل ليه ذاكرة لوحده.</p>
+              <p>كل عميل ليه ذاكرة لوحده</p>
               <div className="lp-tile-visual mini-chat">
                 <span className="in">أنا اللي سألت إمبارح على المقاس</span>
                 <span className="out">أيوه يا أحمد، المقاس L رجع تاني ✓</span>
@@ -290,7 +300,7 @@ export function Landing() {
             </article>
             <article className="card lp-tile w2">
               <h3>جدولة مظبوطة</h3>
-              <p>كل يوم، أيام معينة، أو كل كام دقيقة.</p>
+              <p>كل يوم، أيام معينة، أو كل كام دقيقة</p>
               <div className="lp-tile-visual mini-cal">
                 {Array.from({ length: 14 }, (_, i) => (
                   <span key={i} className={[1, 3, 5, 8, 10, 12].includes(i) ? "on" : ""} />
@@ -299,23 +309,24 @@ export function Landing() {
             </article>
             <article className="card lp-tile w2">
               <h3>من Claude وChatGPT</h3>
-              <p>شغّل سيناريوهاتك بالكلام عن طريق MCP.</p>
+              <p>شغّل سيناريوهاتك بالكلام عن طريق MCP</p>
               <div className="lp-tile-visual mini-code">{`${window.location.host}/mcp/tdq_••••`}</div>
             </article>
             <article className="card lp-tile w2">
               <h3>أي API في العالم</h3>
-              <p>Webhook بيستقبل، وطلب HTTP بيبعت.</p>
+              <p>Webhook بيستقبل، وطلب HTTP بيبعت</p>
               <div className="lp-tile-visual mini-code">POST /webhook/orders → 200</div>
             </article>
           </div>
         </section>
 
-        <section className="lp-section">
+        <section className="lp-section" data-reveal>
           <div className="lp-head">
-            <h2>معمولة لسوقنا.</h2>
-            <p>مش ترجمة لأداة أجنبية - تفاصيل صغيرة كتير بتفرق مع أي حد شغال في مصر والخليج.</p>
+            <h2>معمولة لسوقنا</h2>
+            <p>مش ترجمة لأداة أجنبية - تفاصيل صغيرة كتير بتفرق مع أي حد شغال في مصر والخليج</p>
           </div>
-          <div className="lp-local">
+          {/* Two columns on a desk, a swipeable carousel on a phone: same cards either way. */}
+          <Rail className="lp-local" phoneOnly label="مميزات معمولة لسوقنا">
             {LOCAL.map((item) => (
               <div className="lp-local-item" key={item.h}>
                 <span className="lp-local-icon">
@@ -327,36 +338,59 @@ export function Landing() {
                 </div>
               </div>
             ))}
-          </div>
+          </Rail>
         </section>
 
         {plans.length > 0 && (
-          <section className="lp-section">
+          <section className="lp-section" data-reveal>
             <div className="lp-head">
-              <h2>أسعار على قد شغلك.</h2>
+              <h2>أسعار على قد شغلك</h2>
               <p>
-                ابدأ مجاناً، وادفع لما شغلك يكبر. <Link to="/pricing">قارن الباقات بالتفصيل</Link>
+                ابدأ مجاناً، وادفع لما شغلك يكبر <Link to="/pricing">قارن الباقات بالتفصيل</Link>
               </p>
             </div>
-            <div className="lp-prices">
+            <Rail className="lp-plans" label="الباقات">
               {plans.map((plan) => (
-                <div key={plan.key} className={`lp-price ${plan.key === "pro" ? "pick" : ""}`}>
+                <article key={plan.key} className={`lp-plan ${plan.key === "pro" ? "pick" : ""}`}>
+                  {plan.key === "pro" && <span className="lp-plan-tag">الأكثر اختياراً</span>}
                   <h3>{plan.name}</h3>
                   <div className="amount">
-                    {money(plan.price.monthly)} <small>/ شهرياً</small>
+                    {plan.price.monthly ? (
+                      <>
+                        {money(plan.price.monthly)} <small>/ شهرياً</small>
+                      </>
+                    ) : (
+                      "مجاناً"
+                    )}
                   </div>
                   <p>{plan.tagline}</p>
-                </div>
+                  <ul>
+                    {plan.features.slice(0, 4).map((feature) => (
+                      <li key={feature}>
+                        <Icon name="check" size={14} /> {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.price.monthly ? (
+                    <Link className={`btn ${plan.key === "pro" ? "primary" : ""}`} to={planHref(plan.key)}>
+                      اشترك في {plan.name}
+                    </Link>
+                  ) : (
+                    <Link className="btn" to={appHref}>
+                      {user ? "افتح لوحة التحكم" : "ابدأ مجاناً"}
+                    </Link>
+                  )}
+                </article>
               ))}
-            </div>
+            </Rail>
           </section>
         )}
 
-        <section className="lp-section">
+        <section className="lp-section" data-reveal>
           <div className="lp-head">
-            <h2>أسئلة بتتسأل كتير.</h2>
+            <h2>أسئلة بتتسأل كتير</h2>
             <p>
-              لو سؤالك مش هنا، <Link to="/help">مركز المساعدة</Link> أو <Link to="/contact">كلّمنا مباشرة</Link>.
+              لو سؤالك مش هنا، <Link to="/help">مركز المساعدة</Link> أو <Link to="/contact">كلّمنا مباشرة</Link>
             </p>
           </div>
           <div className="lp-faq">
@@ -369,8 +403,8 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="lp-final">
-          <h2>أول سيناريو ليك ممكن يبقى شغال قبل ما تخلص قهوتك.</h2>
+        <section className="lp-final" data-reveal>
+          <h2>أول سيناريو ليك ممكن يبقى شغال قبل ما تخلص قهوتك</h2>
           <div className="lp-actions">
             <Link className="btn primary lg" to={appHref}>
               {user ? "افتح لوحة التحكم" : "ابدأ مجاناً"}

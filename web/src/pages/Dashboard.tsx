@@ -48,7 +48,7 @@ export function Scenarios() {
   };
 
   const remove = async (wf: Workflow) => {
-    if (!window.confirm(`متأكد إنك عايز تمسح «${wf.name}»؟ سجل التشغيلات هيتمسح كمان.`)) return;
+    if (!window.confirm(`متأكد إنك عايز تمسح «${wf.name}»؟ سجل التشغيلات هيتمسح كمان`)) return;
     await api(`/workflows/${wf.id}`, { method: "DELETE" }).catch((e: Error) => toast(e.message, "error"));
     load();
   };
@@ -112,7 +112,7 @@ export function Scenarios() {
           <Empty
             icon="flows"
             title="لسه مفيش سيناريوهات"
-            text="ابدأ من الصفر أو استخدم تيمبلت جاهز وعدّل عليه."
+            text="ابدأ من الصفر أو استخدم تيمبلت جاهز وعدّل عليه"
             action={
               <div className="row" style={{ justifyContent: "center" }}>
                 <Link className="btn" to="/app/templates">

@@ -147,7 +147,7 @@ export function CredentialModal({
             </div>
           ))}
           <div className="help" style={{ marginBottom: 12 }}>
-            🔒 البيانات بتتشفّر (AES-256) قبل ما تتحفظ ومش بتظهر تاني.
+            🔒 البيانات بتتشفّر (AES-256) قبل ما تتحفظ ومش بتظهر تاني
           </div>
           {result && <div className={`alert ${result.ok ? "success" : "error"}`}>{result.message}</div>}
         </>
@@ -190,7 +190,7 @@ export function Credentials() {
       <div className="page-head">
         <div>
           <h1>الحسابات والمفاتيح</h1>
-          <p>مفاتيح الـ API والحسابات اللي السيناريوهات بتستخدمها - متشفّرة ومحفوظة عندك.</p>
+          <p>مفاتيح الـ API والحسابات اللي السيناريوهات بتستخدمها - متشفّرة ومحفوظة عندك</p>
         </div>
         <button className="btn primary" onClick={() => setModal({})}>
           <Icon name="plus" size={16} /> إضافة حساب
@@ -205,7 +205,7 @@ export function Credentials() {
           <Empty
             icon="key"
             title="مفيش حسابات لسه"
-            text="ضيف مفتاح Claude أو توكن بوت تيليجرام أو أي API عشان تستخدمهم في السيناريوهات."
+            text="ضيف مفتاح Claude أو توكن بوت تيليجرام أو أي API عشان تستخدمهم في السيناريوهات"
             action={
               <button className="btn primary" onClick={() => setModal({})}>
                 إضافة حساب

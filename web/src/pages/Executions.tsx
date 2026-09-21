@@ -126,7 +126,7 @@ export function Executions() {
       <div className="page-head">
         <div>
           <h1>سجل التشغيلات</h1>
-          <p>كل مرة سيناريو اشتغل: نجح ولا فشل، وإيه اللي حصل في كل خطوة.</p>
+          <p>كل مرة سيناريو اشتغل: نجح ولا فشل، وإيه اللي حصل في كل خطوة</p>
         </div>
         <button className="btn" onClick={load}>
           تحديث
@@ -149,7 +149,7 @@ export function Executions() {
             <Spinner />
           </div>
         ) : items.length === 0 ? (
-          <Empty icon="history" title="مفيش تشغيلات" text="أول ما سيناريو يشتغل هيظهر هنا." />
+          <Empty icon="history" title="مفيش تشغيلات" text="أول ما سيناريو يشتغل هيظهر هنا" />
         ) : (
           <div className="table-wrap">
             <table className="table">

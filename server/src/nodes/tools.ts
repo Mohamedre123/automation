@@ -44,7 +44,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "logic.switch",
     name: "راوتر (مسارات متعددة)",
-    description: "بيوجّه البيانات لأول مسار شرطه يتحقق (لحد 5 مسارات)، ولو مفيش يروح لمسار «غير كده».",
+    description: "بيوجّه البيانات لأول مسار شرطه يتحقق (لحد 5 مسارات)، ولو مفيش يروح لمسار «غير كده»",
     app: "logic",
     appName: "التحكم في المسار",
     color: "#16a34a",
@@ -57,7 +57,7 @@ export const toolNodes: NodeDefinition[] = [
         label: "شروط المسارات بالترتيب",
         type: "conditions",
         default: [],
-        help: "الشرط الأول = مسار 1، التاني = مسار 2... أول شرط يتحقق هو اللي يشتغل.",
+        help: "الشرط الأول = مسار 1، التاني = مسار 2... أول شرط يتحقق هو اللي يشتغل",
       },
     ],
     sampleOutput: { route: "r1", matched: 1 },
@@ -71,14 +71,14 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "logic.iterator",
     name: "تكرار على قايمة (Iterator)",
-    description: "بياخد قايمة (منتجات، صفوف، رسايل...) والخطوات اللي بعده بتشتغل مرة لكل عنصر.",
+    description: "بياخد قايمة (منتجات، صفوف، رسايل...) والخطوات اللي بعده بتشتغل مرة لكل عنصر",
     app: "logic",
     appName: "التحكم في المسار",
     color: "#16a34a",
     group: "logic",
     kind: "action",
     fields: [
-      { key: "list", label: "القايمة", type: "text", required: true, placeholder: "{{2.rows}}", help: "متغير واحد بيرجّع مصفوفة. كل عنصر بيوصل للخطوات اللي بعده في {{N}}." },
+      { key: "list", label: "القايمة", type: "text", required: true, placeholder: "قايمة من خطوة قبلها", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها - لازم تكون قايمة (صفوف شيت، منتجات، رسايل). كل عنصر بيمشي في الخطوات اللي بعدها لوحده" },
       { key: "limit", label: "أقصى عدد عناصر", type: "number", default: 100 },
     ],
     sampleOutput: { name: "عنصر من القايمة", _index: 1, _total: 3 },
@@ -96,7 +96,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "logic.filter",
     name: "فلتر",
-    description: "بيكمّل للخطوات اللي بعده بس لو الشروط اتحققت، غير كده الفرع بيقف بهدوء.",
+    description: "بيكمّل للخطوات اللي بعده بس لو الشروط اتحققت، غير كده الفرع بيقف بهدوء",
     app: "logic",
     appName: "التحكم في المسار",
     color: "#16a34a",
@@ -126,7 +126,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "logic.stop",
     name: "إيقاف السيناريو",
-    description: "بيوقف التشغيل كله هنا، كنجاح أو كخطأ برسالة توضّح السبب.",
+    description: "بيوقف التشغيل كله هنا، كنجاح أو كخطأ برسالة توضّح السبب",
     app: "logic",
     appName: "التحكم في المسار",
     color: "#16a34a",
@@ -155,7 +155,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "tools.text",
     name: "أدوات النصوص",
-    description: "استبدال، تقسيم، استخراج بـ Regex، تحويل حروف، قص النص، وعدد الحروف.",
+    description: "استبدال، تقسيم، استخراج بـ Regex، تحويل حروف، قص النص، وعدد الحروف",
     app: "tools",
     appName: "أدوات",
     color: "#0f766e",
@@ -218,7 +218,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "tools.date",
     name: "التاريخ والوقت",
-    description: "الوقت الحالي، تنسيق تاريخ بالعربي، إضافة أو طرح مدة، والفرق بين تاريخين.",
+    description: "الوقت الحالي، تنسيق تاريخ بالعربي، إضافة أو طرح مدة، والفرق بين تاريخين",
     app: "tools",
     appName: "أدوات",
     color: "#0f766e",
@@ -233,7 +233,7 @@ export const toolNodes: NodeDefinition[] = [
         ],
         "format",
       ),
-      { key: "date", label: "التاريخ", type: "text", default: "{{$now}}", help: "أي تاريخ مفهوم (ISO مثلاً)." },
+      { key: "date", label: "التاريخ", type: "text", default: "{{$now}}", help: "أي تاريخ مفهوم (ISO مثلاً)" },
       { key: "amount", label: "المدة (سالب = طرح)", type: "number", default: 1, showIf: { field: "operation", values: ["add"] } },
       {
         key: "unit",
@@ -286,14 +286,14 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "tools.math",
     name: "عمليات حسابية",
-    description: "احسب أي معادلة بالأرقام: خصم، ضريبة، إجمالي، متوسط...",
+    description: "احسب أي معادلة بالأرقام: خصم، ضريبة، إجمالي، متوسط",
     app: "tools",
     appName: "أدوات",
     color: "#0f766e",
     group: "logic",
     kind: "action",
     fields: [
-      { key: "expression", label: "المعادلة", type: "text", required: true, placeholder: "{{2.price}} * 1.14 - 50" },
+      { key: "expression", label: "المعادلة", type: "text", required: true, placeholder: "250 * 1.14 - 50", help: "الأرقام تكتبها، والأرقام الجاية من خطوة قبلها تختارها من زرار البيانات. العمليات: + - * /" },
       { key: "decimals", label: "عدد الأرقام العشرية", type: "number", default: 2 },
     ],
     sampleOutput: { result: 1090.5 },
@@ -315,7 +315,7 @@ export const toolNodes: NodeDefinition[] = [
   {
     type: "tools.json",
     name: "JSON",
-    description: "حوّل نص JSON لبيانات تقدر تستخدمها، أو حوّل بيانات لنص JSON.",
+    description: "حوّل نص JSON لبيانات تقدر تستخدمها، أو حوّل بيانات لنص JSON",
     app: "tools",
     appName: "أدوات",
     color: "#0f766e",
@@ -329,7 +329,7 @@ export const toolNodes: NodeDefinition[] = [
         ],
         "parse",
       ),
-      { key: "input", label: "المدخل", type: "textarea", required: true, placeholder: "{{1.body.payload}}" },
+      { key: "input", label: "المدخل", type: "textarea", required: true, placeholder: "النص اللي عايز تعالجه", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
     ],
     sampleOutput: { result: { name: "Ahmed" } },
     async run({ params }) {

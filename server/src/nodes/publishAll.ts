@@ -2,6 +2,7 @@ import { decrypt } from "../crypto.js";
 import { newId, now, one, parseJson, query, run } from "../db.js";
 import type { CredentialValue, FieldDef, NodeContext, NodeDefinition, StepLog } from "../engine/types.js";
 import { connectedNodes } from "./connected.js";
+import { urlList } from "./media.js";
 import { publishingNodes } from "./publishing.js";
 import { socialNodes } from "./social.js";
 import { telegramNodes } from "./telegram.js";
@@ -106,7 +107,7 @@ const PLATFORMS: PlatformDef[] = [
     label: "تيليجرام",
     credentialTypes: ["telegramBot"],
     node: "telegram.sendPhoto",
-    targetField: { key: "telegramChatId", label: "تيليجرام: القناة أو الجروب", type: "text", placeholder: "@my_channel", help: "البوت لازم يكون أدمن في القناة." },
+    targetField: { key: "telegramChatId", label: "تيليجرام: القناة أو الجروب", type: "text", placeholder: "@my_channel", help: "البوت لازم يكون أدمن في القناة" },
   },
   { key: "x", label: "X (تويتر)", credentialTypes: ["xOAuth1"], node: "x.post" },
   { key: "linkedin", label: "LinkedIn", credentialTypes: ["linkedinApi"], node: "linkedin.post" },
@@ -155,7 +156,7 @@ const PLATFORMS: PlatformDef[] = [
       label: "خدمة نشر خارجية: المسار",
       type: "text",
       placeholder: "/post",
-      help: "لو عندك خدمة نشر تانية (Ayrshare، Publer، سيستمك). الـ Body بيتبعت بالشكل اللي تحت.",
+      help: "لو عندك خدمة نشر تانية (Ayrshare، Publer، سيستمك). الـ Body بيتبعت بالشكل اللي تحت",
     },
   },
 ];
@@ -185,16 +186,21 @@ const clip = (text: string, max: number) => (text.length <= max ? text : `${text
 /** What each platform receives: some only take images, some limit the text. */
 function platformPosts(key: string, p: PublishPayload, target: string) {
   const video = p.mediaMode === "image" ? "" : p.videoUrl;
-  const image = p.mediaMode === "video" && video ? "" : p.imageUrl;
+  // The image field takes a whole gallery: more than one means a carousel wherever that exists.
+  const gallery = p.mediaMode === "video" && video ? [] : urlList(p.imageUrl);
+  const image = gallery[0] ?? "";
+  const carousel = gallery.length > 1 && !video;
   const withLink = p.link ? placeLinkUnderCta(p.caption, p.link) : p.caption;
   const both = (make: (media: { imageUrl?: string; videoUrl?: string }) => Record<string, unknown>) =>
     video && image ? [make({ videoUrl: video }), make({ imageUrl: image })] : [make({ videoUrl: video || undefined, imageUrl: image || undefined })];
 
   switch (key) {
     case "facebook":
+      if (carousel) return [{ message: withLink, imageUrl: gallery.join("\n"), videoUrl: "", link: p.link }];
       return both((m) => ({ message: withLink, imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "", link: p.link }));
     case "instagram":
       if (!video && !image) throw new Error("إنستجرام محتاج صورة أو فيديو - اتخطّى");
+      if (carousel) return [{ caption: p.caption, imageUrl: gallery.join("\n"), videoUrl: "" }];
       return both((m) => ({ caption: p.caption, imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "" }));
     case "threads":
       return both((m) => ({ text: clip(withLink, 500), imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "" }));
@@ -205,7 +211,8 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       if (longCaption || (!video && !image)) posts.push({ _node: "telegram.sendMessage", chatId: target, text: clip(withLink, 4096) });
       const caption = longCaption ? "" : withLink;
       if (video) posts.push({ _node: "telegram.sendVideo", chatId: target, video, caption: image ? "" : caption });
-      if (image) posts.push({ _node: "telegram.sendPhoto", chatId: target, photo: image, caption });
+      if (carousel) posts.push({ _node: "telegram.sendAlbum", chatId: target, photos: gallery.join("\n"), caption });
+      else if (image) posts.push({ _node: "telegram.sendPhoto", chatId: target, photo: image, caption });
       return posts;
     }
     case "x":
@@ -217,15 +224,15 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
     case "uploadpost": {
       const platforms = (target || "instagram, tiktok").split(/[,،\s]+/).map((p) => p.trim().toLowerCase()).filter(Boolean);
       const base = { _uploadpost: true, platforms, title: clip(withLink, 2200) };
-      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: [image] }];
-      return [{ ...base, videoUrl: video || undefined, imageUrls: image ? [image] : [] }];
+      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: gallery }];
+      return [{ ...base, videoUrl: video || undefined, imageUrls: gallery }];
     }
     case "ayrshare":
     case "zernio":
     case "blotato": {
       const base = { _aggregator: key, platforms: splitList(target || "instagram, facebook"), text: withLink };
-      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: [image] }];
-      return [{ ...base, videoUrl: video || undefined, imageUrls: image ? [image] : [] }];
+      if (video && image) return [{ ...base, videoUrl: video }, { ...base, imageUrls: gallery }];
+      return [{ ...base, videoUrl: video || undefined, imageUrls: gallery }];
     }
     case "custom": {
       if (!target) throw new Error("اكتب مسار الخدمة الخارجية");
@@ -314,7 +321,7 @@ export const publishAllNode: NodeDefinition = {
   type: "social.publishAll",
   name: "انشر على كل المنصات",
   description:
-    "بينشر النص والصورة و/أو الفيديو على كل منصة ليها حساب مختار - واللي من غير حساب بتتخطى لوحدها. وتقدر تأجّل النشر لساعة معينة.",
+    "بينشر النص والصورة و/أو الفيديو على كل منصة ليها حساب مختار - واللي من غير حساب بتتخطى لوحدها. وتقدر تأجّل النشر لساعة معينة",
   app: "social",
   appName: "النشر على المنصات",
   color: "#ec4899",
@@ -322,10 +329,23 @@ export const publishAllNode: NodeDefinition = {
   kind: "action",
   timeoutMs: 280_000,
   fields: [
-    { key: "caption", label: "نص البوست", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
-    { key: "imageUrl", label: "رابط الصورة", type: "text", placeholder: "{{4.url}}" },
-    { key: "videoUrl", label: "رابط الفيديو", type: "text", placeholder: "{{5.url}}" },
-    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
+    {
+      key: "caption",
+      label: "نص البوست",
+      type: "textarea",
+      required: true,
+      placeholder: "اكتب البوست هنا",
+      help: "اكتبه بنفسك، أو دوس زرار البيانات جوه الخانة واختار نص جاهز من خطوة قبلها",
+    },
+    {
+      key: "imageUrl",
+      label: "الصور",
+      type: "textarea",
+      placeholder: "@{تيشيرت أبيض}\n@{بنطلون جينز}",
+      help: "اكتب @ واختار من مكتبة صورك، أو الصق رابط. أكتر من صورة (كل واحدة في سطر) = كاروسيل بنفس الكابشن على إنستجرام وألبوم على فيسبوك وتيليجرام",
+    },
+    { key: "videoUrl", label: "فيديو (اختياري)", type: "text", placeholder: "@{فيديو المنتج}", help: "اكتب @ واختار فيديو من مكتبتك، أو الصق رابط فيديو" },
+    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات" },
     {
       key: "mediaMode",
       label: "لو فيه صورة وفيديو",
@@ -342,7 +362,7 @@ export const publishAllNode: NodeDefinition = {
       label: "ميعاد النشر",
       type: "text",
       placeholder: "19:00",
-      help: "فاضي = ينشر فوراً. 19:00 = النهاردة الساعة 7 بالليل (أو بكرة لو الساعة عدّت). أو تاريخ: 2026-10-01 19:00 - أو +2h بعد ساعتين.",
+      help: "فاضي = ينشر فوراً. 19:00 = النهاردة الساعة 7 بالليل (أو بكرة لو الساعة عدّت). أو تاريخ: 2026-10-01 19:00 - أو +2h بعد ساعتين",
     },
     { key: "timezone", label: "المنطقة الزمنية", type: "text", default: "Africa/Cairo" },
     ...credentialFields,
@@ -351,7 +371,7 @@ export const publishAllNode: NodeDefinition = {
       label: "خدمة نشر خارجية: شكل الـ Body",
       type: "textarea",
       placeholder: '{"post":"[caption]","media":["[imageUrl]"],"platforms":["tiktok"]}',
-      help: "[caption] النص، [imageUrl] الصورة، [videoUrl] الفيديو، [link] الرابط. فاضي = شكل افتراضي بالأربع قيم.",
+      help: "[caption] النص، [imageUrl] الصورة، [videoUrl] الفيديو، [link] الرابط. فاضي = شكل افتراضي بالأربع قيم",
     },
   ],
   sampleOutput: {

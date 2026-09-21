@@ -129,7 +129,14 @@ export async function credentialRoutes(app: FastifyInstance) {
     await rateLimit(`cred-test:${req.user.id}`, 30, 600);
     const { id } = req.params as { id: string };
     const row = await getOwned(req, id);
-    return runTest(requireType(row.type), decrypt(row.data));
+    const data = decrypt<Record<string, string>>(row.data);
+    const before = JSON.stringify(data);
+    const result = await runTest(requireType(row.type), data);
+    // A test may work out a value the customer could not find (e.g. the Instagram account id): keep it.
+    if (result.ok && JSON.stringify(data) !== before) {
+      await run("UPDATE credentials SET data = $1, updated_at = $2 WHERE id = $3", [encrypt(data), now(), id]);
+    }
+    return result;
   });
 
   app.post("/api/credentials/test", async (req) => {

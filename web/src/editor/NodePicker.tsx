@@ -54,7 +54,7 @@ export function NodePicker({
           </div>
         </button>
       ))}
-      {!nodes.length && <div className="faint">مفيش نتائج - جرّب كلمة تانية، أو استخدم خطوة HTTP لأي API.</div>}
+      {!nodes.length && <div className="faint">مفيش نتائج - جرّب كلمة تانية، أو استخدم خطوة HTTP لأي API</div>}
     </div>
   );
 

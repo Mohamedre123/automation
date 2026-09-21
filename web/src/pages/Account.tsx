@@ -29,7 +29,7 @@ export function Usage() {
       <div className="page-head">
         <div>
           <h1>استهلاك الكريديت</h1>
-          <p>الكريديت راح فين في آخر 30 يوم: كل يوم، وكل سيناريو.</p>
+          <p>الكريديت راح فين في آخر 30 يوم: كل يوم، وكل سيناريو</p>
         </div>
         <Link className="btn primary" to="/app/billing#credits">
           <Icon name="plus" size={16} /> شراء كريديت
@@ -89,12 +89,12 @@ export function Usage() {
               </div>
             ) : (
               <p className="muted" style={{ margin: 0 }}>
-                مفيش تشغيلات في آخر 30 يوم.
+                مفيش تشغيلات في آخر 30 يوم
               </p>
             )}
           </div>
           <p className="help" style={{ marginTop: 14 }}>
-            الخطوات اللي بتكلّم تطبيق أو ذكاء اصطناعي بس هي اللي بتاخد كريديت - الشروط والفلاتر وحفظ البيانات مجاناً.
+            الخطوات اللي بتكلّم تطبيق أو ذكاء اصطناعي بس هي اللي بتاخد كريديت - الشروط والفلاتر وحفظ البيانات مجاناً
           </p>
         </>
       )}
@@ -124,7 +124,7 @@ export function Links() {
       <div className="page-head">
         <div>
           <h1>الروابط والـ Webhooks</h1>
-          <p>كل رابط السيناريوهات بتاعتك بتستقبل عليه: فورمات، Webhooks، وبوتات واتساب.</p>
+          <p>كل رابط السيناريوهات بتاعتك بتستقبل عليه: فورمات، Webhooks، وبوتات واتساب</p>
         </div>
       </div>
       {!rows ? (
@@ -133,7 +133,7 @@ export function Links() {
         </div>
       ) : !rows.length ? (
         <div className="card">
-          <Empty icon="webhook" title="مفيش روابط لسه" text="أي سيناريو بمحفّز فورم أو Webhook أو رسايل واتساب هيظهر رابطه هنا." />
+          <Empty icon="webhook" title="مفيش روابط لسه" text="أي سيناريو بمحفّز فورم أو Webhook أو رسايل واتساب هيظهر رابطه هنا" />
         </div>
       ) : (
         <div className="links-list">
@@ -215,7 +215,7 @@ export function Settings() {
       <div className="page-head">
         <div>
           <h1>إعدادات الحساب</h1>
-          <p>بياناتك وكلمة السر.</p>
+          <p>بياناتك وكلمة السر</p>
         </div>
       </div>
       <div className="card settings-card">
@@ -236,7 +236,7 @@ export function Settings() {
               <Icon name="copy" size={15} />
             </button>
           </div>
-          <div className="help">بتحتاجه لو بتدفع أو بتكلّم الدعم.</div>
+          <div className="help">بتحتاجه لو بتدفع أو بتكلّم الدعم</div>
         </div>
         <button className="btn primary" onClick={saveName} disabled={busy === "name" || !name.trim() || name === user.name}>
           {busy === "name" ? <Spinner size={14} /> : "حفظ"}
@@ -252,7 +252,7 @@ export function Settings() {
         <div className="field">
           <label className="label">كلمة السر الجديدة</label>
           <input className="input" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-          <div className="help">8 حروف على الأقل.</div>
+          <div className="help">8 حروف على الأقل</div>
         </div>
         <button className="btn primary" onClick={savePassword} disabled={busy === "password" || !current || next.length < 8}>
           {busy === "password" ? <Spinner size={14} /> : "غيّر كلمة السر"}
@@ -262,7 +262,7 @@ export function Settings() {
       <div className="card settings-card">
         <h3>مسح الحساب</h3>
         <p className="muted" style={{ marginTop: 0 }}>
-          لو عايز تمسح حسابك وكل بياناتك نهائياً، ابعتلنا من صفحة التواصل برقم حسابك وهنمسحه خلال يومين.
+          لو عايز تمسح حسابك وكل بياناتك نهائياً، ابعتلنا من صفحة التواصل برقم حسابك وهنمسحه خلال يومين
         </p>
         <Link className="btn" to="/contact">
           صفحة التواصل

@@ -89,6 +89,7 @@ const AUTO_FILL: Record<string, Record<string, NonNullable<FieldDef["autoFill"]>
   "facebook.post": { message: "caption", imageUrl: "image", videoUrl: "video" },
   "instagram.post": { caption: "caption", imageUrl: "image", videoUrl: "video" },
   "telegram.sendPhoto": { caption: "caption", photo: "image" },
+  "telegram.sendAlbum": { caption: "caption", photos: "images" },
   "telegram.sendVideo": { caption: "caption", video: "video" },
   "x.post": { text: "caption", imageUrl: "image" },
   "linkedin.post": { text: "caption" },

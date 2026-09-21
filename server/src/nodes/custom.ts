@@ -10,7 +10,7 @@ export const customApiCredential: CredentialType = {
   key: "customApi",
   name: "خدمة خارجية (API خاص بيك)",
   app: "customapi",
-  description: "لو عندك مزوّد تاني غير المتاح عندنا (واتساب غير رسمي، SMS، خدمة نشر، أو سيستم شركتك): حط رابطه ومفتاحه وهيشتغل في أي سيناريو.",
+  description: "لو عندك مزوّد تاني غير المتاح عندنا (واتساب غير رسمي، SMS، خدمة نشر، أو سيستم شركتك): حط رابطه ومفتاحه وهيشتغل في أي سيناريو",
   fields: [
     { key: "baseUrl", label: "رابط الـ API", required: true, placeholder: "https://api.provider.com/v1" },
     { key: "authHeader", label: "اسم Header المفتاح", placeholder: "Authorization", help: "فاضي = Authorization" },
@@ -19,13 +19,13 @@ export const customApiCredential: CredentialType = {
       key: "sendPath",
       label: "مسار إرسال رسالة (اختياري)",
       placeholder: "/messages/send",
-      help: "لو الخدمة بتبعت رسايل: هيستخدم في إشعارات التحويل لموظف.",
+      help: "لو الخدمة بتبعت رسايل: هيستخدم في إشعارات التحويل لموظف",
     },
     {
       key: "messageBody",
       label: "شكل رسالة الإرسال (اختياري)",
       placeholder: '{"to":"[to]","text":"[text]"}',
-      help: "[to] = المستلم و [text] = النص. فاضي = الشكل ده بالظبط.",
+      help: "[to] = المستلم و [text] = النص. فاضي = الشكل ده بالظبط",
     },
   ],
   async test(data) {
@@ -38,10 +38,10 @@ export const customApiCredential: CredentialType = {
     return "الإعدادات سليمة ✓ (جرّب خطوة من السيناريو للتأكد من الرد)";
   },
   steps: [
-    "من لوحة المزوّد بتاعك هات رابط الـ API الأساسي (Base URL) والمفتاح (API Key / Token).",
-    "من التوثيق بتاعهم اعرف المفتاح بيتبعت إزاي: غالباً Header اسمه Authorization وقيمته Bearer + المفتاح، أو Header زي X-API-Key.",
-    "لو هتستخدمه لإرسال رسايل (زي واتساب غير رسمي أو SMS): اكتب مسار الإرسال وشكل الـ JSON اللي بيطلبه، وحط [to] مكان رقم المستلم و [text] مكان النص.",
-    "في السيناريو استخدم خطوة «خدمة خارجية: إرسال طلب» - أو اختاره في «انشر على كل المنصات» كخدمة نشر إضافية.",
+    "من لوحة المزوّد بتاعك هات رابط الـ API الأساسي (Base URL) والمفتاح (API Key / Token)",
+    "من التوثيق بتاعهم اعرف المفتاح بيتبعت إزاي: غالباً Header اسمه Authorization وقيمته Bearer + المفتاح، أو Header زي X-API-Key",
+    "لو هتستخدمه لإرسال رسايل (زي واتساب غير رسمي أو SMS): اكتب مسار الإرسال وشكل الـ JSON اللي بيطلبه، وحط [to] مكان رقم المستلم و [text] مكان النص",
+    "في السيناريو استخدم خطوة «خدمة خارجية: إرسال طلب» - أو اختاره في «انشر على كل المنصات» كخدمة نشر إضافية",
   ],
 };
 
@@ -89,16 +89,16 @@ export async function customRequest(c: CredentialValue | undefined, method: stri
     const host = new URL(url).hostname;
     if (/upload-post\.com$/i.test(host)) {
       throw new Error(
-        "الخدمة الخارجية: رابط Upload-Post هنا غلط (ده رابط الموقع مش الـ API). الأسهل: ضيف حساب «Upload-Post» الجاهز من «الحسابات» واستخدم خطوة «Upload-Post: نشر على المنصات» بدل الخدمة الخارجية.",
+        "الخدمة الخارجية: رابط Upload-Post هنا غلط (ده رابط الموقع مش الـ API). الأسهل: ضيف حساب «Upload-Post» الجاهز من «الحسابات» واستخدم خطوة «Upload-Post: نشر على المنصات» بدل الخدمة الخارجية",
       );
     }
     const hint =
       response.status === 405
-        ? "المسار ده مش بيقبل الطلب ده - غالباً «رابط الـ API» في الحساب هو رابط الموقع مش رابط الـ API، أو المسار أو الـ Method غلط."
+        ? "المسار ده مش بيقبل الطلب ده - غالباً «رابط الـ API» في الحساب هو رابط الموقع مش رابط الـ API، أو المسار أو الـ Method غلط"
         : response.status === 404
-          ? "المسار مش موجود - راجع «رابط الـ API» في الحساب والمسار في الخطوة من توثيق الخدمة."
+          ? "المسار مش موجود - راجع «رابط الـ API» في الحساب والمسار في الخطوة من توثيق الخدمة"
           : response.status === 401 || response.status === 403
-            ? "المفتاح غلط أو اتكتب في الخانة الغلط - راجع «اسم Header المفتاح» و«قيمة المفتاح»."
+            ? "المفتاح غلط أو اتكتب في الخانة الغلط - راجع «اسم Header المفتاح» و«قيمة المفتاح»"
             : "";
     throw new Error(`الخدمة الخارجية: HTTP ${response.status}${detail ? ` (${detail})` : ""}${hint ? ` - ${hint}` : ""}`);
   }
@@ -115,7 +115,7 @@ export async function sendCustomMessage(c: CredentialValue, to: string, text: st
 export const customApiNode: NodeDefinition = {
   type: "custom.request",
   name: "خدمة خارجية: إرسال طلب",
-  description: "بيكلم المزوّد الخاص بيك (واتساب غير رسمي، SMS، خدمة نشر، سيستمك) بالمفتاح المحفوظ في الحساب.",
+  description: "بيكلم المزوّد الخاص بيك (واتساب غير رسمي، SMS، خدمة نشر، سيستمك) بالمفتاح المحفوظ في الحساب",
   app: "customapi",
   appName: "خدمة خارجية",
   color: "#64748b",
@@ -130,8 +130,14 @@ export const customApiNode: NodeDefinition = {
       default: "POST",
       options: ["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => ({ value: m, label: m })),
     },
-    { key: "path", label: "المسار", type: "text", required: true, placeholder: "/messages/send", help: "بيتضاف بعد رابط الـ API اللي في الحساب." },
-    { key: "body", label: "Body (JSON)", type: "json", placeholder: '{ "to": "{{1.phone}}", "text": "{{2.text}}" }' },
+    { key: "path", label: "المسار", type: "text", required: true, placeholder: "/messages/send", help: "بيتضاف بعد رابط الـ API اللي في الحساب" },
+    {
+      key: "body",
+      label: "Body (JSON)",
+      type: "json",
+      placeholder: '{ "to": "201012345678", "text": "الرسالة" }',
+      help: "اكتب الشكل اللي الخدمة بتطلبه، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
+    },
   ],
   sampleOutput: { status: 200, data: { success: true, id: "msg_123" } },
   async run({ params, credential, signal }) {

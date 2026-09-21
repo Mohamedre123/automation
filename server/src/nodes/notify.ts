@@ -49,7 +49,7 @@ export async function sendNotification(credential: CredentialValue, target: stri
       if (!data?.ok) {
         if (/chat not found|bot can't initiate|blocked/i.test(data?.description ?? "")) {
           throw new Error(
-            `Telegram: البوت مش قادر يبعت لـ ${to}. لازم صاحب الحساب ده يفتح البوت ويبعتله أي رسالة (مثلاً /start) مرة واحدة الأول، وبعدها التحويل هيوصله.`,
+            `Telegram: البوت مش قادر يبعت لـ ${to}. لازم صاحب الحساب ده يفتح البوت ويبعتله أي رسالة (مثلاً /start) مرة واحدة الأول، وبعدها التحويل هيوصله`,
           );
         }
         throw new Error(`Telegram: ${data?.description ?? `HTTP ${response.status}`}`);
@@ -76,7 +76,7 @@ export async function sendNotification(credential: CredentialValue, target: stri
         );
       } catch (e) {
         throw new Error(
-          `${(e as Error).message} - ملحوظة: واتساب الرسمي بيسمح برسائل حرة للرقم ده بس لو بعت رسالة لرقم الشركة خلال آخر 24 ساعة.`,
+          `${(e as Error).message} - ملحوظة: واتساب الرسمي بيسمح برسائل حرة للرقم ده بس لو بعت رسالة لرقم الشركة خلال آخر 24 ساعة`,
         );
       }
       return;

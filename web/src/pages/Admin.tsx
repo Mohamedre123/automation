@@ -108,7 +108,7 @@ export function Admin() {
       <div className="page-head">
         <div>
           <h1>لوحة الأدمن</h1>
-          <p>كل الحسابات المسجلة، وتفعيل الباقات والتجربة والكريديت من هنا.</p>
+          <p>كل الحسابات المسجلة، وتفعيل الباقات والتجربة والكريديت من هنا</p>
         </div>
         <button className="btn" onClick={load}>
           <Icon name="history" size={16} /> تحديث
@@ -143,7 +143,7 @@ export function Admin() {
             <Icon name="crown" size={17} /> طلبات الدفع
           </h3>
           <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
-            قارن كل طلب بصورة الإيصال اللي وصلتك على واتساب (فيها نفس رقم الحساب) قبل التفعيل.
+            قارن كل طلب بصورة الإيصال اللي وصلتك على واتساب (فيها نفس رقم الحساب) قبل التفعيل
           </p>
           <div className="admin-requests">
             {pending.map((r) => (
@@ -275,8 +275,8 @@ function MailCard() {
       </h3>
       <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
         {state.configured
-          ? `شغال من ${state.user} - أي حساب جديد بيوصله كود من 6 أرقام لازم يكتبه قبل ما يدخل.`
-          : "لسه مش متضبط، فالحسابات الجديدة بتدخل من غير تحقق. حط إيميل Gmail وكلمة سر التطبيقات (App Password) هنا."}
+          ? `شغال من ${state.user} - أي حساب جديد بيوصله كود من 6 أرقام لازم يكتبه قبل ما يدخل`
+          : "لسه مش متضبط، فالحسابات الجديدة بتدخل من غير تحقق. حط إيميل Gmail وكلمة سر التطبيقات (App Password) هنا"}
       </p>
       <div className="settings-grid">
         <div className="field">
@@ -295,7 +295,7 @@ function MailCard() {
             placeholder={state.configured ? "سيبها فاضية عشان تفضل زي ما هي" : "16 حرف من جوجل"}
           />
           <div className="help">
-            من <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a> (لازم التحقق بخطوتين يكون مفعّل).
+            من <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a> (لازم التحقق بخطوتين يكون مفعّل)
           </div>
         </div>
         <div className="field">
@@ -314,7 +314,7 @@ function MailCard() {
         {saving ? <Spinner size={14} /> : "جرّب واحفظ"}
       </button>
       <span className="faint" style={{ fontSize: 12.5, marginInlineStart: 10 }}>
-        هيتبعت إيميل تجربة على إيميلك الأول، ولو وصل بيتحفظ.
+        هيتبعت إيميل تجربة على إيميلك الأول، ولو وصل بيتحفظ
       </span>
     </div>
   );
@@ -359,13 +359,13 @@ function SettingsCard() {
         <Icon name="tools" size={17} /> إعدادات الدفع والمساعد
       </h3>
       <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
-        أي تغيير هنا بيتطبق على الموقع كله في خلال ثواني، من غير ما تعيد النشر.
+        أي تغيير هنا بيتطبق على الموقع كله في خلال ثواني، من غير ما تعيد النشر
       </p>
       <div className="settings-grid">
         <div className="field">
           <label className="label">سعر الدولار بالجنيه</label>
           <input className="input" type="number" step="0.01" min={1} value={form.egpRate} onChange={(e) => setForm({ ...form, egpRate: e.target.value })} />
-          <div className="help">بيتحسب بيه المبلغ بالجنيه في شاشة الدفع.</div>
+          <div className="help">بيتحسب بيه المبلغ بالجنيه في شاشة الدفع</div>
         </div>
         <div className="field">
           <label className="label">رقم الدفع (محفظة / إنستاباي / واتساب)</label>
@@ -389,7 +389,7 @@ function SettingsCard() {
               </option>
             ))}
           </select>
-          <div className="help">كل كريديت مساعد = سنت من فلوس Claude. الموديل الأرخص بيخلّي كريديت العملاء يكفّي رسايل أكتر.</div>
+          <div className="help">كل كريديت مساعد = سنت من فلوس Claude. الموديل الأرخص بيخلّي كريديت العملاء يكفّي رسايل أكتر</div>
         </div>
       </div>
       <button className="btn primary" onClick={save} disabled={saving}>
@@ -462,7 +462,7 @@ function ManageModal({
           فعّل
         </button>
       </div>
-      <p className="help">التفعيل بيبدأ من النهارده وبيملا رصيد الباقة كامل.</p>
+      <p className="help">التفعيل بيبدأ من النهارده وبيملا رصيد الباقة كامل</p>
 
       <h4 className="admin-h">تجربة مجانية</h4>
       <div className="admin-form">
@@ -481,7 +481,7 @@ function ManageModal({
         </button>
       </div>
       <p className="help">
-        الرصيد الحالي: {number(user.credits)} للمنصة · {number(user.assistantCredits)} للمساعد. رقم بالسالب بيخصم.
+        الرصيد الحالي: {number(user.credits)} للمنصة · {number(user.assistantCredits)} للمساعد. رقم بالسالب بيخصم
       </p>
 
       {user.plan.key !== "free" && !user.isAdmin && (

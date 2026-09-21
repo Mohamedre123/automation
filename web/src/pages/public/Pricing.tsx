@@ -32,7 +32,7 @@ export function Pricing() {
         </span>
         <h2>ادفع على قد شغلك</h2>
         <p>
-          جرّب كل المميزات {trialDays} أيام مجاناً من غير بطاقة. الذكاء الاصطناعي والتطبيقات بتشتغل بمفاتيحك انت، فبتدفع هنا بس لتشغيل المنصة.
+          جرّب كل المميزات {trialDays} أيام مجاناً من غير بطاقة. الذكاء الاصطناعي والتطبيقات بتشتغل بمفاتيحك انت، فبتدفع هنا بس لتشغيل المنصة
         </p>
         <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
           <PeriodSwitch period={period} onChange={setPeriod} />
@@ -62,7 +62,7 @@ export function Pricing() {
         <div>
           <h3>شركات ووكالات</h3>
           <p className="muted" style={{ margin: 0 }}>
-            كريديت أكتر، تكاملات مخصصة لنظامك، استضافة خاصة، ودعم مباشر. كلّمنا ونظبطلك باقة على مقاسك.
+            كريديت أكتر، تكاملات مخصصة لنظامك، استضافة خاصة، ودعم مباشر. كلّمنا ونظبطلك باقة على مقاسك
           </p>
         </div>
         <Link className="btn" to="/contact">

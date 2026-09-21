@@ -35,7 +35,7 @@ export const uploadPostCredential: CredentialType = {
   key: "uploadPostApi",
   name: "Upload-Post (نشر على كل المنصات)",
   app: "uploadpost",
-  description: "خدمة بتنشر على TikTok وإنستجرام ويوتيوب وفيسبوك وX وLinkedIn وغيرهم بحساباتك اللي ربطتها عندهم - من غير تطبيقات رسمية.",
+  description: "خدمة بتنشر على TikTok وإنستجرام ويوتيوب وفيسبوك وX وLinkedIn وغيرهم بحساباتك اللي ربطتها عندهم - من غير تطبيقات رسمية",
   docsUrl: "https://docs.upload-post.com",
   fields: [
     { key: "apiKey", label: "API Key", secret: true, required: true },
@@ -44,15 +44,15 @@ export const uploadPostCredential: CredentialType = {
       label: "اسم البروفايل (Profile / User)",
       required: true,
       placeholder: "my-brand",
-      help: "اسم البروفايل اللي عملته في upload-post.com وربطت عليه حسابات السوشيال.",
+      help: "اسم البروفايل اللي عملته في upload-post.com وربطت عليه حسابات السوشيال",
     },
   ],
   steps: [
-    "اعمل حساب على upload-post.com.",
-    "من Manage Users اعمل بروفايل (مثلاً اسم البراند) واربط عليه حسابات تيك توك وإنستجرام ويوتيوب وغيرهم.",
-    "من API Keys انسخ المفتاح والصقه هنا.",
-    "اكتب اسم البروفايل بالظبط زي ما هو مكتوب عندهم.",
-    "في السيناريو استخدم خطوة «Upload-Post: نشر» أو اختاره في «انشر على كل المنصات».",
+    "اعمل حساب على upload-post.com",
+    "من Manage Users اعمل بروفايل (مثلاً اسم البراند) واربط عليه حسابات تيك توك وإنستجرام ويوتيوب وغيرهم",
+    "من API Keys انسخ المفتاح والصقه هنا",
+    "اكتب اسم البروفايل بالظبط زي ما هو مكتوب عندهم",
+    "في السيناريو استخدم خطوة «Upload-Post: نشر» أو اختاره في «انشر على كل المنصات»",
   ],
   async test(data) {
     const response = await fetch(`${BASE}/uploadposts/me`, { headers: auth({ id: "", type: "", data }), signal: AbortSignal.timeout(15_000) });
@@ -74,7 +74,7 @@ export async function uploadPostPublish(
   const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
   if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
     throw new Error(
-      `Upload-Post: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - خانة الصورة والفيديو فاضية. اربط «روابط الصور» بخطوة التصميم (مثلاً {{4.url}}).`,
+      `Upload-Post: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - خانة الصورة والفيديو فاضية. اربط «روابط الصور» بخطوة التصميم (مثلاً {{4.url}})`,
     );
   }
   const form = new FormData();
@@ -108,7 +108,7 @@ export async function uploadPostPublish(
 export const uploadPostNode: NodeDefinition = {
   type: "uploadpost.post",
   name: "Upload-Post: نشر على المنصات",
-  description: "بينشر فيديو أو صور أو نص على المنصات اللي تختارها عن طريق حساب Upload-Post بتاعك.",
+  description: "بينشر فيديو أو صور أو نص على المنصات اللي تختارها عن طريق حساب Upload-Post بتاعك",
   app: "uploadpost",
   appName: "Upload-Post",
   color: "#6366f1",
@@ -118,11 +118,11 @@ export const uploadPostNode: NodeDefinition = {
   timeoutMs: 200_000,
   fields: [
     { key: "platforms", label: "المنصات", type: "multiselect", default: ["instagram", "tiktok"], options: UPLOAD_POST_PLATFORMS },
-    { key: "title", label: "الكابشن / العنوان", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
-    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
+    { key: "title", label: "الكابشن / العنوان", type: "textarea", required: true, placeholder: "اكتب الكابشن هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
+    { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات" },
     { key: "description", label: "وصف إضافي (يوتيوب / LinkedIn)", type: "textarea" },
-    { key: "videoUrl", label: "رابط الفيديو", type: "text", placeholder: "{{5.url}}", help: "لو فيه فيديو بيتنشر الفيديو، وإلا الصور، وإلا النص بس." },
-    { key: "imageUrls", label: "روابط الصور", type: "text", placeholder: "{{4.url}}", help: "أكتر من صورة؟ افصل بينهم بفاصلة." },
+    { key: "videoUrl", label: "الفيديو", type: "text", placeholder: "@{اسم الفيديو} أو رابط فيديو", help: "لو فيه فيديو بيتنشر الفيديو، وإلا الصور، وإلا النص بس" },
+    { key: "imageUrls", label: "الصور", type: "textarea", placeholder: "@{تيشيرت أبيض}\n@{بنطلون جينز}", help: "اكتب @ واختار من مكتبة صورك، أو الصق روابط. أكتر من صورة = كاروسيل بنفس الكابشن" },
     { key: "scheduledDate", label: "ميعاد النشر عندهم (اختياري)", type: "text", placeholder: "2026-10-01T19:00:00Z" },
     { key: "facebookPageId", label: "Facebook Page ID (اختياري)", type: "text" },
     { key: "pinterestBoardId", label: "Pinterest Board ID (اختياري)", type: "text" },

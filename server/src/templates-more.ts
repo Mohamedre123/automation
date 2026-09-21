@@ -15,13 +15,13 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-ai-completions",
     name: "صف جديد في Google Sheets ← رد بالذكاء الاصطناعي في شيت النتائج",
-    description: "كل سؤال أو طلب تكتبه في الشيت، الذكاء الاصطناعي يرد عليه ويحفظ الرد في شيت تاني. مناسب لكتابة وصف منتجات أو ردود أو أفكار بالجملة.",
+    description: "كل سؤال أو طلب تكتبه في الشيت، الذكاء الاصطناعي يرد عليه ويحفظ الرد في شيت تاني. مناسب لكتابة وصف منتجات أو ردود أو أفكار بالجملة",
     category: "أدوات",
     requires: [SHEETS("الطلب"), AI_ACCOUNT],
     graph: {
       nodes: [
         { id: "1", type: "sheets.trigger", position: at(0), params: { spreadsheetId: "", sheet: "Sheet1", minutes: 15 } },
-        { id: "2", type: "ai.generate", position: at(1), params: { system: "رد بشكل مختصر ومفيد باللهجة المصرية.", prompt: "{{1.الطلب}}" } },
+        { id: "2", type: "ai.generate", position: at(1), params: { system: "رد بشكل مختصر ومفيد باللهجة المصرية", prompt: "{{1.الطلب}}" } },
         { id: "3", type: "sheets.append", position: at(2), params: { spreadsheetId: "", sheet: "النتائج", row: '["{{1.الطلب}}", "{{2.text}}", "{{$now}}"]' } },
       ],
       edges: chain("1", "2", "3"),
@@ -30,7 +30,7 @@ export const moreTemplates: Template[] = [
   {
     id: "webhook-to-sheets",
     name: "بيانات من أي موقع (Webhook) ← صف في Google Sheets",
-    description: "ابعت أي بيانات لرابط الـ Webhook من موقعك أو أي خدمة، وتتسجل صف جديد في الشيت فوراً.",
+    description: "ابعت أي بيانات لرابط الـ Webhook من موقعك أو أي خدمة، وتتسجل صف جديد في الشيت فوراً",
     category: "أدوات",
     requires: [SHEET_OUT],
     graph: {
@@ -45,7 +45,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-email",
     name: "صف جديد في Google Sheets ← إيميل تلقائي (Gmail)",
-    description: "أول ما يتضاف صف جديد (عميل، طلب، ميعاد) يوصل لصاحبه إيميل من حسابك على Gmail.",
+    description: "أول ما يتضاف صف جديد (عميل، طلب، ميعاد) يوصل لصاحبه إيميل من حسابك على Gmail",
     category: "المبيعات والتسويق",
     requires: [SHEETS("الاسم، الإيميل"), "حساب إيميل (Gmail App Password أو SMTP)"],
     graph: {
@@ -55,7 +55,7 @@ export const moreTemplates: Template[] = [
           id: "2",
           type: "email.smtpSend",
           position: at(1),
-          params: { to: "{{1.الإيميل}}", subject: "أهلاً {{1.الاسم}}", body: "أهلاً {{1.الاسم}},\n\nشكراً لتواصلك معانا، هنكلمك في أقرب وقت.", format: "text" },
+          params: { to: "{{1.الإيميل}}", subject: "أهلاً {{1.الاسم}}", body: "أهلاً {{1.الاسم}},\n\nشكراً لتواصلك معانا، هنكلمك في أقرب وقت", format: "text" },
         },
       ],
       edges: chain("1", "2"),
@@ -64,7 +64,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-telegram",
     name: "صف جديد في Google Sheets ← رسالة تيليجرام",
-    description: "إشعار فوري على تيليجرام بكل صف جديد في الشيت (طلب، حجز، عميل جديد).",
+    description: "إشعار فوري على تيليجرام بكل صف جديد في الشيت (طلب، حجز، عميل جديد)",
     category: "تيليجرام",
     requires: [SHEETS("الاسم، التفاصيل"), "بوت تيليجرام + الـ Chat ID بتاعك"],
     graph: {
@@ -78,7 +78,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-slack",
     name: "صف جديد في Google Sheets ← رسالة Slack للفريق",
-    description: "كل صف جديد يتبعت كرسالة في قناة Slack عشان الفريق يتابع أول بأول.",
+    description: "كل صف جديد يتبعت كرسالة في قناة Slack عشان الفريق يتابع أول بأول",
     category: "أدوات",
     requires: [SHEETS("الاسم، التفاصيل"), "بوت Slack"],
     graph: {
@@ -92,7 +92,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-notion",
     name: "صف جديد في Google Sheets ← صفحة في Notion",
-    description: "كل صف جديد في الشيت يتحول لعنصر في قاعدة بيانات Notion.",
+    description: "كل صف جديد في الشيت يتحول لعنصر في قاعدة بيانات Notion",
     category: "أدوات",
     requires: [SHEETS("العنوان، التفاصيل"), "Notion (Internal integration token) والقاعدة مشاركة معاه"],
     graph: {
@@ -106,7 +106,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-calendar",
     name: "مواعيد من Google Sheets ← أحداث في Google Calendar",
-    description: "كل ميعاد تكتبه في الشيت يتضاف حدث في التقويم بالمدة اللي تحددها.",
+    description: "كل ميعاد تكتبه في الشيت يتضاف حدث في التقويم بالمدة اللي تحددها",
     category: "أدوات",
     requires: [SHEETS("العنوان، الميعاد (مثلاً 2026-10-01 15:00)"), "مفتاح Google (Service Account) والتقويم مشارك معاه"],
     graph: {
@@ -125,7 +125,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-trello",
     name: "مهمة جديدة في Google Sheets ← كارت Trello",
-    description: "كل مهمة تتكتب في الشيت تتحول لكارت في القائمة اللي تختارها على Trello.",
+    description: "كل مهمة تتكتب في الشيت تتحول لكارت في القائمة اللي تختارها على Trello",
     category: "أدوات",
     requires: [SHEETS("المهمة، التفاصيل"), "Trello (API Key + Token)"],
     graph: {
@@ -139,7 +139,7 @@ export const moreTemplates: Template[] = [
   {
     id: "sheets-row-instagram",
     name: "صف جديد في Google Sheets ← بوست إنستجرام",
-    description: "جهّز البوستات في الشيت (رابط الصورة والكابشن) وكل صف جديد ينزل بوست على إنستجرام.",
+    description: "جهّز البوستات في الشيت (رابط الصورة والكابشن) وكل صف جديد ينزل بوست على إنستجرام",
     category: "سوشيال ميديا",
     requires: [SHEETS("الصورة (رابط)، الكابشن"), "إنستجرام بزنس (توكن)"],
     graph: {
@@ -153,7 +153,7 @@ export const moreTemplates: Template[] = [
   {
     id: "webhook-ai-sheets",
     name: "بيانات من Webhook ← تحليل بالذكاء الاصطناعي ← Google Sheets",
-    description: "أي رسالة أو طلب يوصل للرابط، الذكاء الاصطناعي يلخّصه ويصنّفه، والنتيجة تتسجل في الشيت.",
+    description: "أي رسالة أو طلب يوصل للرابط، الذكاء الاصطناعي يلخّصه ويصنّفه، والنتيجة تتسجل في الشيت",
     category: "أدوات",
     requires: [AI_ACCOUNT, SHEET_OUT],
     graph: {
@@ -184,7 +184,7 @@ export const moreTemplates: Template[] = [
   {
     id: "telegram-to-sheets",
     name: "رسايل تيليجرام ← Google Sheets",
-    description: "كل رسالة توصل للبوت تتسجل في الشيت بالاسم والنص والوقت.",
+    description: "كل رسالة توصل للبوت تتسجل في الشيت بالاسم والنص والوقت",
     category: "تيليجرام",
     requires: ["بوت تيليجرام", SHEET_OUT],
     graph: {
@@ -203,7 +203,7 @@ export const moreTemplates: Template[] = [
   {
     id: "whatsapp-to-sheets",
     name: "رسايل واتساب ← Google Sheets",
-    description: "كل رسالة واتساب توصل على رقمك تتسجل في الشيت: الاسم، الرقم، الرسالة، الوقت.",
+    description: "كل رسالة واتساب توصل على رقمك تتسجل في الشيت: الاسم، الرقم، الرسالة، الوقت",
     category: "واتساب",
     requires: ["حساب WasenderAPI", SHEET_OUT],
     graph: {
@@ -217,7 +217,7 @@ export const moreTemplates: Template[] = [
   {
     id: "telegram-to-discord",
     name: "رسايل تيليجرام ← قناة Discord",
-    description: "أي رسالة توصل للبوت أو الجروب على تيليجرام تتنقل لقناة Discord.",
+    description: "أي رسالة توصل للبوت أو الجروب على تيليجرام تتنقل لقناة Discord",
     category: "تيليجرام",
     requires: ["بوت تيليجرام", "Discord Webhook"],
     graph: {
@@ -231,7 +231,7 @@ export const moreTemplates: Template[] = [
   {
     id: "weather-telegram-daily",
     name: "توقعات الطقس بكرة ← رسالة تيليجرام كل يوم",
-    description: "كل يوم بالليل يجيب توقعات طقس بكرة لمدينتك (خدمة مجانية من غير مفتاح) ويبعتها لك على تيليجرام.",
+    description: "كل يوم بالليل يجيب توقعات طقس بكرة لمدينتك (خدمة مجانية من غير مفتاح) ويبعتها لك على تيليجرام",
     category: "تيليجرام",
     requires: ["بوت تيليجرام + الـ Chat ID بتاعك"],
     graph: {
@@ -264,7 +264,7 @@ export const moreTemplates: Template[] = [
   {
     id: "form-to-notion",
     name: "فورم ← عنصر جديد في Notion",
-    description: "ردود الفورم (طلبات، اقتراحات، تسجيلات) تتسجل مباشرة في قاعدة بيانات Notion.",
+    description: "ردود الفورم (طلبات، اقتراحات، تسجيلات) تتسجل مباشرة في قاعدة بيانات Notion",
     category: "أدوات",
     requires: ["Notion (Internal integration token) والقاعدة مشاركة معاه"],
     graph: {
@@ -291,7 +291,7 @@ export const moreTemplates: Template[] = [
   {
     id: "form-mailchimp-welcome",
     name: "فورم اشتراك ← قائمة Mailchimp + إيميل ترحيب",
-    description: "اللي يشترك من الفورم يتضاف لقائمتك على Mailchimp ويوصله إيميل ترحيب من حسابك.",
+    description: "اللي يشترك من الفورم يتضاف لقائمتك على Mailchimp ويوصله إيميل ترحيب من حسابك",
     category: "المبيعات والتسويق",
     requires: ["Mailchimp (API Key)", "حساب إيميل (Gmail App Password أو SMTP)"],
     graph: {
@@ -315,7 +315,7 @@ export const moreTemplates: Template[] = [
           id: "3",
           type: "email.smtpSend",
           position: at(2),
-          params: { to: "{{1.data.email}}", subject: "أهلاً بيك في النشرة", body: "أهلاً {{1.data.name}},\n\nشكراً لاشتراكك! هيوصلك مننا كل جديد.", format: "text" },
+          params: { to: "{{1.data.email}}", subject: "أهلاً بيك في النشرة", body: "أهلاً {{1.data.name}},\n\nشكراً لاشتراكك! هيوصلك مننا كل جديد", format: "text" },
         },
       ],
       edges: chain("1", "2", "3"),
@@ -324,7 +324,7 @@ export const moreTemplates: Template[] = [
   {
     id: "website-to-social-posts",
     name: "رابط أي صفحة ← ملخص وبوستات سوشيال بالذكاء الاصطناعي",
-    description: "حط رابط مقال أو صفحة منتج في الفورم، المنصة تقرأ الصفحة والذكاء الاصطناعي يكتب منها بوستات جاهزة للنشر.",
+    description: "حط رابط مقال أو صفحة منتج في الفورم، المنصة تقرأ الصفحة والذكاء الاصطناعي يكتب منها بوستات جاهزة للنشر",
     category: "المحتوى",
     requires: [AI_ACCOUNT],
     graph: {
@@ -341,7 +341,7 @@ export const moreTemplates: Template[] = [
           type: "ai.generate",
           position: at(2),
           params: {
-            system: "أنت كاتب محتوى سوشيال ميديا محترف. اكتب بالعربي بلهجة مصرية خفيفة، مع CTA وهاشتاجات.",
+            system: "أنت كاتب محتوى سوشيال ميديا محترف. اكتب بالعربي بلهجة مصرية خفيفة، مع CTA وهاشتاجات",
             prompt: "دي محتويات صفحة (HTML). لخّصها في سطرين، وبعدين اكتب 3 بوستات مختلفة (فيسبوك، إنستجرام، لينكدإن):\n\n{{2.data}}",
           },
         },
@@ -355,7 +355,7 @@ export const moreTemplates: Template[] = [
   {
     id: "rss-to-linkedin",
     name: "مقال جديد في RSS ← بوست LinkedIn بالذكاء الاصطناعي",
-    description: "كل مقال جديد في المدونة أو الموقع اللي بتتابعه، الذكاء الاصطناعي يكتب عنه بوست احترافي وينزل على LinkedIn.",
+    description: "كل مقال جديد في المدونة أو الموقع اللي بتتابعه، الذكاء الاصطناعي يكتب عنه بوست احترافي وينزل على LinkedIn",
     category: "المحتوى",
     requires: ["رابط RSS", AI_ACCOUNT, "LinkedIn (Access Token)"],
     graph: {
@@ -365,7 +365,7 @@ export const moreTemplates: Template[] = [
           id: "2",
           type: "ai.generate",
           position: at(1),
-          params: { system: "اكتب بوست LinkedIn احترافي قصير بالعربي، بجملة افتتاحية قوية و3 هاشتاجات.", prompt: "العنوان: {{1.title}}\nالملخص: {{1.description}}" },
+          params: { system: "اكتب بوست LinkedIn احترافي قصير بالعربي، بجملة افتتاحية قوية و3 هاشتاجات", prompt: "العنوان: {{1.title}}\nالملخص: {{1.description}}" },
         },
         { id: "3", type: "linkedin.post", position: at(2), params: { text: "{{2.text}}", link: "{{1.link}}", linkTitle: "{{1.title}}" } },
       ],
@@ -375,7 +375,7 @@ export const moreTemplates: Template[] = [
   {
     id: "rss-to-notion",
     name: "مقالات RSS ← قاعدة بيانات Notion",
-    description: "كل مقال جديد يتسجل في Notion بالعنوان والرابط والملخص عشان ترجعله بعدين.",
+    description: "كل مقال جديد يتسجل في Notion بالعنوان والرابط والملخص عشان ترجعله بعدين",
     category: "المحتوى",
     requires: ["رابط RSS", "Notion (Internal integration token)"],
     graph: {
@@ -389,7 +389,7 @@ export const moreTemplates: Template[] = [
   {
     id: "weekly-linkedin-ai",
     name: "بوست LinkedIn أسبوعي بالذكاء الاصطناعي",
-    description: "كل أسبوع الذكاء الاصطناعي يكتب بوست عن مجالك (نصيحة، معلومة، قصة) وينزل على LinkedIn.",
+    description: "كل أسبوع الذكاء الاصطناعي يكتب بوست عن مجالك (نصيحة، معلومة، قصة) وينزل على LinkedIn",
     category: "المحتوى",
     requires: [AI_ACCOUNT, "LinkedIn (Access Token)"],
     graph: {
@@ -400,7 +400,7 @@ export const moreTemplates: Template[] = [
           type: "ai.generate",
           position: at(1),
           params: {
-            system: "أنت خبير في [مجالك]. اكتب بوست LinkedIn عملي ومختصر بالعربي فيه نصيحة واحدة واضحة، ومن غير تكرار أفكار عامة.",
+            system: "أنت خبير في [مجالك]. اكتب بوست LinkedIn عملي ومختصر بالعربي فيه نصيحة واحدة واضحة، ومن غير تكرار أفكار عامة",
             prompt: "اكتب بوست الأسبوع. التاريخ: {{$now}}",
           },
         },
@@ -412,7 +412,7 @@ export const moreTemplates: Template[] = [
   {
     id: "product-description-writer",
     name: "كاتب وصف منتجات بالذكاء الاصطناعي",
-    description: "اكتب اسم المنتج ومميزاته في الفورم، يطلعلك وصف بيع احترافي وعنوان SEO، ويتحفظ في الشيت.",
+    description: "اكتب اسم المنتج ومميزاته في الفورم، يطلعلك وصف بيع احترافي وعنوان SEO، ويتحفظ في الشيت",
     category: "المتاجر الإلكترونية",
     requires: [AI_ACCOUNT, SHEET_OUT],
     graph: {
@@ -457,7 +457,7 @@ export const moreTemplates: Template[] = [
   {
     id: "shopify-orders-sheets",
     name: "طلبات Shopify المدفوعة ← Google Sheets",
-    description: "كل طلب جديد على Shopify يتسجل في الشيت: رقم الطلب، العميل، الإجمالي، الحالة.",
+    description: "كل طلب جديد على Shopify يتسجل في الشيت: رقم الطلب، العميل، الإجمالي، الحالة",
     category: "المتاجر الإلكترونية",
     requires: ["Shopify (Admin API token)", SHEET_OUT],
     graph: {
@@ -476,7 +476,7 @@ export const moreTemplates: Template[] = [
   {
     id: "woocommerce-orders-sheets",
     name: "طلبات WooCommerce ← Google Sheets",
-    description: "كل طلب جديد في متجرك على WordPress يتسجل في الشيت بتفاصيله.",
+    description: "كل طلب جديد في متجرك على WordPress يتسجل في الشيت بتفاصيله",
     category: "المتاجر الإلكترونية",
     requires: ["WooCommerce (Consumer key/secret)", SHEET_OUT],
     graph: {
@@ -495,7 +495,7 @@ export const moreTemplates: Template[] = [
   {
     id: "stripe-payments-sheets",
     name: "مدفوعات Stripe ← Google Sheets",
-    description: "كل دفعة ناجحة تتسجل في الشيت، عشان حساباتك تبقى محدّثة لوحدها.",
+    description: "كل دفعة ناجحة تتسجل في الشيت، عشان حساباتك تبقى محدّثة لوحدها",
     category: "المبيعات والتسويق",
     requires: ["Stripe (Secret key)", SHEET_OUT],
     graph: {
@@ -514,7 +514,7 @@ export const moreTemplates: Template[] = [
   {
     id: "airtable-record-telegram",
     name: "سجل جديد في Airtable ← رسالة تيليجرام",
-    description: "إشعار على تيليجرام بكل سجل جديد في جدول Airtable.",
+    description: "إشعار على تيليجرام بكل سجل جديد في جدول Airtable",
     category: "تيليجرام",
     requires: ["Airtable (Personal access token)", "بوت تيليجرام + الـ Chat ID بتاعك"],
     graph: {
@@ -528,7 +528,7 @@ export const moreTemplates: Template[] = [
   {
     id: "calendar-events-slack",
     name: "مواعيد Google Calendar ← تنبيه في Slack",
-    description: "قبل كل ميعاد في التقويم بنص ساعة، الفريق يوصله تنبيه في Slack.",
+    description: "قبل كل ميعاد في التقويم بنص ساعة، الفريق يوصله تنبيه في Slack",
     category: "أدوات",
     requires: ["مفتاح Google (Service Account) والتقويم مشارك معاه", "بوت Slack"],
     graph: {
@@ -542,7 +542,7 @@ export const moreTemplates: Template[] = [
   {
     id: "http-json-parse",
     name: "اقرأ بيانات من أي API وحلّلها (JSON)",
-    description: "مثال بسيط: طلب HTTP لأي API، وقراءة النتيجة كـ JSON عشان تستخدم قيمها في الخطوات اللي بعدها.",
+    description: "مثال بسيط: طلب HTTP لأي API، وقراءة النتيجة كـ JSON عشان تستخدم قيمها في الخطوات اللي بعدها",
     category: "أدوات",
     requires: [],
     graph: {

@@ -7,7 +7,7 @@ export const httpCredentials: CredentialType[] = [
     key: "httpHeaderAuth",
     name: "API Key في Header",
     app: "http",
-    description: "لأي API بياخد المفتاح في header زي X-API-Key.",
+    description: "لأي API بياخد المفتاح في header زي X-API-Key",
     fields: [
       { key: "headerName", label: "اسم الـ Header", placeholder: "X-API-Key", required: true },
       { key: "headerValue", label: "القيمة", secret: true, required: true },
@@ -34,7 +34,7 @@ export const httpCredentials: CredentialType[] = [
 export const httpRequest: NodeDefinition = {
   type: "http.request",
   name: "HTTP Request",
-  description: "بيكلم أي API في الدنيا: GET / POST / PUT / DELETE مع headers وbody.",
+  description: "بيكلم أي API في الدنيا: GET / POST / PUT / DELETE مع headers وbody",
   app: "http",
   appName: "HTTP",
   color: "#2563eb",

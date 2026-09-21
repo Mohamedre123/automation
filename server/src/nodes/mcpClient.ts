@@ -10,15 +10,15 @@ export const mcpServerCredential: CredentialType = {
   key: "mcpServer",
   name: "خادم MCP خارجي",
   app: "mcp",
-  description: "أي خادم MCP على الإنترنت (Streamable HTTP): رابطه، ومفتاح لو محتاج.",
+  description: "أي خادم MCP على الإنترنت (Streamable HTTP): رابطه، ومفتاح لو محتاج",
   fields: [
     { key: "url", label: "رابط خادم MCP", required: true, placeholder: "https://example.com/mcp" },
     { key: "token", label: "مفتاح / توكن (اختياري)", secret: true, help: "بيتبعت كـ Authorization: Bearer ..." },
   ],
   steps: [
-    "هات رابط خادم MCP من الخدمة اللي عايز تستخدمها (بيبقى مكتوب في صفحة الـ MCP أو الـ Integrations عندهم).",
-    "لو الخدمة إدتك مفتاح أو توكن، حطه في خانة المفتاح.",
-    "دوس «اختبار الاتصال»: هيظهرلك عدد الأدوات المتاحة.",
+    "هات رابط خادم MCP من الخدمة اللي عايز تستخدمها (بيبقى مكتوب في صفحة الـ MCP أو الـ Integrations عندهم)",
+    "لو الخدمة إدتك مفتاح أو توكن، حطه في خانة المفتاح",
+    "دوس «اختبار الاتصال»: هيظهرلك عدد الأدوات المتاحة",
   ],
   async test(data) {
     const session = await mcpSession({ id: "", type: "mcpServer", data }, AbortSignal.timeout(20_000));
@@ -88,7 +88,7 @@ async function mcpSession(credential: CredentialValue, signal: AbortSignal) {
 export const mcpClientNode: NodeDefinition = {
   type: "mcp.callTool",
   name: "أداة من خادم MCP",
-  description: "بيشغّل أداة من أي خادم MCP (خدمات بتدعم MCP، أو Toolbox من حساب تدفّق تاني) ويرجّع نتيجتها.",
+  description: "بيشغّل أداة من أي خادم MCP (خدمات بتدعم MCP، أو Toolbox من حساب تدفّق تاني) ويرجّع نتيجتها",
   app: "mcp",
   appName: "MCP",
   color: "#0f766e",
@@ -106,12 +106,13 @@ export const mcpClientNode: NodeDefinition = {
         { value: "list", label: "اعرض الأدوات المتاحة" },
       ],
     },
-    { key: "tool", label: "اسم الأداة", type: "text", placeholder: "search_docs", showIf: { field: "operation", values: ["call"] }, help: "شغّل «اعرض الأدوات» مرة عشان تعرف الأسماء." },
+    { key: "tool", label: "اسم الأداة", type: "text", placeholder: "search_docs", showIf: { field: "operation", values: ["call"] }, help: "شغّل «اعرض الأدوات» مرة عشان تعرف الأسماء" },
     {
       key: "arguments",
       label: "المدخلات (JSON)",
       type: "json",
-      placeholder: '{ "query": "{{1.message.text}}" }',
+      placeholder: '{ "query": "السؤال" }',
+      help: "ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
       showIf: { field: "operation", values: ["call"] },
     },
   ],

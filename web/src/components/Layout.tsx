@@ -118,7 +118,7 @@ function CreditNotice() {
   return (
     <div className="page" style={{ paddingBottom: 0 }}>
       <div className="alert error credit-notice" style={{ margin: 0 }}>
-        <Icon name="alert" size={16} /> الكريديت بتاعك خلص - السيناريوهات والمساعد واقفين. <Link to="/app/billing">جدّد أو اشتري كريديت</Link>
+        <Icon name="alert" size={16} /> الكريديت بتاعك خلص - السيناريوهات والمساعد واقفين <Link to="/app/billing">جدّد أو اشتري كريديت</Link>
       </div>
     </div>
   );
@@ -188,7 +188,7 @@ export function Layout() {
           <button className="btn ghost icon sm side-open" onClick={() => setDrawer((open) => !open)} aria-label="القائمة" aria-expanded={drawer}>
             <Icon name="menu" size={19} />
           </button>
-          <div className="app-crumb">{inEditor ? "" : title}</div>
+          <div className="app-crumb">{title}</div>
           <Link className="btn ghost sm hide-sm" to="/help">
             مساعدة
           </Link>
@@ -202,30 +202,28 @@ export function Layout() {
         </main>
       </div>
 
-      {!inEditor && (
-        <nav className="app-tabbar" aria-label="التنقل السريع">
-          <NavLink to="/app" end className={({ isActive }) => (isActive ? "active" : "")}>
-            <Icon name="home" size={20} />
-            الرئيسية
-          </NavLink>
-          <NavLink to="/app/scenarios" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Icon name="flows" size={20} />
-            السيناريوهات
-          </NavLink>
-          <NavLink to="/app/templates" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Icon name="templates" size={20} />
-            التيمبلت
-          </NavLink>
-          <NavLink to="/app/executions" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Icon name="history" size={20} />
-            التشغيلات
-          </NavLink>
-          <button onClick={() => setDrawer(true)}>
-            <Icon name="menu" size={20} />
-            المزيد
-          </button>
-        </nav>
-      )}
+      <nav className="app-tabbar" aria-label="التنقل السريع">
+        <NavLink to="/app" end className={({ isActive }) => (isActive ? "active" : "")}>
+          <Icon name="home" size={20} />
+          الرئيسية
+        </NavLink>
+        <NavLink to="/app/scenarios" className={({ isActive }) => (isActive ? "active" : "")}>
+          <Icon name="flows" size={20} />
+          السيناريوهات
+        </NavLink>
+        <NavLink to="/app/templates" className={({ isActive }) => (isActive ? "active" : "")}>
+          <Icon name="templates" size={20} />
+          التيمبلت
+        </NavLink>
+        <NavLink to="/app/executions" className={({ isActive }) => (isActive ? "active" : "")}>
+          <Icon name="history" size={20} />
+          التشغيلات
+        </NavLink>
+        <button onClick={() => setDrawer(true)}>
+          <Icon name="menu" size={20} />
+          المزيد
+        </button>
+      </nav>
       <AssistantLauncher />
     </div>
   );

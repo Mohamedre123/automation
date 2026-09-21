@@ -80,8 +80,8 @@ export function codeEmail(code: string, name: string, purpose: "register" | "log
           <div dir="ltr" style="display:inline-block;background:#fff7ed;border:2px dashed #fb923c;border-radius:14px;padding:16px 26px;font-family:'Courier New',Consolas,monospace;font-size:36px;font-weight:bold;letter-spacing:10px;color:#c2410c;">${code}</div>
         </td></tr>
         <tr><td style="padding:10px 28px 26px;text-align:right;direction:rtl;">
-          <p style="margin:0 0 6px;font-size:13.5px;color:#8a7461;">الكود صالح لمدة عشر دقائق بس، ومتقولوش لأي حد - فريق تدفّق عمره ما هيطلبه منك.</p>
-          <p style="margin:0;font-size:13.5px;color:#8a7461;">لو مش انت اللي طلبته، تجاهل الإيميل ده وحسابك في أمان.</p>
+          <p style="margin:0 0 6px;font-size:13.5px;color:#8a7461;">الكود صالح لمدة عشر دقائق بس، ومتقولوش لأي حد - فريق تدفّق عمره ما هيطلبه منك</p>
+          <p style="margin:0;font-size:13.5px;color:#8a7461;">لو مش انت اللي طلبته، تجاهل الإيميل ده وحسابك في أمان</p>
         </td></tr>
         <tr><td style="background:#fbf6f0;padding:18px 28px;text-align:center;border-top:1px solid #f1e4d6;">
           <p style="margin:0 0 4px;font-size:13px;color:#8a7461;">تدفّق - أتمت شغلك كله من غير كود</p>
@@ -99,7 +99,7 @@ export function codeEmail(code: string, name: string, purpose: "register" | "log
     "",
     code,
     "",
-    "الكود صالح لمدة عشر دقائق بس. لو مش انت اللي طلبته تجاهل الإيميل ده.",
+    "الكود صالح لمدة عشر دقائق بس. لو مش انت اللي طلبته تجاهل الإيميل ده",
     "",
     `تدفّق - ${site}`,
   ].join("\n");

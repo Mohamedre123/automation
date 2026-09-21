@@ -98,7 +98,7 @@ async function handleRpc(toolbox: ToolboxRow, message: RpcMessage) {
         protocolVersion: PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "tadfuq", title: `تدفّق - ${toolbox.name}`, version: "1.0.0" },
-        instructions: "كل أداة هنا سيناريو أتمتة على منصة تدفّق. ابعت البيانات المطلوبة وهيرجعلك ناتج التشغيل.",
+        instructions: "كل أداة هنا سيناريو أتمتة على منصة تدفّق. ابعت البيانات المطلوبة وهيرجعلك ناتج التشغيل",
       });
     }
     case "ping":

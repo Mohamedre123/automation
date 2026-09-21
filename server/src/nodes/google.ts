@@ -46,7 +46,7 @@ export const googleCredential: CredentialType = {
   name: "Google (Sheets / Drive / Calendar)",
   app: "sheets",
   description:
-    "من Google Cloud: فعّل Google Sheets API ← اعمل Service Account ← Keys ← Add key (JSON). الصق محتوى الملف هنا، وشارك الشيت مع إيميل الـ Service Account كـ Editor.",
+    "من Google Cloud: فعّل Google Sheets API ← اعمل Service Account ← Keys ← Add key (JSON). الصق محتوى الملف هنا، وشارك الشيت مع إيميل الـ Service Account كـ Editor",
   docsUrl: "https://console.cloud.google.com/iam-admin/serviceaccounts",
   fields: [{ key: "serviceAccountJson", label: "محتوى ملف JSON", secret: true, required: true, placeholder: '{ "type": "service_account", ... }' }],
   async test(data) {
@@ -85,7 +85,7 @@ export const googleNodes: NodeDefinition[] = [
   {
     type: "sheets.append",
     name: "إضافة صف في Google Sheets",
-    description: "بيضيف صف جديد في آخر الشيت (عميل، طلب، رد فورم...).",
+    description: "بيضيف صف جديد في آخر الشيت (عميل، طلب، رد فورم...)",
     app: "sheets",
     appName: "Google Sheets",
     color: "#0f9d58",
@@ -100,8 +100,8 @@ export const googleNodes: NodeDefinition[] = [
         label: "قيم الصف (بالترتيب)",
         type: "json",
         required: true,
-        placeholder: '["{{1.data.name}}", "{{1.data.phone}}", "{{$now}}"]',
-        help: "مصفوفة JSON: كل قيمة في عمود.",
+        placeholder: '["أحمد محمد", "201012345678", "القاهرة"]',
+        help: "قيمة لكل عمود بالترتيب، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
       },
     ],
     sampleOutput: { updatedRange: "Sheet1!A12:C12", updatedRows: 1 },
@@ -120,7 +120,7 @@ export const googleNodes: NodeDefinition[] = [
   {
     type: "sheets.read",
     name: "قراءة صفوف من Google Sheets",
-    description: "بيجيب صفوف الشيت كقايمة (أول صف = أسماء الأعمدة). استخدمه مع «تكرار على قايمة».",
+    description: "بيجيب صفوف الشيت كقايمة (أول صف = أسماء الأعمدة). استخدمه مع «تكرار على قايمة»",
     app: "sheets",
     appName: "Google Sheets",
     color: "#0f9d58",
@@ -138,7 +138,7 @@ export const googleNodes: NodeDefinition[] = [
   {
     type: "sheets.trigger",
     name: "صف جديد في Google Sheets",
-    description: "بيشتغل لما يتضاف صف جديد في آخر الشيت.",
+    description: "بيشتغل لما يتضاف صف جديد في آخر الشيت",
     app: "sheets",
     appName: "Google Sheets",
     color: "#0f9d58",

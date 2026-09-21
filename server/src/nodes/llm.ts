@@ -40,7 +40,7 @@ export const speedField = (fallback: "fast" | "balanced" | "deep"): FieldDef => 
     { value: "balanced", label: "متوازن" },
     { value: "deep", label: "تفكير عميق (أبطأ)" },
   ],
-  help: "سريع = الموديل يفكّر أقل ويرد في ثواني، مناسب لخدمة العملاء. التفكير العميق للمهام الصعبة بس.",
+  help: "سريع = الموديل يفكّر أقل ويرد في ثواني، مناسب لخدمة العملاء. التفكير العميق للمهام الصعبة بس",
 });
 
 export const effortFor = (speed: unknown): LlmRunOptions["effort"] =>
@@ -269,7 +269,7 @@ export const customAiCredential: CredentialType = {
   name: "مزوّد ذكاء اصطناعي تاني",
   app: "customai",
   description:
-    "أي مزوّد متوافق مع OpenAI API: DeepSeek، Groq، OpenRouter، Mistral، xAI (Grok)، Qwen، Together، أو سيرفرك الخاص (Ollama / LM Studio).",
+    "أي مزوّد متوافق مع OpenAI API: DeepSeek، Groq، OpenRouter، Mistral، xAI (Grok)، Qwen، Together، أو سيرفرك الخاص (Ollama / LM Studio)",
   fields: [
     { key: "baseUrl", label: "رابط الـ API (Base URL)", required: true, placeholder: "https://api.deepseek.com/v1" },
     { key: "apiKey", label: "API Key", secret: true, required: true },
@@ -291,7 +291,7 @@ export const openaiCredential: CredentialType = {
   key: "openaiApi",
   name: "OpenAI (ChatGPT)",
   app: "openai",
-  description: "هات المفتاح من platform.openai.com ← API keys.",
+  description: "هات المفتاح من platform.openai.com ← API keys",
   docsUrl: "https://platform.openai.com/api-keys",
   fields: [{ key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "sk-..." }],
   models: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-6-astra"],
@@ -311,7 +311,7 @@ export const geminiCredential: CredentialType = {
   key: "geminiApi",
   name: "Google Gemini",
   app: "gemini",
-  description: "مجاني للبداية: هات المفتاح من Google AI Studio ← Get API key.",
+  description: "مجاني للبداية: هات المفتاح من Google AI Studio ← Get API key",
   docsUrl: "https://aistudio.google.com/apikey",
   fields: [{ key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "AIza..." }],
   models: ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-2.5-pro"],
@@ -359,6 +359,6 @@ export function extractJson(text: string): unknown {
   try {
     return JSON.parse(candidate.trim());
   } catch {
-    throw new Error("الـ AI مارجّعش JSON صالح. وضّح في التعليمات إن الرد يكون JSON بس.");
+    throw new Error("الـ AI مارجّعش JSON صالح. وضّح في التعليمات إن الرد يكون JSON بس");
   }
 }

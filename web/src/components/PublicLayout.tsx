@@ -121,7 +121,7 @@ export function PublicLayout() {
                 تدفّق
               </Link>
               <p className="faint" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>
-                منصة أتمتة عربية بتربط تطبيقاتك ببعض وبالذكاء الاصطناعي، وبتشتغل لوحدها.
+                منصة أتمتة عربية بتربط تطبيقاتك ببعض وبالذكاء الاصطناعي، وبتشتغل لوحدها
               </p>
               <Link to="/status" className={`footer-status ${status === false ? "down" : ""}`}>
                 {status === false ? "في مشكلة بنشتغل عليها" : "كل الأنظمة شغالة"}

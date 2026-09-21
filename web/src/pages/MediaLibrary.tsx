@@ -88,7 +88,7 @@ export function MediaLibrary() {
   };
 
   const remove = async (item: MediaItem) => {
-    if (!window.confirm(`تمسح «${item.name}»؟ أي سيناريو بيستخدم رابطها مش هيلاقيها.`)) return;
+    if (!window.confirm(`تمسح «${item.name}»؟ أي سيناريو بيستخدم رابطها مش هيلاقيها`)) return;
     await api(`/media/${item.id}`, { method: "DELETE" }).catch((e: Error) => toast(e.message, "error"));
     setItems((list) => list?.filter((i) => i.id !== item.id) ?? null);
   };
@@ -98,7 +98,7 @@ export function MediaLibrary() {
       <div className="page-head">
         <div>
           <h1>مكتبة الصور</h1>
-          <p>ارفع صور منتجاتك وشغلك، والصور اللي الذكاء الاصطناعي بيعملها بتتحفظ هنا برضو. كل صورة ليها رابط جاهز للنشر.</p>
+          <p>ارفع صور منتجاتك وشغلك، والصور اللي الذكاء الاصطناعي بيعملها بتتحفظ هنا برضو. كل صورة ليها رابط جاهز للنشر</p>
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export function MediaLibrary() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong>اسحب الصور هنا أو اختارها من جهازك</strong>
           <div className="help" style={{ marginTop: 2 }}>
-            الصور الكبيرة بتتصغّر تلقائياً. استخدم خطوة «صورة من المكتبة» عشان سيناريو ياخد منها.
+            الصور الكبيرة بتتصغّر تلقائياً. استخدم خطوة «صورة من المكتبة» عشان سيناريو ياخد منها
           </div>
         </div>
         <div className="upload-controls">
@@ -167,7 +167,7 @@ export function MediaLibrary() {
         </div>
       ) : visible.length === 0 ? (
         <div className="card">
-          <Empty icon="image" title="مفيش صور هنا لسه" text="ارفع صور منتجاتك، أو شغّل سيناريو بيولّد صور." />
+          <Empty icon="image" title="مفيش صور هنا لسه" text="ارفع صور منتجاتك، أو شغّل سيناريو بيولّد صور" />
         </div>
       ) : (
         <div className="media-grid">

@@ -18,7 +18,7 @@ const modelField = {
   label: "الموديل",
   type: "model",
   modelKind: "text",
-  help: "اختار من موديلات حسابك، أو سيبه على الافتراضي.",
+  help: "اختار من موديلات حسابك، أو سيبه على الافتراضي",
 } as const;
 
 const TOOL_OPTIONS = [
@@ -32,7 +32,7 @@ const TOOL_OPTIONS = [
 const HONESTY_RULES =
   "# قواعد مهمة\n" +
   "- متقولش أبداً إنك بعتّ أو حفظت أو حوّلت أو سجّلت أي حاجة إلا لو الأداة المناسبة اتنفذت ورجعت نجاح.\n" +
-  "- لو الأداة فشلت أو مش متاحة، قول للعميل الحقيقة بلطف ومتألّفش.";
+  "- لو الأداة فشلت أو مش متاحة، قول للعميل الحقيقة بلطف ومتألّفش";
 
 interface HandoffConfig {
   credential?: CredentialValue;
@@ -180,13 +180,13 @@ type Memory = { role: "user" | "assistant"; text: string }[];
 
 /** Added when a product photo is attached: write about what is actually shown. */
 const PRODUCT_CONTEXT =
-  "الصورة المرفقة هي المنتج الحقيقي. اكتب عن المنتج زي ما هو ظاهر في الصورة بالظبط (نوعه وتغليفه وشكله)، ومتفترضش إنه اتفتح أو تتكلم عن حاجة مش باينة. لو بتكتب وصف لتصميم صورة، اطلب إن المنتج يظهر بنفس شكله وتغليفه من غير تعديل.";
+  "الصورة المرفقة هي المنتج الحقيقي. اكتب عن المنتج زي ما هو ظاهر في الصورة بالظبط (نوعه وتغليفه وشكله)، ومتفترضش إنه اتفتح أو تتكلم عن حاجة مش باينة. لو بتكتب وصف لتصميم صورة، اطلب إن المنتج يظهر بنفس شكله وتغليفه من غير تعديل";
 
 export const aiNodes: NodeDefinition[] = [
   {
     type: "ai.generate",
     name: "كتابة / رد بالذكاء الاصطناعي",
-    description: "رد، تلخيص، ترجمة، تصنيف أو كتابة محتوى. شغال بـ Gemini أو ChatGPT أو Claude حسب الحساب اللي تختاره.",
+    description: "رد، تلخيص، ترجمة، تصنيف أو كتابة محتوى. شغال بـ Gemini أو ChatGPT أو Claude حسب الحساب اللي تختاره",
     app: "ai",
     appName: "الذكاء الاصطناعي",
     color: "#7c3aed",
@@ -195,20 +195,20 @@ export const aiNodes: NodeDefinition[] = [
     credentialTypes: AI_CREDENTIAL_TYPES,
     fields: [
       modelField,
-      { key: "system", label: "التعليمات (System)", type: "textarea", placeholder: "أنت كاتب محتوى محترف... رد بالعربي." },
-      { key: "prompt", label: "المطلوب", type: "textarea", required: true, placeholder: "{{1.message.text}}" },
+      { key: "system", label: "التعليمات (System)", type: "textarea", placeholder: "أنت كاتب محتوى محترف... رد بالعربي" },
+      { key: "prompt", label: "المطلوب", type: "textarea", required: true, placeholder: "اكتب المطلوب من الذكاء الاصطناعي", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       {
         key: "images",
         label: "صورة المنتج يشوفها الذكاء الاصطناعي (اختياري)",
         type: "text",
         placeholder: "اكتب @ واختار صورة",
-        help: "بيكتب عن المنتج اللي في الصورة بالظبط. لو فاضية بتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها.",
+        help: "بيكتب عن المنتج اللي في الصورة بالظبط. لو فاضية بتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها",
       },
       { key: "maxTokens", label: "أقصى طول للرد (tokens)", type: "number", default: 16000 },
       { key: "parseJson", label: "حوّل الرد لـ JSON", type: "boolean", default: false, help: "هيظهر في {{N.json}} - اطلب في التعليمات إن الرد يكون JSON" },
     ],
     sampleOutput: {
-      text: "أهلاً بيك! الأسعار بتبدأ من 500 جنيه.",
+      text: "أهلاً بيك! الأسعار بتبدأ من 500 جنيه",
       json: null,
       provider: "gemini",
       model: "gemini-3.8-flash",
@@ -245,7 +245,7 @@ export const aiNodes: NodeDefinition[] = [
   {
     type: "ai.agent",
     name: "AI Agent",
-    description: "مساعد ذكي بيفكر ويستخدم أدوات، بيفتكر المحادثة، وبيحوّل العميل ليك لما يحتاج موظف. شغال بأي مزوّد.",
+    description: "مساعد ذكي بيفكر ويستخدم أدوات، بيفتكر المحادثة، وبيحوّل العميل ليك لما يحتاج موظف. شغال بأي مزوّد",
     app: "agent",
     appName: "AI Agent",
     color: "#9333ea",
@@ -258,22 +258,22 @@ export const aiNodes: NodeDefinition[] = [
         key: "system",
         label: "شخصية ودور الـ Agent",
         type: "textarea",
-        placeholder: "أنت مساعد خدمة عملاء لمتجر ... ردودك قصيرة وودودة باللهجة المصرية.",
+        placeholder: "أنت مساعد خدمة عملاء لمتجر ... ردودك قصيرة وودودة باللهجة المصرية",
       },
       {
         key: "knowledge",
         label: "معلومات يعتمد عليها (Knowledge)",
         type: "textarea",
         placeholder: "الأسعار، المواعيد، سياسة الاسترجاع، العنوان...",
-        help: "الـ Agent هيجاوب من المعلومات دي بس ومش هيألّف.",
+        help: "الـ Agent هيجاوب من المعلومات دي بس ومش هيألّف",
       },
-      { key: "prompt", label: "رسالة العميل / المهمة", type: "textarea", required: true, placeholder: "{{1.message.text}}" },
+      { key: "prompt", label: "رسالة العميل / المهمة", type: "textarea", required: true, placeholder: "رسالة العميل", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       {
         key: "memoryKey",
         label: "مفتاح الذاكرة",
         type: "text",
-        placeholder: "{{1.message.chat.id}}",
-        help: "عشان يفتكر كلام كل عميل لوحده. سيبه فاضي لو مش محتاج ذاكرة.",
+        placeholder: "رقم العميل أو رقم المحادثة",
+        help: "حاجة تميّز كل عميل (رقمه أو رقم محادثته) عشان يفتكر كلامه لوحده - دوس زرار البيانات واختارها من المحفّز. فاضي = من غير ذاكرة",
       },
       { key: "memoryLength", label: "عدد الرسائل اللي يفتكرها", type: "number", default: 12 },
       { key: "tools", label: "الأدوات المتاحة للـ Agent", type: "multiselect", default: [], options: TOOL_OPTIONS },
@@ -282,21 +282,21 @@ export const aiNodes: NodeDefinition[] = [
         label: "التحويل لموظف: الإشعار يتبعت من أنهي حساب",
         type: "credential",
         credentialTypes: NOTIFY_CREDENTIAL_TYPES,
-        help: "سيبه فاضي = نفس البوت أو رقم الواتساب اللي بيكلم العملاء في المحفّز. أو اختار بوت/رقم تاني، أو خدمة خارجية بتاعتك.",
+        help: "سيبه فاضي = نفس البوت أو رقم الواتساب اللي بيكلم العملاء في المحفّز. أو اختار بوت/رقم تاني، أو خدمة خارجية بتاعتك",
       },
       {
         key: "handoffTarget",
         label: "التحويل لموظف: يوصل لمين (المسؤول)",
         type: "text",
         placeholder: "@your_username أو 201012345678",
-        help: "تيليجرام: اكتب يوزرنيم المسؤول (@name) أو الـ Chat ID - ومهم: المسؤول لازم يفتح البوت ويبعتله أي رسالة مرة واحدة الأول. واتساب: رقم المسؤول بالكود الدولي من غير + (مثلاً 201012345678).",
+        help: "تيليجرام: اكتب يوزرنيم المسؤول (@name) أو الـ Chat ID - ومهم: المسؤول لازم يفتح البوت ويبعتله أي رسالة مرة واحدة الأول. واتساب: رقم المسؤول بالكود الدولي من غير + (مثلاً 201012345678)",
       },
       {
         key: "handoffPauseHours",
         label: "التحويل لموظف: يسكت البوت مع العميل كام ساعة",
         type: "number",
         default: 24,
-        help: "0 = البوت يكمّل يرد عادي بعد التحويل. تقدر ترجّعه قبل كده بمسح العميل من مخزن «تحويلات_للموظف».",
+        help: "0 = البوت يكمّل يرد عادي بعد التحويل. تقدر ترجّعه قبل كده بمسح العميل من مخزن «تحويلات_للموظف»",
       },
       { key: "dataStore", label: "مخزن البيانات الخاص بالأدوات", type: "text", default: "agent" },
       { key: "maxSteps", label: "أقصى عدد استخدام للأدوات", type: "number", default: 5 },
@@ -305,7 +305,7 @@ export const aiNodes: NodeDefinition[] = [
       speedField("fast"),
     ],
     sampleOutput: {
-      text: "تمام يا أحمد، بلّغت خدمة العملاء وهيتواصلوا معاك حالاً.",
+      text: "تمام يا أحمد، بلّغت خدمة العملاء وهيتواصلوا معاك حالاً",
       json: null,
       handedOff: false,
       toolCalls: [{ name: "handoff_to_human", args: { customer_name: "Ahmed", reason: "استفسار عن طلب" }, result: { sent: true } }],

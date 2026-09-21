@@ -28,7 +28,7 @@ export const commerceCredentials: CredentialType[] = [
     key: "shopifyAdmin",
     name: "Shopify",
     app: "shopify",
-    description: "من لوحة Shopify ← Settings ← Apps ← Develop apps: اعمل App بصلاحيات read_orders و read_products وهات Admin API access token.",
+    description: "من لوحة Shopify ← Settings ← Apps ← Develop apps: اعمل App بصلاحيات read_orders و read_products وهات Admin API access token",
     docsUrl: "https://help.shopify.com/en/manual/apps/app-types/custom-apps",
     fields: [
       { key: "shop", label: "اسم المتجر", required: true, placeholder: "my-store أو my-store.myshopify.com" },
@@ -42,7 +42,7 @@ export const commerceCredentials: CredentialType[] = [
     key: "wooCommerce",
     name: "WooCommerce",
     app: "woocommerce",
-    description: "من WordPress ← WooCommerce ← Settings ← Advanced ← REST API ← Add key (Read/Write).",
+    description: "من WordPress ← WooCommerce ← Settings ← Advanced ← REST API ← Add key (Read/Write)",
     docsUrl: "https://woocommerce.com/document/woocommerce-rest-api/",
     fields: [
       { key: "siteUrl", label: "رابط الموقع", required: true, placeholder: "https://mystore.com" },
@@ -55,7 +55,7 @@ export const commerceCredentials: CredentialType[] = [
     key: "stripeApi",
     name: "Stripe",
     app: "stripe",
-    description: "من Stripe Dashboard ← Developers ← API keys: هات Secret key (أو Restricted key).",
+    description: "من Stripe Dashboard ← Developers ← API keys: هات Secret key (أو Restricted key)",
     docsUrl: "https://dashboard.stripe.com/apikeys",
     fields: [{ key: "secretKey", label: "Secret key", secret: true, required: true, placeholder: "sk_live_... أو sk_test_..." }],
     test: (data) => checkAuth("Stripe", "https://api.stripe.com/v1/balance", { authorization: `Bearer ${data.secretKey}` }),
@@ -91,7 +91,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "shopify.orderTrigger",
     name: "طلب جديد في Shopify",
-    description: "بيشتغل مع كل طلب جديد في متجرك على Shopify.",
+    description: "بيشتغل مع كل طلب جديد في متجرك على Shopify",
     app: "shopify",
     appName: "Shopify",
     color: "#5e8e3e",
@@ -128,7 +128,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "shopify.getOrder",
     name: "جلب طلب من Shopify",
-    description: "بيجيب تفاصيل طلب برقمه.",
+    description: "بيجيب تفاصيل طلب برقمه",
     app: "shopify",
     appName: "Shopify",
     color: "#5e8e3e",
@@ -148,7 +148,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "shopify.products",
     name: "منتجات Shopify",
-    description: "بيجيب منتجات المتجر (للتقارير أو لـ AI Agent يرد بالأسعار).",
+    description: "بيجيب منتجات المتجر (للتقارير أو لـ AI Agent يرد بالأسعار)",
     app: "shopify",
     appName: "Shopify",
     color: "#5e8e3e",
@@ -179,7 +179,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "woocommerce.orderTrigger",
     name: "طلب جديد في WooCommerce",
-    description: "بيشتغل مع كل طلب جديد في متجر WooCommerce.",
+    description: "بيشتغل مع كل طلب جديد في متجر WooCommerce",
     app: "woocommerce",
     appName: "WooCommerce",
     color: "#7f54b3",
@@ -213,7 +213,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "woocommerce.updateOrder",
     name: "تحديث حالة طلب WooCommerce",
-    description: "بيغيّر حالة الطلب (قيد التجهيز، مكتمل، ملغي...).",
+    description: "بيغيّر حالة الطلب (قيد التجهيز، مكتمل، ملغي...)",
     app: "woocommerce",
     appName: "WooCommerce",
     color: "#7f54b3",
@@ -251,7 +251,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "stripe.paymentLink",
     name: "إنشاء رابط دفع Stripe",
-    description: "بيعمل رابط دفع لمبلغ ومنتج معيّن تبعته للعميل.",
+    description: "بيعمل رابط دفع لمبلغ ومنتج معيّن تبعته للعميل",
     app: "stripe",
     appName: "Stripe",
     color: "#635bff",
@@ -288,7 +288,7 @@ export const commerceNodes: NodeDefinition[] = [
   {
     type: "stripe.paymentTrigger",
     name: "دفع ناجح في Stripe",
-    description: "بيشتغل لما عميل يكمّل دفع (Checkout / رابط دفع).",
+    description: "بيشتغل لما عميل يكمّل دفع (Checkout / رابط دفع)",
     app: "stripe",
     appName: "Stripe",
     color: "#635bff",

@@ -84,7 +84,7 @@ export function TemplateDetail() {
       <div className="section">
         <h2>التيمبلت ده مش موجود</h2>
         <p className="muted">
-          ممكن يكون اتشال أو الرابط غلط. <Link to="/templates">كل التيمبلت</Link>
+          ممكن يكون اتشال أو الرابط غلط <Link to="/templates">كل التيمبلت</Link>
         </p>
       </div>
     );
@@ -160,7 +160,7 @@ export function TemplateDetail() {
             </div>
           </div>
           <p className="faint" style={{ fontSize: 13, margin: 0 }}>
-            التيمبلت بيتنسخ في حسابك وتقدر تعدّل كل خطوة فيه.
+            التيمبلت بيتنسخ في حسابك وتقدر تعدّل كل خطوة فيه
           </p>
         </aside>
       </div>
@@ -228,7 +228,7 @@ export function IntegrationDetail() {
       <div className="section">
         <h2>التطبيق ده مش موجود</h2>
         <p className="muted">
-          <Link to="/integrations">كل التطبيقات</Link> - ولو التطبيق عنده API تقدر تربطه بخطوة HTTP.
+          <Link to="/integrations">كل التطبيقات</Link> - ولو التطبيق عنده API تقدر تربطه بخطوة HTTP
         </p>
       </div>
     );
@@ -244,7 +244,7 @@ export function IntegrationDetail() {
         <div>
           <h1 className="detail-title">أتمت {entry.name} مع تدفّق</h1>
           <p className="lp-lead" style={{ marginBottom: 20 }}>
-            اربط {entry.name} بباقي تطبيقاتك وبالذكاء الاصطناعي من غير كود - بمفتاحك انت، وفي دقايق.
+            اربط {entry.name} بباقي تطبيقاتك وبالذكاء الاصطناعي من غير كود - بمفتاحك انت، وفي دقايق
           </p>
           <div className="lp-actions">
             <Link className="btn primary lg" to={user ? "/app/scenarios" : "/register"}>
@@ -269,7 +269,7 @@ export function IntegrationDetail() {
                 <Icon name="zap" size={15} /> {t}
               </li>
             ))}
-            {!entry.triggers.length && <li className="faint">مفيش محفّزات - استخدمه كخطوة بعد أي محفّز تاني.</li>}
+            {!entry.triggers.length && <li className="faint">مفيش محفّزات - استخدمه كخطوة بعد أي محفّز تاني</li>}
           </ul>
         </section>
         <section>
@@ -283,7 +283,7 @@ export function IntegrationDetail() {
                 <Icon name="play" size={13} /> {a}
               </li>
             ))}
-            {!entry.actions.length && <li className="faint">بيستخدم كمحفّز بس.</li>}
+            {!entry.actions.length && <li className="faint">بيستخدم كمحفّز بس</li>}
           </ul>
         </section>
       </div>
@@ -330,7 +330,7 @@ const SOLUTIONS = [
   {
     id: "stores",
     title: "المتاجر الإلكترونية",
-    lead: "من أول ما الطلب ينزل لحد ما يوصل للعميل - من غير ما حد يفتح لوحة المتجر.",
+    lead: "من أول ما الطلب ينزل لحد ما يوصل للعميل - من غير ما حد يفتح لوحة المتجر",
     items: [
       "تأكيد كل طلب على واتساب باسم العميل وتفاصيل طلبه",
       "إشعار للفريق على تيليجرام أو Slack مع كل طلب",
@@ -344,7 +344,7 @@ const SOLUTIONS = [
   {
     id: "support",
     title: "خدمة العملاء",
-    lead: "رد في ثواني على كل عميل، وموظف حقيقي بس لما يكون فعلاً محتاج.",
+    lead: "رد في ثواني على كل عميل، وموظف حقيقي بس لما يكون فعلاً محتاج",
     items: [
       "AI Agent على واتساب وتيليجرام بيرد من معلوماتك",
       "ذاكرة لكل عميل، فالمحادثة بتكمّل من مكان ما وقفت",
@@ -358,7 +358,7 @@ const SOLUTIONS = [
   {
     id: "content",
     title: "صناعة المحتوى",
-    lead: "المحتوى بيتكتب ويتصمم وينزل في ميعاده على كل المنصات، وانت بتراجع بس.",
+    lead: "المحتوى بيتكتب ويتصمم وينزل في ميعاده على كل المنصات، وانت بتراجع بس",
     items: [
       "كابشن بـ CTA وهاشتاجات مكتوب لكل منصة",
       "صور بالذكاء الاصطناعي بتحافظ على شكل منتجك",
@@ -372,7 +372,7 @@ const SOLUTIONS = [
   {
     id: "agencies",
     title: "الوكالات والفرق",
-    lead: "كل عميل محتمل يوصل للشخص الصح بسرعة، وكل مهمة تتسجل في مكانها.",
+    lead: "كل عميل محتمل يوصل للشخص الصح بسرعة، وكل مهمة تتسجل في مكانها",
     items: [
       "فورمات برابط مباشر لأي حملة",
       "تقييم العملاء المحتملين بالذكاء الاصطناعي",
@@ -398,9 +398,9 @@ export function Solutions() {
       <section className="lp-section" style={{ paddingBottom: 40 }}>
         <span className="kicker">الحلول</span>
         <h1 className="detail-title" style={{ maxWidth: 760 }}>
-          أتمتة مبنية حوالين نوع شغلك، مش حوالين الأدوات.
+          أتمتة مبنية حوالين نوع شغلك، مش حوالين الأدوات
         </h1>
-        <p className="lp-lead">اختار المجال الأقرب ليك وابدأ من تيمبلت جاهز - كل واحد فيهم شغال عند ناس قبلك.</p>
+        <p className="lp-lead">اختار المجال الأقرب ليك وابدأ من تيمبلت جاهز - كل واحد فيهم شغال عند ناس قبلك</p>
         <div className="sol-jump">
           {SOLUTIONS.map((s) => (
             <a key={s.id} href={`#${s.id}`}>
@@ -447,15 +447,15 @@ export function Solutions() {
 /* ---------- /enterprise ---------- */
 export function Enterprise() {
   const contact = useSiteContact();
-  const text = "السلام عليكم، عايز أعرف أكتر عن تدفّق للشركات.";
+  const text = "السلام عليكم، عايز أعرف أكتر عن تدفّق للشركات";
   return (
     <div className="lp-wrap">
       <section className="lp-section" style={{ paddingBottom: 48 }}>
         <span className="kicker">الشركات</span>
         <h1 className="detail-title" style={{ maxWidth: 780 }}>
-          أتمتة على مقاس شركتك، ومعاك فريق بيبنيها.
+          أتمتة على مقاس شركتك، ومعاك فريق بيبنيها
         </h1>
-        <p className="lp-lead">لو عندك حجم شغل كبير، أو أنظمة خاصة، أو محتاج حد يبني ويتابع معاك - بنظبط باقة وخطة على مقاسك.</p>
+        <p className="lp-lead">لو عندك حجم شغل كبير، أو أنظمة خاصة، أو محتاج حد يبني ويتابع معاك - بنظبط باقة وخطة على مقاسك</p>
         <div className="lp-actions">
           <a className="btn primary lg" href={whatsappLink(contact.whatsapp, text)} target="_blank" rel="noreferrer">
             كلّمنا على واتساب
@@ -468,12 +468,12 @@ export function Enterprise() {
       <section className="lp-section">
         <div className="lp-local">
           {[
-            { icon: "flows", h: "بنبني معاك", p: "فريقنا يبني أول السيناريوهات مع فريقك ويدرّبهم لحد ما يمشوا لوحدهم." },
-            { icon: "plug", h: "تكامل مع أنظمتك", p: "ERP أو CRM داخلي أو أي نظام عنده API - بنربطه ونعمله خطوات جاهزة لفريقك." },
-            { icon: "coins", h: "كريديت على قد استخدامك", p: "حجم تشغيل كبير بسعر ثابت متفق عليه، من غير مفاجآت آخر الشهر." },
-            { icon: "shield", h: "أمان ومتابعة", p: "مراجعة للصلاحيات والبيانات، ومتابعة للتشغيلات المهمة وتنبيه لو حاجة وقفت." },
-            { icon: "send", h: "دعم مباشر", p: "خط واتساب مباشر مع الفريق، وأولوية في الرد." },
-            { icon: "sparkles", h: "المساعد الذكي لفريقك", p: "كريديت مساعد أكبر لفريقك كله يبني ويصلّح بالكلام." },
+            { icon: "flows", h: "بنبني معاك", p: "فريقنا يبني أول السيناريوهات مع فريقك ويدرّبهم لحد ما يمشوا لوحدهم" },
+            { icon: "plug", h: "تكامل مع أنظمتك", p: "ERP أو CRM داخلي أو أي نظام عنده API - بنربطه ونعمله خطوات جاهزة لفريقك" },
+            { icon: "coins", h: "كريديت على قد استخدامك", p: "حجم تشغيل كبير بسعر ثابت متفق عليه، من غير مفاجآت آخر الشهر" },
+            { icon: "shield", h: "أمان ومتابعة", p: "مراجعة للصلاحيات والبيانات، ومتابعة للتشغيلات المهمة وتنبيه لو حاجة وقفت" },
+            { icon: "send", h: "دعم مباشر", p: "خط واتساب مباشر مع الفريق، وأولوية في الرد" },
+            { icon: "sparkles", h: "المساعد الذكي لفريقك", p: "كريديت مساعد أكبر لفريقك كله يبني ويصلّح بالكلام" },
           ].map((item) => (
             <div className="lp-local-item" key={item.h}>
               <span className="lp-local-icon">

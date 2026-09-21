@@ -13,7 +13,7 @@ export const whenField = {
   label: "شغّل الخطوة دي؟",
   type: "text" as const,
   default: "نعم",
-  help: "نعم / لا - أو من إعدادات قبلها زي {{2.makeImages}}. لو «لا» الخطوة بتتخطى والسيناريو يكمّل عادي.",
+  help: "نعم / لا - أو من إعدادات قبلها زي {{2.makeImages}}. لو «لا» الخطوة بتتخطى والسيناريو يكمّل عادي",
 };
 
 /** "لا", "no", "false", "0", "off" (or empty after an expression) mean: skip this step. */
@@ -69,7 +69,7 @@ export async function storeFile(
     url = await uploadToStorage(`${userId}/${id}.${EXTENSIONS[mimeType] ?? "bin"}`, body, mimeType);
   } else if (body.length > MAX_DB_FILE_BYTES) {
     throw new Error(
-      `الملف حجمه ${(body.length / 1048576).toFixed(1)} ميجا - أكبر من اللي السيرفر يقدر يعرضه. ضيف SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY في Vercel عشان الفيديوهات تتخزن في Supabase Storage.`,
+      `الملف حجمه ${(body.length / 1048576).toFixed(1)} ميجا - أكبر من اللي السيرفر يقدر يعرضه. ضيف SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY في Vercel عشان الفيديوهات تتخزن في Supabase Storage`,
     );
   } else {
     data = body.toString("base64");
@@ -176,7 +176,7 @@ export const mediaNodes: NodeDefinition[] = [
   {
     type: "ai.image",
     name: "توليد صورة بالذكاء الاصطناعي",
-    description: "بيعمل صورة من وصف نصي (أو من صورة منتجك) ويحفظها في مكتبة الصور برابط جاهز للنشر.",
+    description: "بيعمل صورة من وصف نصي (أو من صورة منتجك) ويحفظها في مكتبة الصور برابط جاهز للنشر",
     app: "ai",
     appName: "الذكاء الاصطناعي",
     color: "#7c3aed",
@@ -185,7 +185,7 @@ export const mediaNodes: NodeDefinition[] = [
     credentialTypes: ["geminiApi", "openaiApi", "customAiApi"],
     fields: [
       whenField,
-      { key: "model", label: "الموديل", type: "model", modelKind: "image", help: "اختار موديل صور من حسابك، أو سيبه على الافتراضي." },
+      { key: "model", label: "الموديل", type: "model", modelKind: "image", help: "اختار موديل صور من حسابك، أو سيبه على الافتراضي" },
       {
         key: "prompt",
         label: "وصف الصورة",
@@ -198,14 +198,14 @@ export const mediaNodes: NodeDefinition[] = [
         label: "صورة مرجعية (اختياري)",
         type: "text",
         placeholder: "اكتب @ واختار صورة من مكتبتك",
-        help: "اكتب @ واختار صورة منتجك - أو سيبها فاضية وهتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها. عايز كل صورة لوحدها؟ استخدم «صور محددة من المكتبة» قبلها.",
+        help: "اكتب @ واختار صورة منتجك - أو سيبها فاضية وهتتاخد تلقائي من صورة المنتج في الخطوات اللي قبلها. عايز كل صورة لوحدها؟ استخدم «صور محددة من المكتبة» قبلها",
       },
       {
         key: "keepProduct",
         label: "حافظ على المنتج زي ما هو في الصورة المرجعية",
         type: "boolean",
         default: true,
-        help: "المنتج يظهر بنفس شكله وتغليفه ولوجوه (من غير ما يتفتح أو يطلع اللي جواه).",
+        help: "المنتج يظهر بنفس شكله وتغليفه ولوجوه (من غير ما يتفتح أو يطلع اللي جواه)",
       },
       { key: "size", label: "المقاس", type: "select", default: "1024x1280", options: SIZES },
       { key: "folder", label: "يتحفظ في فولدر", type: "text", default: "مولّدة" },
@@ -314,7 +314,7 @@ export const mediaNodes: NodeDefinition[] = [
     type: "media.select",
     name: "صور محددة من المكتبة",
     description:
-      "اختار صور بعينها بـ @ (ولكل صورة فكرتها): الخطوات اللي بعدها بتشتغل على كل صورة لوحدها بالترتيب - صورة تخلص كل خطواتها وبعدين اللي بعدها. أو صورة واحدة كل تشغيل.",
+      "اختار صور بعينها بـ @ (ولكل صورة فكرتها): الخطوات اللي بعدها بتشتغل على كل صورة لوحدها بالترتيب - صورة تخلص كل خطواتها وبعدين اللي بعدها. أو صورة واحدة كل تشغيل",
     app: "media",
     appName: "مكتبة الصور",
     color: "#0ea5e9",
@@ -327,14 +327,14 @@ export const mediaNodes: NodeDefinition[] = [
         type: "textarea",
         required: true,
         placeholder: "@{تيشيرت أبيض}\n@{كوباية قهوة}",
-        help: "اكتب @ واختار كل صورة (كل صورة في سطر).",
+        help: "اكتب @ واختار كل صورة (كل صورة في سطر)",
       },
       {
         key: "ideas",
         label: "فكرة كل صورة (اختياري)",
         type: "textarea",
         placeholder: "عرض خصم 20%\nمنتج جديد وصل",
-        help: "سطر لكل صورة بنفس الترتيب - بتوصل للخطوات اللي بعدها في {{N.idea}}.",
+        help: "سطر لكل صورة بنفس الترتيب - بتوصل للخطوات اللي بعدها في {{N.idea}}",
       },
       {
         key: "mode",
@@ -373,14 +373,14 @@ export const mediaNodes: NodeDefinition[] = [
   {
     type: "media.pick",
     name: "صورة من المكتبة",
-    description: "بياخد صورة من مكتبة الصور (مثلاً صور منتجاتك) بالترتيب أو عشوائي، عشان تنشرها أو تعدّلها بالـ AI.",
+    description: "بياخد صورة من مكتبة الصور (مثلاً صور منتجاتك) بالترتيب أو عشوائي، عشان تنشرها أو تعدّلها بالـ AI",
     app: "media",
     appName: "مكتبة الصور",
     color: "#0ea5e9",
     group: "data",
     kind: "action",
     fields: [
-      { key: "folder", label: "الفولدر", type: "text", default: "منتجات", required: true, help: "نفس اسم الفولدر اللي رفعت فيه الصور." },
+      { key: "folder", label: "الفولدر", type: "text", default: "منتجات", required: true, help: "نفس اسم الفولدر اللي رفعت فيه الصور" },
       {
         key: "mode",
         label: "طريقة الاختيار",
@@ -507,7 +507,7 @@ async function openaiVideo(apiKey: string, model: string, prompt: string, aspect
 export const videoNode: NodeDefinition = {
   type: "ai.video",
   name: "توليد فيديو بالذكاء الاصطناعي",
-  description: "بيعمل فيديو قصير (ريلز / إعلان) من وصف نصي أو من صورة منتجك، ويحفظه برابط جاهز للنشر. بياخد من دقيقة لـ 4 دقايق.",
+  description: "بيعمل فيديو قصير (ريلز / إعلان) من وصف نصي أو من صورة منتجك، ويحفظه برابط جاهز للنشر. بياخد من دقيقة لـ 4 دقايق",
   app: "ai",
   appName: "الذكاء الاصطناعي",
   color: "#7c3aed",
@@ -517,14 +517,14 @@ export const videoNode: NodeDefinition = {
   timeoutMs: 285_000,
   fields: [
     whenField,
-    { key: "model", label: "الموديل", type: "model", modelKind: "video", help: "Gemini: موديلات Veo - OpenAI: موديلات Sora. سيبه فاضي للافتراضي." },
+    { key: "model", label: "الموديل", type: "model", modelKind: "video", help: "Gemini: موديلات Veo - OpenAI: موديلات Sora. سيبه فاضي للافتراضي" },
     { key: "prompt", label: "وصف الفيديو", type: "textarea", required: true, placeholder: "لقطة سينمائية لزجاجة عطر بتلف ببطء، إضاءة ذهبية" },
     {
       key: "referenceImage",
       label: "صورة المنتج (اختياري)",
       type: "text",
       placeholder: "اكتب @ واختار صورة من مكتبتك",
-      help: "الفيديو هيتعمل من صورة منتجك - اكتب @ واختارها. مدعومة مع Gemini Veo.",
+      help: "الفيديو هيتعمل من صورة منتجك - اكتب @ واختارها. مدعومة مع Gemini Veo",
     },
     { key: "aspect", label: "الاتجاه", type: "select", default: "9:16", options: VIDEO_ASPECTS },
     { key: "seconds", label: "المدة بالثواني", type: "number", default: 8 },
@@ -545,7 +545,7 @@ export const videoNode: NodeDefinition = {
     if (credential?.type === "geminiApi") {
       video = await geminiVideo(credential.data.apiKey, model || "veo-3.1-fast-generate-preview", prompt, aspect, Math.min(seconds, 8), reference, signal);
     } else if (credential?.type === "openaiApi") {
-      if (reference) note = "Sora مش بياخد صورة المنتج هنا - الفيديو اتعمل من الوصف بس. استخدم Gemini Veo لو عايز الفيديو من صورة المنتج.";
+      if (reference) note = "Sora مش بياخد صورة المنتج هنا - الفيديو اتعمل من الوصف بس. استخدم Gemini Veo لو عايز الفيديو من صورة المنتج";
       video = await openaiVideo(credential.data.apiKey, model || "sora-2", prompt, aspect, seconds, signal);
     } else {
       throw new Error("توليد الفيديو متاح مع Gemini (Veo) أو OpenAI (Sora) - اختار حساب منهم");

@@ -7,7 +7,7 @@ export const checkEveryField: FieldDef = {
   label: "يشيّك كل كام دقيقة",
   type: "number",
   default: 15,
-  help: "على Vercel المجاني الفحص بيحصل مع كل نداء من cron-job.org.",
+  help: "على Vercel المجاني الفحص بيحصل مع كل نداء من cron-job.org",
 };
 
 const decode = (value: string) =>
@@ -47,7 +47,7 @@ export const feedNodes: NodeDefinition[] = [
   {
     type: "rss.trigger",
     name: "خبر / مقال جديد (RSS)",
-    description: "بيراقب أي موقع أو مدونة فيها RSS، وأول ما ينزل جديد يشغّل السيناريو.",
+    description: "بيراقب أي موقع أو مدونة فيها RSS، وأول ما ينزل جديد يشغّل السيناريو",
     app: "rss",
     appName: "RSS",
     color: "#f97316",

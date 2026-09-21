@@ -39,7 +39,7 @@ export function PayModal({ order: initial, onClose }: { order: Order; onClose: (
     `المبلغ: ${money(usd)} (حوالي ${number(egp)} جنيه)`,
     ...(note.trim() ? [`ملاحظة: ${note.trim()}`] : []),
     "",
-    "مرفق صورة إيصال التحويل.",
+    "مرفق صورة إيصال التحويل",
   ].join("\n");
   const whatsapp = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
 
@@ -94,8 +94,8 @@ export function PayModal({ order: initial, onClose }: { order: Order; onClose: (
             ))}
           </div>
         </li>
-        <li>خد صورة (سكرين شوت) لإيصال التحويل.</li>
-        <li>دوس الزرار تحت: واتساب هيفتح برسالة جاهزة فيها اسمك ورقم حسابك وطلبك - ابعتها ومعاها صورة الإيصال.</li>
+        <li>خد صورة (سكرين شوت) لإيصال التحويل</li>
+        <li>دوس الزرار تحت: واتساب هيفتح برسالة جاهزة فيها اسمك ورقم حسابك وطلبك - ابعتها ومعاها صورة الإيصال</li>
       </ol>
 
       <div className="field">
@@ -108,11 +108,11 @@ export function PayModal({ order: initial, onClose }: { order: Order; onClose: (
       </a>
       {sent && (
         <div className="alert success" style={{ marginTop: 12 }}>
-          طلبك اتسجّل ✓ أول ما نراجع التحويل {order.kind === "credits" ? "الكريديت هيتضاف لحسابك" : "الباقة هتتفعّل على حسابك"} - عادة خلال ساعات.
+          طلبك اتسجّل ✓ أول ما نراجع التحويل {order.kind === "credits" ? "الكريديت هيتضاف لحسابك" : "الباقة هتتفعّل على حسابك"} - عادة خلال ساعات
         </div>
       )}
       <p className="help" style={{ marginTop: 10 }}>
-        المبلغ بالجنيه تقريبي حسب سعر الدولار. لو في أي سؤال ابعتلنا على نفس رقم الواتساب.
+        المبلغ بالجنيه تقريبي حسب سعر الدولار. لو في أي سؤال ابعتلنا على نفس رقم الواتساب
       </p>
     </Modal>
   );

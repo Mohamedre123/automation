@@ -11,7 +11,7 @@ export const wasenderCredential: CredentialType = {
   key: "wasenderApi",
   name: "WasenderAPI (واتساب)",
   app: "whatsapp",
-  description: "أرخص طريقة لربط واتساب: من لوحة WasenderAPI اربط رقمك، وهات الـ API Key بتاع الجلسة.",
+  description: "أرخص طريقة لربط واتساب: من لوحة WasenderAPI اربط رقمك، وهات الـ API Key بتاع الجلسة",
   docsUrl: "https://wasenderapi.com/api-docs",
   fields: [
     { key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "من Session ← API Key" },
@@ -19,7 +19,7 @@ export const wasenderCredential: CredentialType = {
       key: "webhookSecret",
       label: "Webhook Secret (اختياري)",
       secret: true,
-      help: "من إعدادات الـ Webhook في WasenderAPI - بيتأكد إن الرسايل جاية منهم فعلاً.",
+      help: "من إعدادات الـ Webhook في WasenderAPI - بيتأكد إن الرسايل جاية منهم فعلاً",
     },
   ],
   async test(data) {
@@ -37,8 +37,8 @@ const toField: FieldDef = {
   label: "رقم المستلم",
   type: "text",
   required: true,
-  placeholder: "201012345678 أو {{1.phone}}",
-  help: "بكود الدولة من غير + أو مسافات.",
+  placeholder: "201012345678",
+  help: "بكود الدولة من غير + أو مسافات، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
 };
 
 const messageTypeField: FieldDef = {
@@ -95,7 +95,7 @@ export const wasenderNodes: NodeDefinition[] = [
   {
     type: "wasender.trigger",
     name: "رسالة واتساب جديدة",
-    description: "بيشتغل أول ما رسالة واتساب توصل على رقمك المربوط بـ WasenderAPI.",
+    description: "بيشتغل أول ما رسالة واتساب توصل على رقمك المربوط بـ WasenderAPI",
     app: "whatsapp",
     appName: "واتساب (WasenderAPI)",
     color: "#25d366",
@@ -108,7 +108,7 @@ export const wasenderNodes: NodeDefinition[] = [
         key: "path",
         label: "رابط الـ Webhook",
         type: "readonly",
-        help: "انسخ الرابط ده وحطه في WasenderAPI ← Session ← Webhooks، وفعّل حدث Message Received.",
+        help: "انسخ الرابط ده وحطه في WasenderAPI ← Session ← Webhooks، وفعّل حدث Message Received",
       },
       {
         key: "eventType",
@@ -167,7 +167,7 @@ export const wasenderNodes: NodeDefinition[] = [
   {
     type: "wasender.send",
     name: "إرسال رسالة واتساب",
-    description: "بيبعت نص أو صورة أو ملف على واتساب عن طريق WasenderAPI.",
+    description: "بيبعت نص أو صورة أو ملف على واتساب عن طريق WasenderAPI",
     app: "whatsapp",
     appName: "واتساب (WasenderAPI)",
     color: "#25d366",
@@ -177,12 +177,12 @@ export const wasenderNodes: NodeDefinition[] = [
     fields: [
       toField,
       messageTypeField,
-      { key: "text", label: "النص / التعليق", type: "textarea", placeholder: "{{3.text}}" },
+      { key: "text", label: "النص / التعليق", type: "textarea", placeholder: "اكتب الرسالة هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       {
         key: "mediaUrl",
-        label: "رابط الملف",
+        label: "الملف",
         type: "text",
-        placeholder: "{{4.url}}",
+        placeholder: "@{اسم الصورة} أو رابط ملف",
         showIf: { field: "messageType", values: ["image", "video", "document"] },
       },
       { key: "fileName", label: "اسم الملف", type: "text", showIf: { field: "messageType", values: ["document"] } },
@@ -222,7 +222,7 @@ export const wasenderNodes: NodeDefinition[] = [
         const message = (error as Error).message;
         if (/JID does not exist|not.*on WhatsApp/i.test(message)) {
           throw new Error(
-            `الرقم ${to} مش متسجل على واتساب. اتأكد إنه بكود الدولة (زي 201012345678). لو جاي من رسالة واردة استخدم {{1.phone}} - ومحتاج تعيد تشغيل الرسالة بعد التحديث عشان الرقم الحقيقي يوصل بدل الكود المخفي بتاع واتساب.`,
+            `الرقم ${to} مش متسجل على واتساب. اتأكد إنه بكود الدولة (زي 201012345678). لو جاي من رسالة واردة استخدم {{1.phone}} - ومحتاج تعيد تشغيل الرسالة بعد التحديث عشان الرقم الحقيقي يوصل بدل الكود المخفي بتاع واتساب`,
           );
         }
         throw error;
@@ -237,12 +237,12 @@ export const whatsappCloudCredential: CredentialType = {
   key: "whatsappCloud",
   name: "واتساب الرسمي (Meta Cloud API)",
   app: "whatsapp",
-  description: "من Meta for Developers ← WhatsApp ← API Setup: التوكن ورقم الـ Phone number ID.",
+  description: "من Meta for Developers ← WhatsApp ← API Setup: التوكن ورقم الـ Phone number ID",
   docsUrl: "https://developers.facebook.com/docs/whatsapp/cloud-api/get-started",
   fields: [
     { key: "accessToken", label: "Access Token", secret: true, required: true },
     { key: "phoneNumberId", label: "Phone number ID", required: true, placeholder: "123456789012345" },
-    { key: "verifyToken", label: "Verify Token", secret: true, help: "أي نص من اختيارك - هتكتبه نفسه في إعدادات الـ Webhook عند Meta." },
+    { key: "verifyToken", label: "Verify Token", secret: true, help: "أي نص من اختيارك - هتكتبه نفسه في إعدادات الـ Webhook عند Meta" },
   ],
   async test(data) {
     const response = await fetch(`${GRAPH_BASE}/${data.phoneNumberId}?fields=display_phone_number`, {
@@ -259,7 +259,7 @@ export const whatsappCloudNodes: NodeDefinition[] = [
   {
     type: "whatsapp.trigger",
     name: "رسالة واتساب جديدة (الرسمي)",
-    description: "بيستقبل رسايل واتساب من Meta Cloud API.",
+    description: "بيستقبل رسايل واتساب من Meta Cloud API",
     app: "whatsapp",
     appName: "واتساب الرسمي",
     color: "#128c7e",
@@ -272,7 +272,7 @@ export const whatsappCloudNodes: NodeDefinition[] = [
         key: "path",
         label: "رابط الـ Webhook (Callback URL)",
         type: "readonly",
-        help: "حطه في Meta ← WhatsApp ← Configuration ← Callback URL، والـ Verify token اللي في الحساب.",
+        help: "حطه في Meta ← WhatsApp ← Configuration ← Callback URL، والـ Verify token اللي في الحساب",
       },
     ],
     sampleOutput: {
@@ -319,7 +319,7 @@ export const whatsappCloudNodes: NodeDefinition[] = [
   {
     type: "whatsapp.send",
     name: "إرسال رسالة واتساب (الرسمي)",
-    description: "بيبعت رسالة نصية أو صورة من رقم واتساب الرسمي.",
+    description: "بيبعت رسالة نصية أو صورة من رقم واتساب الرسمي",
     app: "whatsapp",
     appName: "واتساب الرسمي",
     color: "#128c7e",
@@ -339,7 +339,7 @@ export const whatsappCloudNodes: NodeDefinition[] = [
           { value: "document", label: "ملف" },
         ],
       },
-      { key: "text", label: "النص / التعليق", type: "textarea", placeholder: "{{3.text}}" },
+      { key: "text", label: "النص / التعليق", type: "textarea", placeholder: "اكتب الرسالة هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
       { key: "mediaUrl", label: "رابط الملف", type: "text", showIf: { field: "messageType", values: ["image", "document"] } },
       skipIfEmptyField,
     ],

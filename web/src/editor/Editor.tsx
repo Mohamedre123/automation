@@ -16,6 +16,7 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import { api } from "../api";
+import { GuideLauncher } from "../components/ScenarioGuide";
 import { Modal, Spinner, StatusBadge, Toggle, copyText, formatDuration, modeLabels, timeAgo, useToast } from "../components/ui";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
@@ -274,7 +275,7 @@ function EditorCanvas() {
     setActivationError("");
     if (active && triggerNode?.data.node.type === "trigger.manual") {
       setActivationError(
-        "المحفّز «تشغيل يدوي» بيشتغل بزرار «تشغيل مرة» بس. عشان السيناريو يفضل شغال لوحده: امسح أول خطوة وحط «جدولة» (كل يوم في ساعة) أو «فورم» أو رسايل واتساب / تيليجرام.",
+        "المحفّز «تشغيل يدوي» بيشتغل بزرار «تشغيل مرة» بس. عشان السيناريو يفضل شغال لوحده: امسح أول خطوة وحط «جدولة» (كل يوم في ساعة) أو «فورم» أو رسايل واتساب / تيليجرام",
       );
       return;
     }
@@ -503,6 +504,17 @@ function EditorCanvas() {
             />
           </div>
           <div className="editor-title" style={{ gap: 10, paddingInline: 12 }}>
+            <GuideLauncher
+              graph={{ nodes: nodes.map((n) => n.data.node), edges: edges as WorkflowGraph["edges"] }}
+              name={name || workflow.name}
+              storageKey={`wf:${workflow.id}`}
+              onFocusNode={(nodeId) => {
+                setSelectedId(nodeId);
+                setSide("node");
+                setPanelTab("settings");
+                fitView({ nodes: [{ id: nodeId }], padding: 0.6, maxZoom: 1.1, duration: 350 });
+              }}
+            />
             {dirty ? (
               <span className="badge running">تغييرات مش محفوظة</span>
             ) : (
@@ -574,7 +586,7 @@ function EditorCanvas() {
                     )}
                     <div className="test-sender">
                       <div className="help" style={{ marginTop: 4 }}>
-                        جرّب من هنا مباشرة: عدّل البيانات ودوس «ابعت»، والنتيجة هتظهر على الخطوات.
+                        جرّب من هنا مباشرة: عدّل البيانات ودوس «ابعت»، والنتيجة هتظهر على الخطوات
                       </div>
                       <textarea
                         className="textarea mono"
@@ -717,7 +729,7 @@ function EditorCanvas() {
               {!history ? (
                 <Spinner />
               ) : history.length === 0 ? (
-                <div className="faint">لسه مفيش تشغيلات للسيناريو ده.</div>
+                <div className="faint">لسه مفيش تشغيلات للسيناريو ده</div>
               ) : (
                 <div className="history-list">
                   {history.map((h) => (
@@ -741,7 +753,7 @@ function EditorCanvas() {
               )}
               {execution && (
                 <div className="help" style={{ marginTop: 12 }}>
-                  النتيجة ظاهرة على الخطوات في الكانفس - دوس على علامة ✓ أو ! فوق أي خطوة تشوف التفاصيل.
+                  النتيجة ظاهرة على الخطوات في الكانفس - دوس على علامة ✓ أو ! فوق أي خطوة تشوف التفاصيل
                 </div>
               )}
             </div>

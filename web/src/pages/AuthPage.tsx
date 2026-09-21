@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { Spinner } from "../components/ui";
 import { ThemeToggle } from "../components/UserMenu";
@@ -10,13 +10,17 @@ import type { User } from "../types";
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { user, signIn } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // "?next=" brings the customer back to where they started (e.g. the plan they picked on the pricing strip).
+  const raw = params.get("next") ?? "";
+  const next = raw.startsWith("/app") ? raw : "/app";
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   // After sign-up (or signing in to an unconfirmed account) the email code is asked for here.
   const [verifyEmail, setVerifyEmail] = useState("");
 
-  if (user) return <Navigate to="/app" replace />;
+  if (user) return <Navigate to={next} replace />;
   const isRegister = mode === "register";
 
   const submit = async (e: FormEvent) => {
@@ -32,7 +36,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
         return;
       }
       signIn(res.token!, res.user!);
-      navigate("/app", { replace: true });
+      navigate(next, { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -52,9 +56,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
         <VerifyCode
           email={verifyEmail}
           onBack={() => setVerifyEmail("")}
-          onDone={(token, next) => {
-            signIn(token, next);
-            navigate("/app", { replace: true });
+          onDone={(token, verified) => {
+            signIn(token, verified);
+            navigate(next, { replace: true });
           }}
         />
       </div>
@@ -131,11 +135,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
         <p className="muted" style={{ textAlign: "center", marginBottom: 0 }}>
           {isRegister ? (
             <>
-              عندك حساب؟ <Link to="/login">سجّل دخول</Link>
+              عندك حساب؟ <Link to={raw ? `/login?next=${encodeURIComponent(raw)}` : "/login"}>سجّل دخول</Link>
             </>
           ) : (
             <>
-              مستخدم جديد؟ <Link to="/register">اعمل حساب</Link>
+              مستخدم جديد؟ <Link to={raw ? `/register?next=${encodeURIComponent(raw)}` : "/register"}>اعمل حساب</Link>
             </>
           )}
         </p>

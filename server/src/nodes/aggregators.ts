@@ -124,7 +124,7 @@ function checkPost(label: string, post: AggregatorPost) {
   if (!post.text.trim()) throw new Error(`${label}: النص فاضي - اربطه بخطوة كتابة المحتوى`);
   const mediaOnly = post.platforms.filter((p) => MEDIA_ONLY.includes(p));
   if (!post.videoUrl && !post.imageUrls?.length && mediaOnly.length) {
-    throw new Error(`${label}: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - اربط خانة الصور أو الفيديو بخطوة التصميم.`);
+    throw new Error(`${label}: ${mediaOnly.join(" و ")} محتاجة صورة أو فيديو - اربط خانة الصور أو الفيديو بخطوة التصميم`);
   }
 }
 
@@ -141,16 +141,16 @@ export const aggregatorCredentials: CredentialType[] = [
     key: "ayrshareApi",
     name: "Ayrshare (نشر على كل المنصات)",
     app: "ayrshare",
-    description: "مفتاح واحد بينشر على فيسبوك وإنستجرام وتيك توك ويوتيوب وX وLinkedIn وThreads وPinterest وغيرهم.",
+    description: "مفتاح واحد بينشر على فيسبوك وإنستجرام وتيك توك ويوتيوب وX وLinkedIn وThreads وPinterest وغيرهم",
     docsUrl: "https://www.ayrshare.com/docs",
     fields: [
       { key: "apiKey", label: "API Key", secret: true, required: true },
-      { key: "profileKey", label: "Profile Key (اختياري)", secret: true, help: "لو عندك أكتر من بروفايل (Business plan)." },
+      { key: "profileKey", label: "Profile Key (اختياري)", secret: true, help: "لو عندك أكتر من بروفايل (Business plan)" },
     ],
     steps: [
-      "اعمل حساب على app.ayrshare.com.",
-      "من Social Accounts اربط حسابات السوشيال اللي عايز تنشر عليها.",
-      "من API Key انسخ المفتاح والصقه هنا.",
+      "اعمل حساب على app.ayrshare.com",
+      "من Social Accounts اربط حسابات السوشيال اللي عايز تنشر عليها",
+      "من API Key انسخ المفتاح والصقه هنا",
     ],
     test: (data) => checkAuth("Ayrshare", "https://api.ayrshare.com/api/user", { authorization: `Bearer ${data.apiKey}` }),
   },
@@ -158,13 +158,13 @@ export const aggregatorCredentials: CredentialType[] = [
     key: "zernioApi",
     name: "Zernio / Late (نشر على كل المنصات)",
     app: "zernio",
-    description: "مفتاح واحد بينشر على 15 منصة - الحسابات المربوطة عندهم بتتعرف تلقائياً.",
+    description: "مفتاح واحد بينشر على 15 منصة - الحسابات المربوطة عندهم بتتعرف تلقائياً",
     docsUrl: "https://docs.zernio.com",
     fields: [{ key: "apiKey", label: "API Key", secret: true, required: true, placeholder: "sk_..." }],
     steps: [
-      "اعمل حساب على zernio.com (اسمها القديم Late).",
-      "اربط حسابات السوشيال من لوحة التحكم.",
-      "من Settings ← API Keys اعمل مفتاح (بيبدأ بـ sk_) والصقه هنا.",
+      "اعمل حساب على zernio.com (اسمها القديم Late)",
+      "اربط حسابات السوشيال من لوحة التحكم",
+      "من Settings ← API Keys اعمل مفتاح (بيبدأ بـ sk_) والصقه هنا",
     ],
     test: (data) => checkAuth("Zernio", "https://zernio.com/api/v1/accounts", { authorization: `Bearer ${data.apiKey}` }),
   },
@@ -172,7 +172,7 @@ export const aggregatorCredentials: CredentialType[] = [
     key: "blotatoApi",
     name: "Blotato (نشر على كل المنصات)",
     app: "blotato",
-    description: "بينشر على تيك توك وإنستجرام ويوتيوب وفيسبوك وX وLinkedIn وThreads وPinterest وBluesky.",
+    description: "بينشر على تيك توك وإنستجرام ويوتيوب وفيسبوك وX وLinkedIn وThreads وPinterest وBluesky",
     docsUrl: "https://help.blotato.com/api",
     fields: [
       { key: "apiKey", label: "API Key", secret: true, required: true },
@@ -181,12 +181,12 @@ export const aggregatorCredentials: CredentialType[] = [
         label: "IDs الحسابات",
         required: true,
         placeholder: "instagram=123, tiktok=456, facebook=789, facebook_page=111",
-        help: "لكل منصة: اسمها = الـ Account ID من لوحة Blotato. فيسبوك محتاج كمان facebook_page، وPinterest محتاج pinterest_board.",
+        help: "لكل منصة: اسمها = الـ Account ID من لوحة Blotato. فيسبوك محتاج كمان facebook_page، وPinterest محتاج pinterest_board",
       },
     ],
     steps: [
-      "اعمل حساب على blotato.com واربط حسابات السوشيال.",
-      "من Settings ← API انسخ المفتاح والصقه هنا.",
+      "اعمل حساب على blotato.com واربط حسابات السوشيال",
+      "من Settings ← API انسخ المفتاح والصقه هنا",
       "من صفحة Accounts انسخ الـ ID بتاع كل حساب واكتبهم بالشكل: instagram=123, tiktok=456",
     ],
   },
@@ -208,7 +208,7 @@ export const aggregatorNodes: NodeDefinition[] = (Object.entries(AGGREGATORS) as
   ([key, service]) => ({
     type: `${key}.post`,
     name: `${service.label}: نشر على المنصات`,
-    description: `بينشر نص أو صور أو فيديو على المنصات اللي تختارها عن طريق حساب ${service.label}.`,
+    description: `بينشر نص أو صور أو فيديو على المنصات اللي تختارها عن طريق حساب ${service.label}`,
     app: key,
     appName: service.label,
     color: key === "ayrshare" ? "#2563eb" : key === "zernio" ? "#111827" : "#7c3aed",
@@ -218,9 +218,9 @@ export const aggregatorNodes: NodeDefinition[] = (Object.entries(AGGREGATORS) as
     timeoutMs: 200_000,
     fields: [
       { key: "platforms", label: "المنصات", type: "multiselect", default: ["instagram", "facebook"], options: PLATFORM_OPTIONS },
-      { key: "text", label: "النص", type: "textarea", required: true, placeholder: "{{3.json.post}}" },
-      { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات." },
-      { key: "imageUrls", label: "روابط الصور", type: "text", help: "أكتر من صورة؟ افصل بفاصلة." },
+      { key: "text", label: "النص", type: "textarea", required: true, placeholder: "اكتب البوست هنا", help: "دوس زرار البيانات جوه الخانة واختار من خطوة قبلها" },
+      { key: "link", label: "لينك (اختياري)", type: "text", placeholder: "https://mystore.com/product", help: "بيتحط تحت الـ CTA وقبل الهاشتاجات" },
+      { key: "imageUrls", label: "روابط الصور", type: "text", help: "أكتر من صورة؟ افصل بفاصلة" },
       { key: "videoUrl", label: "رابط الفيديو", type: "text" },
       { key: "scheduledAt", label: "ميعاد النشر عندهم (اختياري)", type: "text", placeholder: "2026-10-01T16:00:00Z" },
       { key: "facebookPageId", label: "Facebook Page ID (لو محتاجه)", type: "text" },

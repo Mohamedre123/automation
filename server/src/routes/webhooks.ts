@@ -40,7 +40,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       session ?? (await one<{ graph: string; user_id: string }>("SELECT graph, user_id FROM workflows WHERE trigger_path = $1 AND active = 1", [path]));
     const graph = parseJson<WorkflowGraph>(row?.graph, { nodes: [], edges: [] });
     const node = graph.nodes.find((n) => n.type === "trigger.form" && n.params?.path === path);
-    if (!row || !node) throw httpError(404, "الفورم ده مش متاح دلوقتي - لو انت صاحبه، فعّل السيناريو أو دوس «تشغيل مرة».");
+    if (!row || !node) throw httpError(404, "الفورم ده مش متاح دلوقتي - لو انت صاحبه، فعّل السيناريو أو دوس «تشغيل مرة»");
     return { node, userId: row.user_id, testing: Boolean(session) };
   }
 

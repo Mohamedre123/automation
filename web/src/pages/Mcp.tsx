@@ -34,16 +34,16 @@ export function McpSetup({ url }: { url: string }) {
         </button>
       </div>
       <p className="alert error" style={{ fontSize: 13 }}>
-        الرابط ده زي كلمة السر: أي حد معاه يقدر يشغّل السيناريوهات دي. مش هيظهر تاني - لو ضاع اعمل رابط جديد.
+        الرابط ده زي كلمة السر: أي حد معاه يقدر يشغّل السيناريوهات دي. مش هيظهر تاني - لو ضاع اعمل رابط جديد
       </p>
       <details className="guide" open>
         <summary>
           <Icon name="sparkles" size={15} /> Claude (claude.ai أو التطبيق)
         </summary>
         <ol>
-          <li>افتح Settings ← Connectors ← Add custom connector.</li>
-          <li>اكتب اسم (مثلاً تدفّق) والصق الرابط، ودوس Add.</li>
-          <li>في أي محادثة فعّل الـ connector، وقول لـ Claude يشغّل السيناريو اللي انت عايزه.</li>
+          <li>افتح Settings ← Connectors ← Add custom connector</li>
+          <li>اكتب اسم (مثلاً تدفّق) والصق الرابط، ودوس Add</li>
+          <li>في أي محادثة فعّل الـ connector، وقول لـ Claude يشغّل السيناريو اللي انت عايزه</li>
         </ol>
       </details>
       <details className="guide">
@@ -51,9 +51,9 @@ export function McpSetup({ url }: { url: string }) {
           <Icon name="sparkles" size={15} /> ChatGPT
         </summary>
         <ol>
-          <li>Settings ← Apps & Connectors ← Advanced settings ← فعّل Developer mode.</li>
-          <li>ارجع لـ Apps & Connectors ← Create، والصق الرابط في MCP Server URL، واختار Authentication: No authentication.</li>
-          <li>في المحادثة اختار الـ connector من علامة + وقوله يشغّل السيناريو.</li>
+          <li>Settings ← Apps & Connectors ← Advanced settings ← فعّل Developer mode</li>
+          <li>ارجع لـ Apps & Connectors ← Create، والصق الرابط في MCP Server URL، واختار Authentication: No authentication</li>
+          <li>في المحادثة اختار الـ connector من علامة + وقوله يشغّل السيناريو</li>
         </ol>
       </details>
       <details className="guide">
@@ -144,9 +144,9 @@ function ToolboxModal({
             </span>
           </label>
         ))}
-        {!scenarios.length && <div className="faint">مفيش سيناريوهات لسه - اعمل سيناريو بمحفّز Webhook أو فورم الأول.</div>}
+        {!scenarios.length && <div className="faint">مفيش سيناريوهات لسه - اعمل سيناريو بمحفّز Webhook أو فورم الأول</div>}
       </div>
-      <p className="help">كل سيناريو بيظهر كأداة: الذكاء الاصطناعي يبعتله البيانات ويستلم النتيجة. التشغيل بياخد كريديت عادي.</p>
+      <p className="help">كل سيناريو بيظهر كأداة: الذكاء الاصطناعي يبعتله البيانات ويستلم النتيجة. التشغيل بياخد كريديت عادي</p>
     </Modal>
   );
 }
@@ -175,7 +175,7 @@ export function Mcp() {
   };
 
   const remove = async (t: Toolbox) => {
-    if (!window.confirm(`تمسح «${t.name}»؟ أي برنامج متوصل بيه هيفصل.`)) return;
+    if (!window.confirm(`تمسح «${t.name}»؟ أي برنامج متوصل بيه هيفصل`)) return;
     await api(`/mcp/toolboxes/${t.id}`, { method: "DELETE" }).catch((e: Error) => toast(e.message, "error"));
     load();
   };
@@ -185,7 +185,7 @@ export function Mcp() {
       <div className="page-head">
         <div>
           <h1>MCP - شغّل سيناريوهاتك من Claude و ChatGPT</h1>
-          <p>اعمل Toolbox فيه السيناريوهات اللي عايزها، وخد رابط واحد تحطه في أي مساعد ذكي بيدعم MCP.</p>
+          <p>اعمل Toolbox فيه السيناريوهات اللي عايزها، وخد رابط واحد تحطه في أي مساعد ذكي بيدعم MCP</p>
         </div>
         <button className="btn primary" onClick={() => setEditing({})}>
           <Icon name="plus" size={16} /> Toolbox جديد
@@ -201,7 +201,7 @@ export function Mcp() {
           <Empty
             icon="plug"
             title="مفيش Toolbox لسه"
-            text="مثلاً: قول لـ Claude «سجّل العميل ده في الشيت وابعتله رسالة ترحيب» وهو يشغّل السيناريو بتاعك بنفسه."
+            text="مثلاً: قول لـ Claude «سجّل العميل ده في الشيت وابعتله رسالة ترحيب» وهو يشغّل السيناريو بتاعك بنفسه"
             action={
               <button className="btn primary" onClick={() => setEditing({})}>
                 اعمل أول Toolbox

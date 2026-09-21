@@ -1,0 +1,533 @@
+/* =====================================================================
+   Movement and the pieces that move: sections arriving, tabs changing,
+   carousels, and the step-by-step guide. Loaded after design.css.
+   Everything here switches off for "reduced motion".
+   ===================================================================== */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* The hero arrives line by line on load. */
+.lp-hero-text > * {
+  animation: riseIn 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.lp-hero-text > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.lp-hero-text > *:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.lp-hero-text > *:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.lp-hero-text > *:nth-child(4) {
+  animation-delay: 0.34s;
+}
+.lp-hero-text > *:nth-child(5) {
+  animation-delay: 0.44s;
+}
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Switching a use-case tab: the text slides in and the steps follow one by one. */
+.lp-case > div:first-child {
+  animation: caseIn 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.lp-case .lp-chain-step {
+  animation: stepIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes caseIn {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateX(22px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lp-tab {
+  position: relative;
+  transition: color 0.2s;
+}
+.lp-tab.on {
+  border-bottom-color: transparent;
+}
+.lp-tab.on::after {
+  content: "";
+  position: absolute;
+  inset-inline: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: tabUnderline 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes tabUnderline {
+  from {
+    transform: scaleX(0.15);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ---------- carousel ---------- */
+.rail {
+  position: relative;
+}
+.rail-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.rail-track::-webkit-scrollbar {
+  display: none;
+}
+.rail-track > * {
+  scroll-snap-align: center;
+  flex: 0 0 min(340px, 80%);
+}
+.rail-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.rail-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.rail-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rail-dots button {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--hairline-2);
+  cursor: pointer;
+  transition: width 0.25s, background 0.25s;
+}
+.rail-dots button.on {
+  width: 20px;
+  background: var(--accent);
+}
+
+/* Plans you can move through, each with its own subscribe button. */
+.lp-plans .rail-track {
+  padding-top: 12px;
+}
+.lp-plans .rail-track > * {
+  flex: 0 0 min(268px, 84%);
+}
+.lp-plan {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 24px 22px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.2s;
+}
+.lp-plan:hover {
+  border-color: var(--hairline-2);
+}
+.lp-plan.pick {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel-solid));
+}
+.lp-plan-tag {
+  position: absolute;
+  top: -11px;
+  inset-inline-start: 20px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+.lp-plan h3 {
+  font-size: 16px;
+}
+.lp-plan .amount {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.lp-plan .amount small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.lp-plan > p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.lp-plan ul {
+  list-style: none;
+  margin: 6px 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.lp-plan li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.lp-plan li svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--accent);
+}
+.lp-plan .btn {
+  justify-content: center;
+}
+
+/* The local-market list: two columns on a desk, a carousel on a phone.
+   The grid moved onto the track, so the wrapper itself is just a wrapper. */
+.lp-local {
+  display: block;
+  border-top: 0;
+}
+.lp-local .rail-track {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--hairline);
+  gap: 0;
+  overflow: visible;
+  padding-bottom: 0;
+}
+.lp-local .rail-track > * {
+  flex: initial;
+}
+
+/* ---------- the scenario guide ---------- */
+.guide-overlay {
+  align-items: center;
+}
+.guide-pop {
+  width: min(560px, 94vw);
+  max-height: min(84vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid var(--hairline-2);
+  background: var(--panel-solid);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  animation: guideIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes guideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.guide-pop > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.guide-pop > header > div {
+  flex: 1;
+  min-width: 0;
+}
+.guide-pop > header small {
+  display: block;
+  color: var(--text-3);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.guide-pop > header strong {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.35;
+}
+.guide-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.guide-rail::-webkit-scrollbar {
+  display: none;
+}
+.guide-rail button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--hairline-2);
+  border-radius: 8px;
+  background: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.guide-rail button.past {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.guide-rail button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.guide-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 18px 18px;
+}
+.guide-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.guide-body p {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  line-height: 1.85;
+  font-size: 14.5px;
+}
+.guide-note {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.guide-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--accent);
+}
+.guide-note strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+.guide-note span {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.guide-fill {
+  margin: 14px 0;
+}
+.guide-fill > strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.guide-fill ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.guide-fill li {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+}
+.guide-fill li b {
+  display: block;
+  font-size: 14px;
+}
+.guide-fill li span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.guide-pop > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+}
+
+@media (max-width: 860px) {
+  .rail-phone .rail-track {
+    display: flex;
+    grid-template-columns: none;
+    gap: 12px;
+    overflow-x: auto;
+    border-top: 0;
+    padding-bottom: 4px;
+  }
+  .rail-phone .rail-track > * {
+    flex: 0 0 82%;
+  }
+  .lp-local.rail-phone .lp-local-item {
+    padding: 18px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--panel);
+    border-inline-start: 1px solid var(--hairline);
+  }
+}
+
+@media (max-width: 760px) {
+  /* The headline reads as one sentence, centred, instead of two words per line. */
+  .lp-hero {
+    text-align: center;
+    justify-items: center;
+  }
+  .lp-hero h1 {
+    font-size: clamp(27px, 8.2vw, 36px);
+    line-height: 1.34;
+    text-wrap: balance;
+    margin-inline: auto;
+    max-width: 19ch;
+  }
+  .lp-hero h1 br {
+    display: none;
+  }
+  .lp-lead {
+    margin-inline: auto;
+    max-width: 44ch;
+  }
+  .lp-hero .lp-actions {
+    justify-content: center;
+  }
+  .lp-hero .lp-actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 46%;
+  }
+  .guide-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .guide-pop {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  .lp-hero-text > *,
+  .lp-case > div:first-child,
+  .lp-case .lp-chain-step,
+  .lp-tab.on::after,
+  .guide-pop {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .rail-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------- fields: what a step takes from earlier steps, in words ---------- */
+.expr-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.expr-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.expr-hint svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.expr-hint small {
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.guide-btn {
+  flex-shrink: 0;
+}

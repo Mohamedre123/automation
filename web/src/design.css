@@ -1127,20 +1127,32 @@ h4,
   display: none;
 }
 
-/* Editor keeps the whole width */
-.app-shell.editor-mode {
-  grid-template-columns: minmax(0, 1fr);
-}
+/* The editor lives inside the shell like every other page: same sidebar, same top bar,
+   so you can leave it the way you came in. It only takes the height it needs. */
 .app-shell.editor-mode {
   --nav-h: 60px;
 }
-.app-shell.editor-mode .app-side,
-.app-shell.editor-mode .side-open,
-.app-shell.editor-mode .app-tabbar {
-  display: none;
-}
 .app-shell.editor-mode .app-content {
   padding-bottom: 0 !important;
+  overflow: hidden;
+}
+/* The sidebar collapses to icons so the canvas keeps its room. */
+.app-shell.editor-mode:not(.expanded) {
+  --sidebar-w: 64px;
+}
+.app-shell.editor-mode:not(.expanded) .side-label,
+.app-shell.editor-mode:not(.expanded) .side-link span,
+.app-shell.editor-mode:not(.expanded) .brand-name,
+.app-shell.editor-mode:not(.expanded) .side-credits-text {
+  display: none;
+}
+.app-shell.editor-mode:not(.expanded) .side-link {
+  justify-content: center;
+  padding: 0;
+}
+.app-shell.editor-mode:not(.expanded) .side-credits {
+  padding: 10px 0;
+  justify-items: center;
 }
 .side-close,
 .side-open,
@@ -1550,6 +1562,14 @@ h4,
   /* The assistant button sits above the tab bar */
   .assistant-fab {
     bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+  }
+  /* The canvas stops above the tab bar instead of hiding behind it */
+  .app-shell.editor-mode .editor {
+    height: calc(100dvh - var(--nav-h) - 58px - env(safe-area-inset-bottom));
+  }
+  .app-shell.editor-mode .editor-top {
+    top: 10px;
+    inset-inline: 10px;
   }
 }
 
