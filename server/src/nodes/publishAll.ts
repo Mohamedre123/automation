@@ -4,7 +4,7 @@ import type { CredentialValue, FieldDef, NodeContext, NodeDefinition, StepLog } 
 import { connectedNodes } from "./connected.js";
 import { urlList } from "./media.js";
 import { publishingNodes } from "./publishing.js";
-import { socialNodes } from "./social.js";
+import { FIT_FIELD, socialNodes } from "./social.js";
 import { telegramNodes } from "./telegram.js";
 import { customRequest, fillTemplate } from "./custom.js";
 import { AGGREGATORS, splitList, type AggregatorKey } from "./aggregators.js";
@@ -169,6 +169,8 @@ export interface PublishPayload {
   videoUrl: string;
   link: string;
   mediaMode: "both" | "video" | "image";
+  /** Instagram only: publish out-of-shape pictures anyway, or stop and say so. */
+  fit?: string;
   platforms: { key: string; credentialId: string; target?: string }[];
   customBody?: string;
 }
@@ -200,8 +202,8 @@ function platformPosts(key: string, p: PublishPayload, target: string) {
       return both((m) => ({ message: withLink, imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "", link: p.link }));
     case "instagram":
       if (!video && !image) throw new Error("إنستجرام محتاج صورة أو فيديو - اتخطّى");
-      if (carousel) return [{ caption: p.caption, imageUrl: gallery.join("\n"), videoUrl: "" }];
-      return both((m) => ({ caption: p.caption, imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "" }));
+      if (carousel) return [{ caption: p.caption, imageUrl: gallery.join("\n"), videoUrl: "", fit: p.fit }];
+      return both((m) => ({ caption: p.caption, imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "", fit: p.fit }));
     case "threads":
       return both((m) => ({ text: clip(withLink, 500), imageUrl: m.imageUrl ?? "", videoUrl: m.videoUrl ?? "" }));
     case "telegram": {
@@ -365,6 +367,7 @@ export const publishAllNode: NodeDefinition = {
       help: "فاضي = ينشر فوراً. 19:00 = النهاردة الساعة 7 بالليل (أو بكرة لو الساعة عدّت). أو تاريخ: 2026-10-01 19:00 - أو +2h بعد ساعتين",
     },
     { key: "timezone", label: "المنطقة الزمنية", type: "text", default: "Africa/Cairo" },
+    FIT_FIELD,
     ...credentialFields,
     {
       key: "customBody",
@@ -397,6 +400,7 @@ export const publishAllNode: NodeDefinition = {
       videoUrl: String(params.videoUrl ?? "").trim(),
       link: String(params.link ?? "").trim(),
       mediaMode: params.mediaMode === "video" || params.mediaMode === "image" ? params.mediaMode : "both",
+      fit: String(params.fit ?? "keep"),
       platforms,
       customBody: String(params.customBody ?? ""),
     };

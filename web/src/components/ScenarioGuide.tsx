@@ -42,8 +42,12 @@ const FILL_SKIP = new Set(["readonly", "credential", "boolean"]);
 
 /** Fields worth naming in a guide: the required ones, plus the ones the customer clearly has to write. */
 function fieldsToFill(def: NodeDefinition, node: WorkflowNode) {
+  // A step with nothing marked required is one the customer fills freely (the pictures and the
+  // words, say) - there every box is worth naming, otherwise only the ones that matter.
+  const nothingRequired = !def.fields.some((f) => f.required && !FILL_SKIP.has(f.type));
   return def.fields
     .filter((field: FieldDef) => {
+      if (nothingRequired) return !FILL_SKIP.has(field.type) && !field.showIf;
       if (FILL_SKIP.has(field.type) || field.showIf) return false;
       // Optional fields only earn a mention when the template left a "write this" note in them,
       // or when they are the images and captions a publishing step is all about.

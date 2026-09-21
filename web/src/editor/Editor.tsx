@@ -23,7 +23,7 @@ import { Icon } from "../icons";
 import { ExecutionSteps } from "../pages/Executions";
 import type { Credential, Execution, NodeDefinition, StepLog, Workflow, WorkflowGraph, WorkflowNode } from "../types";
 import { EditorContext, FlowNode, type EditorContextValue, type VariableSource } from "./FlowNode";
-import { autoFillParams, defaultParams, nextNodeId, toFlow, toGraph, upstreamIds, type FlowNodeType } from "./graph";
+import { autoFillParams, defaultParams, nextNodeId, toFlow, toGraph, upstreamIds, wireNode, type FlowNodeType } from "./graph";
 import { NodePanel } from "./NodePanel";
 import { NodePicker } from "./NodePicker";
 
@@ -149,10 +149,20 @@ function EditorCanvas() {
   const onConnect = useCallback(
     (connection: Connection) => {
       const handle = connection.sourceHandle ?? "main";
-      setEdges((list) => addEdge({ ...connection, id: `e${connection.source}-${connection.target}-${handle}` }, list));
+      const next = addEdge({ ...connection, id: `e${connection.source}-${connection.target}-${handle}` }, edges);
+      setEdges(next);
+      // A new connection wires the step it feeds: its empty caption / image / video boxes
+      // now point at what the steps before it produce.
+      setNodes((list) => {
+        const byId = new Map(list.map((n) => [n.id, n.data.node]));
+        const upstream = upstreamIds(connection.target, next)
+          .map((id) => byId.get(id))
+          .filter(Boolean) as WorkflowNode[];
+        return list.map((n) => (n.id === connection.target ? { ...n, data: { node: wireNode(n.data.node, upstream, nodeDef) } } : n));
+      });
       setDirty(true);
     },
-    [setEdges],
+    [edges, setEdges, setNodes, nodeDef],
   );
 
   const isValidConnection = useCallback(
@@ -215,7 +225,7 @@ function EditorCanvas() {
       : null;
     // New step after others: wire the caption / image / video from the steps before it automatically.
     const upstream = anchor ? [anchor.id, ...upstreamIds(anchor.id, edges)].map((uid) => nodes.find((n) => n.id === uid)?.data.node).filter(Boolean) as WorkflowNode[] : [];
-    const node: WorkflowNode = { id: newId, type: def.type, position, params: autoFillParams(def, defaultParams(def), upstream, nodeDef), credentialId };
+    const node: WorkflowNode = { id: newId, type: def.type, position, params: autoFillParams(def, defaultParams(def), upstream), credentialId };
     setNodes((list) => [
       ...list.map((n) => ({ ...n, selected: false })),
       { id: newId, type: "app", position, data: { node }, selected: true },

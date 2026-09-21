@@ -295,6 +295,9 @@ h4,
   display: flex;
   align-items: center;
   gap: 8px;
+  /* The nav is hidden on phones, so this is what keeps the menu and the profile
+     on the far side of the bar instead of sliding up against the logo. */
+  margin-inline-start: auto;
 }
 
 .brand {

@@ -1,5 +1,5 @@
 import type { CredentialType, NodeDefinition } from "../engine/types.js";
-import { urlList } from "./media.js";
+import { imageShape, urlList } from "./media.js";
 import { sleep, withTimeout } from "./util.js";
 
 const VERSION = "v23.0";
@@ -263,12 +263,44 @@ async function igPublish(account: IgAccount, containerId: string, token: string,
   throw last instanceof Error ? last : new Error("إنستجرام: النشر فشل");
 }
 
+/*
+ * Instagram only accepts pictures between 4:5 (tall) and 1.91:1 (wide), and anything outside
+ * that it crops by itself - which is how a picture ends up published with a piece missing.
+ * We measure first and stop, so nothing gets cut without the customer saying so.
+ */
+const MIN_RATIO = 0.8;
+const MAX_RATIO = 1.91;
+
+async function assertPublishableShape(items: IgItem[], signal: AbortSignal) {
+  for (const [i, item] of items.entries()) {
+    if (item.video) continue;
+    const size = await imageShape(item.url, signal);
+    if (!size?.width || !size.height) continue;
+    const ratio = size.width / size.height;
+    if (ratio >= MIN_RATIO && ratio <= MAX_RATIO) continue;
+    const which = items.length > 1 ? `الصورة رقم ${i + 1}: ` : "";
+    const advice =
+      ratio < MIN_RATIO
+        ? `الصورة طولية أكتر من اللازم. المقاس المضمون 1080×1350`
+        : `الصورة عريضة أكتر من اللازم. المقاس المضمون 1080×566 أو 1080×1080`;
+    throw new Error(
+      `إنستجرام: ${which}مقاسها ${size.width}×${size.height} وإنستجرام مش بيقبل غير من 4:5 لـ 1.91:1، يعني كان هيقص منها. ${advice} - ` +
+        `أو غيّر «لو مقاس الصورة مش مناسب» في الخطوة لـ «انشر وسيب إنستجرام تقص»`,
+    );
+  }
+}
+
 /** One image, one reel, or a carousel of 2-10: the difference is only how many containers we make. */
-export async function instagramPost(credentialData: Record<string, string>, post: { items: IgItem[]; caption: string }, signal: AbortSignal) {
+export async function instagramPost(
+  credentialData: Record<string, string>,
+  post: { items: IgItem[]; caption: string; allowCrop?: boolean },
+  signal: AbortSignal,
+) {
   const token = credentialData.accessToken ?? "";
   const account = await resolveIgAccount(credentialData, signal);
   const items = post.items.slice(0, 10);
   if (!items.length) throw new Error("إنستجرام محتاج صورة أو فيديو - مينفعش نص لوحده");
+  if (!post.allowCrop) await assertPublishableShape(items, signal);
 
   if (items.length === 1) {
     const [item] = items;
@@ -284,7 +316,7 @@ export async function instagramPost(credentialData: Record<string, string>, post
     );
     if (item.video) await waitForContainer(account, container.id, token, signal);
     const published = await igPublish(account, container.id, token, signal);
-    return { ...published, containerId: container.id, account: account.username, type: item.video ? "reel" : "image" };
+    return { ...published, containerId: container.id, account: account.username, caption: post.caption, type: item.video ? "reel" : "image" };
   }
 
   const children: string[] = [];
@@ -309,7 +341,7 @@ export async function instagramPost(credentialData: Record<string, string>, post
     signal,
   );
   const published = await igPublish(account, parent.id, token, signal);
-  return { ...published, containerId: parent.id, account: account.username, type: "carousel", count: children.length };
+  return { ...published, containerId: parent.id, account: account.username, caption: post.caption, type: "carousel", count: children.length };
 }
 
 /** A Facebook post with several photos: each photo is uploaded unpublished, then attached to one post. */
@@ -330,6 +362,19 @@ export async function facebookAlbum(pageId: string, token: string, message: stri
   const id = result.post_id ?? result.id;
   return { ...result, postUrl: id ? `https://facebook.com/${id}` : undefined, type: "album", count: ids.length };
 }
+
+/** Instagram is the only platform that reshapes a picture, so this is where the choice lives. */
+export const FIT_FIELD = {
+  key: "fit",
+  label: "لو مقاس الصورة مش مناسب لإنستجرام",
+  type: "select" as const,
+  default: "keep",
+  options: [
+    { value: "keep", label: "وقّف وقولّي (الصورة تنزل بمقاسها أو متنزلش)" },
+    { value: "crop", label: "انشر وسيب إنستجرام تقص الزيادة" },
+  ],
+  help: "إنستجرام بيقبل من 4:5 (طولي) لـ 1.91:1 (عريض) - وأي حاجة برّا كده بيقصها لوحده",
+};
 
 const IMAGE_HELP = "اكتب @ واختار من مكتبة صورك، أو الصق رابط صورة. أكتر من صورة = كاروسيل (كل صورة في سطر)";
 const VIDEO_HELP = "اكتب @ واختار فيديو من مكتبتك، أو الصق رابط فيديو";
@@ -364,14 +409,14 @@ export const socialNodes: NodeDefinition[] = [
         const result = await metaPost(FACEBOOK_GRAPH, `${pageId}/videos`, { file_url: videoUrl, description: message }, token, "فيسبوك", signal);
         return { output: { ...result, postUrl: result.id ? `https://facebook.com/${result.id}` : undefined, type: "video" } };
       }
-      if (images.length > 1) return { output: await facebookAlbum(pageId, token, message, images, signal) };
+      if (images.length > 1) return { output: { ...(await facebookAlbum(pageId, token, message, images, signal)), message } };
       const link = String(params.link ?? "").trim();
       const body: Record<string, unknown> = images.length
         ? { url: images[0], caption: message, published: true }
         : { message, ...(link ? { link } : {}) };
       const result = await metaPost(FACEBOOK_GRAPH, `${pageId}/${images.length ? "photos" : "feed"}`, body, token, "فيسبوك", signal);
       const id = result.post_id ?? result.id;
-      return { output: { ...result, postUrl: id ? `https://facebook.com/${id}` : undefined, type: images.length ? "image" : "text" } };
+      return { output: { ...result, postUrl: id ? `https://facebook.com/${id}` : undefined, message, type: images.length ? "image" : "text" } };
     },
   },
   {
@@ -395,6 +440,7 @@ export const socialNodes: NodeDefinition[] = [
         placeholder: "اكتب الكابشن هنا",
         help: `${TEXT_HELP}. في الكاروسيل الكابشن ده بيبقى لكل الصور`,
       },
+      FIT_FIELD,
     ],
     sampleOutput: { id: "17895695668004550", containerId: "17889455560051444", account: "mystore", type: "carousel", count: 3 },
     async run({ params, credential, signal }) {
@@ -404,7 +450,13 @@ export const socialNodes: NodeDefinition[] = [
       if (!items.length) {
         throw new Error("إنستجرام محتاج صورة أو فيديو - اكتب @ واختار من مكتبة صورك، أو الصق رابط صورة");
       }
-      return { output: await instagramPost(credential?.data ?? {}, { items, caption: String(params.caption ?? "") }, signal) };
+      return {
+        output: await instagramPost(
+          credential?.data ?? {},
+          { items, caption: String(params.caption ?? ""), allowCrop: params.fit === "crop" },
+          signal,
+        ),
+      };
     },
   },
 ];

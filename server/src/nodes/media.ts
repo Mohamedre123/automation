@@ -143,6 +143,56 @@ export async function fileBytes(url: string, signal: AbortSignal, maxBytes = 250
   return { bytes, mimeType: response.headers.get("content-type")?.split(";")[0] || "application/octet-stream" };
 }
 
+/**
+ * Width and height straight out of the file header (JPEG, PNG, WebP, GIF) - no decoding.
+ * Used to warn before a platform crops a picture that is the wrong shape for it.
+ */
+export function imageSize(bytes: Buffer): { width: number; height: number } | null {
+  if (bytes.length < 24) return null;
+  // PNG: IHDR is always the first chunk.
+  if (bytes.readUInt32BE(0) === 0x89504e47) return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  // GIF: little-endian screen descriptor.
+  if (bytes.toString("ascii", 0, 3) === "GIF") return { width: bytes.readUInt16LE(6), height: bytes.readUInt16LE(8) };
+  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") {
+    const kind = bytes.toString("ascii", 12, 16);
+    if (kind === "VP8X") return { width: (bytes.readUIntLE(24, 3) & 0xffffff) + 1, height: (bytes.readUIntLE(27, 3) & 0xffffff) + 1 };
+    if (kind === "VP8L") {
+      const bits = bytes.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+    if (kind === "VP8 ") return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+    return null;
+  }
+  // JPEG: walk the markers to the frame header that carries the size.
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let at = 2;
+    while (at + 9 < bytes.length) {
+      if (bytes[at] !== 0xff) {
+        at++;
+        continue;
+      }
+      const marker = bytes[at + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+        return { height: bytes.readUInt16BE(at + 5), width: bytes.readUInt16BE(at + 7) };
+      }
+      const length = bytes.readUInt16BE(at + 2);
+      if (length < 2) return null;
+      at += 2 + length;
+    }
+  }
+  return null;
+}
+
+/** The shape of a picture at a URL, or null when we cannot tell (a link we do not control). */
+export async function imageShape(url: string, signal: AbortSignal) {
+  try {
+    const { bytes } = await fileBytes(url, signal, 40 * 1024 * 1024);
+    return imageSize(bytes);
+  } catch {
+    return null;
+  }
+}
+
 export async function imageAsBase64(url: string, signal: AbortSignal): Promise<{ data: string; mimeType: string }> {
   const own = url.match(/\/media\/([0-9a-f-]{36})(?:[?#]|$)/i);
   if (own) {
@@ -368,6 +418,51 @@ export const mediaNodes: NodeDefinition[] = [
         return { output: items[index] };
       }
       return { output: { total: items.length, names: items.map((item) => item.name) }, fanOut: items };
+    },
+  },
+  {
+    type: "media.gallery",
+    name: "الصور والكابشن",
+    description:
+      "مكان واحد تحط فيه صور البوست وكلامه. الخطوة اللي بعدها (النشر) بتاخد منها الصور والكابشن لوحدها - انت بس بتختار الحساب",
+    app: "media",
+    appName: "مكتبة الصور",
+    color: "#0ea5e9",
+    group: "data",
+    kind: "action",
+    fields: [
+      {
+        key: "images",
+        label: "الصور",
+        type: "textarea",
+        placeholder: "@{تيشيرت أبيض}\n@{بنطلون جينز}",
+        help: "اكتب @ واختار كل صورة (كل صورة في سطر). أكتر من صورة = كاروسيل بنفس الكابشن",
+      },
+      { key: "caption", label: "الكابشن", type: "textarea", placeholder: "اكتب كلام البوست هنا", help: "نفس الكابشن لكل الصور" },
+      { key: "video", label: "فيديو بدل الصور (اختياري)", type: "text", placeholder: "@{فيديو المنتج}", help: "اكتب @ واختار فيديو - لو حطيته هينزل ريل" },
+    ],
+    sampleOutput: {
+      list: "https://your-domain/media/9f1c2d34-...\nhttps://your-domain/media/7b2e1a88-...",
+      urls: ["https://your-domain/media/9f1c2d34-...", "https://your-domain/media/7b2e1a88-..."],
+      count: 2,
+      caption: "مجموعة الشنط الجديدة وصلت ✨",
+      video: "",
+      url: "https://your-domain/media/9f1c2d34-...",
+    },
+    async run({ params }) {
+      const urls = urlList(params.images);
+      const video = String(params.video ?? "").trim();
+      if (!urls.length && !video) throw new Error("حط صورة واحدة على الأقل - اكتب @ واختار من مكتبة الصور، أو حط فيديو");
+      return {
+        output: {
+          list: urls.join("\n"),
+          urls,
+          count: urls.length,
+          url: urls[0] ?? "",
+          video,
+          caption: String(params.caption ?? ""),
+        },
+      };
     },
   },
   {

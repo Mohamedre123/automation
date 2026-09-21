@@ -71,57 +71,92 @@ export function isFieldVisible(def: NodeDefinition, fieldKey: string, params: Re
  * caption = the AI-written post, image / video = the generated media, sourceImage = the product photo.
  * Only empty boxes are filled.
  */
-export function autoFillParams(
-  def: NodeDefinition,
-  params: Record<string, unknown>,
-  upstream: WorkflowNode[],
-  nodeDef: (type: string) => NodeDefinition | undefined,
-): Record<string, unknown> {
+const FORM_IMAGE = /\((صورة|صوره|image|photo)\)/i;
+const FORM_VIDEO = /\((فيديو|video)\)/i;
+const FORM_TEXT = /محتوى|كابشن|نص|بوست|caption|content|post/i;
+/** A box counts as unwired when it is empty, or still holds a "write here" note. */
+const NOTE = /^\s*(اكتب|حدد|سيب|ضع|\(اكتب)/;
+const unwired = (value: unknown) =>
+  value === undefined || value === null || (typeof value === "string" ? !value.trim() || NOTE.test(value) : Array.isArray(value) && !value.length);
+
+/** The expression for one kind of content, from the nearest earlier step that has it. */
+export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["autoFill"]>, upstream: WorkflowNode[]): string {
+  const first = (pick: (n: WorkflowNode) => string) => {
+    for (const node of upstream) {
+      if (node.disabled) continue;
+      const value = pick(node);
+      if (value) return value;
+    }
+    return "";
+  };
+  const formKey = (node: WorkflowNode, match: RegExp) => {
+    if (node.type !== "trigger.form") return "";
+    const rows = Array.isArray(node.params.formFields) ? (node.params.formFields as { key?: string; value?: string }[]) : [];
+    const row = rows.find((r) => match.test(String(r?.value ?? "")) || match.test(String(r?.key ?? "")));
+    return row?.key ? `{{${node.id}.data.${row.key}}}` : "";
+  };
+  const fromAi = (node: WorkflowNode) => {
+    if (!["ai.generate", "ai.agent", "anthropic.message"].includes(node.type)) return "";
+    if (node.params.parseJson) {
+      const system = String(node.params.system ?? "");
+      for (const key of ["post", "caption", "content", "text"]) if (new RegExp(`"${key}"`).test(system)) return `{{${node.id}.json.${key}}}`;
+    }
+    return `{{${node.id}.text}}`;
+  };
+  const fromLibrary = (node: WorkflowNode) => (["media.select", "media.pick"].includes(node.type) ? `{{${node.id}.url}}` : "");
+
+  // The gallery step is where the customer puts the pictures and the words together.
+  const fromGallery = (node: WorkflowNode, key: string) =>
+    node.type === "media.gallery" && (key !== "caption" || String(node.params.caption ?? "").trim()) ? `{{${node.id}.${key}}}` : "";
+
+  switch (kind) {
+    case "caption":
+      return (
+        first((n) => fromGallery(n, "caption")) ||
+        first(fromAi) ||
+        first((n) => (n.type === "media.select" && String(n.params.ideas ?? "").trim() ? `{{${n.id}.idea}}` : "")) ||
+        first((n) => formKey(n, FORM_TEXT))
+      );
+    case "video":
+      return (
+        first((n) => (n.type === "ai.video" ? `{{${n.id}.url}}` : "")) ||
+        first((n) => (n.type === "media.gallery" && String(n.params.video ?? "").trim() ? `{{${n.id}.video}}` : "")) ||
+        first((n) => formKey(n, FORM_VIDEO))
+      );
+    case "sourceImage":
+      return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => formKey(n, FORM_IMAGE));
+    case "publishTime":
+      return first((n) => (n.type === "trigger.schedule" && String(n.params.publishTime ?? "").trim() ? `{{${n.id}.publishAt}}` : ""));
+    default:
+      return (
+        first((n) => (n.type === "ai.image" ? `{{${n.id}.url}}` : "")) ||
+        first((n) => fromGallery(n, "list")) ||
+        first(fromLibrary) ||
+        first((n) => formKey(n, FORM_IMAGE))
+      );
+  }
+}
+
+export function autoFillParams(def: NodeDefinition, params: Record<string, unknown>, upstream: WorkflowNode[]): Record<string, unknown> {
   const fields = def.fields.filter((f) => f.autoFill);
   if (!fields.length) return params;
-  const find = (types: string[]) => upstream.find((n) => types.includes(n.type) && !n.disabled);
-
-  const captionFor = () => {
-    const ai = find(["ai.generate", "ai.agent", "anthropic.message"]);
-    if (!ai) return "";
-    const system = String(ai.params.system ?? "");
-    if (ai.params.parseJson) {
-      for (const key of ["post", "caption", "text", "content"]) if (new RegExp(`"${key}"`).test(system)) return `{{${ai.id}.json.${key}}}`;
-    }
-    return `{{${ai.id}.text}}`;
-  };
-  const sourceImage = () => {
-    const media = find(["media.select", "media.pick"]);
-    if (media) return `{{${media.id}.url}}`;
-    const form = upstream.find((n) => n.type === "trigger.form");
-    const row = Array.isArray(form?.params.formFields)
-      ? (form!.params.formFields as { key?: string; value?: string }[]).find((r) => /\((صورة|image)\)/i.test(String(r?.value ?? "")))
-      : undefined;
-    return form && row?.key ? `{{${form.id}.data.${row.key}}}` : "";
-  };
-  const imageFor = () => {
-    const generated = find(["ai.image"]);
-    return generated ? `{{${generated.id}.url}}` : sourceImage();
-  };
-  const videoFor = () => {
-    const generated = find(["ai.video"]);
-    return generated ? `{{${generated.id}.url}}` : "";
-  };
-
   const next = { ...params };
   for (const field of fields) {
-    const current = next[field.key];
-    if (typeof current === "string" ? current.trim() : current) continue;
-    const value =
-      field.autoFill === "caption"
-        ? captionFor()
-        : field.autoFill === "video"
-          ? videoFor()
-          : field.autoFill === "sourceImage"
-            ? sourceImage()
-            : imageFor();
+    if (!unwired(next[field.key])) continue;
+    const value = wireValue(field.autoFill!, upstream);
     if (value) next[field.key] = value;
   }
-  void nodeDef;
   return next;
+}
+
+/** Re-wires one step from everything now before it (used after a new connection is drawn). */
+export function wireNode(
+  node: WorkflowNode,
+  upstream: WorkflowNode[],
+  nodeDef: (type: string) => NodeDefinition | undefined,
+): WorkflowNode {
+  const def = nodeDef(node.type);
+  if (!def) return node;
+  const params = autoFillParams(def, node.params, upstream);
+  return params === node.params ? node : { ...node, params };
 }

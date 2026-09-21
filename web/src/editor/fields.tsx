@@ -62,6 +62,13 @@ const PATH_WORDS: Record<string, string> = {
   "json.imagePrompt": "وصف التصميم",
   postUrl: "رابط البوست",
   index: "رقم الصورة",
+  list: "الصور",
+  urls: "الصور",
+  count: "عدد الصور",
+  video: "الفيديو",
+  publishAt: "ميعاد النشر",
+  message: "الرسالة",
+  body: "المحتوى",
 };
 const SYSTEM_WORDS: Record<string, string> = {
   $now: "الوقت الحالي",

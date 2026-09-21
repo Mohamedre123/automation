@@ -52,6 +52,32 @@ export function autoFillFromRun(
       }
       if (typeof result.text === "string" && result.text.trim()) return result.text;
     }
+    // No AI step: the words the customer wrote with the pictures, or typed into the form.
+    for (const n of earlier) {
+      if (n.type !== "media.gallery") continue;
+      const written = out(n).caption;
+      if (typeof written === "string" && written.trim()) return written;
+    }
+    for (const n of earlier) {
+      if (n.type !== "media.select") continue;
+      const idea = out(n).idea;
+      if (typeof idea === "string" && idea.trim()) return idea;
+    }
+    for (const n of earlier) {
+      if (n.type !== "trigger.form") continue;
+      const rows = Array.isArray(n.params.formFields) ? (n.params.formFields as { key?: string; value?: string }[]) : [];
+      const row = rows.find((r) => /محتوى|كابشن|نص|بوست|caption|content|post/i.test(String(r?.value ?? "")));
+      const value = row?.key ? out(n).data?.[row.key] : undefined;
+      if (typeof value === "string" && value.trim()) return value;
+    }
+    return "";
+  };
+  const gallery = (key: "list" | "video") => {
+    for (const n of earlier) {
+      if (n.type !== "media.gallery") continue;
+      const value = out(n)[key];
+      if (typeof value === "string" && value.trim()) return value;
+    }
     return "";
   };
   const productImage = () => {
@@ -86,13 +112,111 @@ export function autoFillFromRun(
         : field.autoFill === "caption"
         ? caption()
         : field.autoFill === "video"
-          ? generated("ai.video")
+          ? generated("ai.video") || gallery("video")
           : field.autoFill === "sourceImage"
             ? productImage()
-            : generated("ai.image") || productImage();
+            : generated("ai.image") || gallery("list") || productImage();
     if (value) next[field.key] = value;
   }
   return next;
+}
+
+/* ------------------------------------------------------------------ *
+ * Wiring a whole scenario once, before anybody opens it.
+ *
+ * autoFillFromRun above fixes an empty box while the scenario runs. This does it at the
+ * other end: the moment a scenario is created - from a template, from the assistant, or
+ * from the editor - every content box that is still empty gets written as {{N.path}} of
+ * the nearest earlier step that produces it. So a publishing step arrives already holding
+ * the caption and the images, and the only thing left to choose is the account.
+ * ------------------------------------------------------------------ */
+
+/** A box counts as unwired when it is empty, or still holds the "write here" note a template left in it. */
+const NOTE = /^\s*(اكتب|حدد|سيب|ضع|\(اكتب)/;
+const unwired = (value: unknown) =>
+  value === undefined || value === null || (typeof value === "string" ? !value.trim() || NOTE.test(value) : Array.isArray(value) && !value.length);
+
+const FORM_IMAGE = /\((صورة|صوره|image|photo)\)/i;
+const FORM_VIDEO = /\((فيديو|video)\)/i;
+const FORM_TEXT = /محتوى|كابشن|نص|بوست|caption|content|post/i;
+
+function formField(node: WorkflowNode, match: RegExp): string {
+  const rows = Array.isArray(node.params?.formFields) ? (node.params.formFields as { key?: string; value?: string }[]) : [];
+  const row = rows.find((r) => match.test(String(r?.value ?? "")) || match.test(String(r?.key ?? "")));
+  return row?.key ? `{{${node.id}.data.${row.key}}}` : "";
+}
+
+/** The expression for one kind of content, from the nearest earlier step that has it. */
+function wireValue(kind: NonNullable<FieldDef["autoFill"]>, earlier: WorkflowNode[]): string {
+  const first = (test: (n: WorkflowNode) => string) => {
+    for (const node of earlier) {
+      if (node.disabled) continue;
+      const value = test(node);
+      if (value) return value;
+    }
+    return "";
+  };
+  const fromAi = (node: WorkflowNode) => {
+    if (!["ai.generate", "ai.agent", "anthropic.message"].includes(node.type)) return "";
+    if (node.params?.parseJson) {
+      const system = String(node.params.system ?? "");
+      for (const key of ["post", "caption", "content", "text"]) if (new RegExp(`"${key}"`).test(system)) return `{{${node.id}.json.${key}}}`;
+    }
+    return `{{${node.id}.text}}`;
+  };
+  const fromLibrary = (node: WorkflowNode) => (["media.select", "media.pick"].includes(node.type) ? `{{${node.id}.url}}` : "");
+
+  // The gallery step is where the customer puts the pictures and the words together.
+  const fromGallery = (node: WorkflowNode, key: string) =>
+    node.type === "media.gallery" && (key !== "caption" || String(node.params?.caption ?? "").trim()) ? `{{${node.id}.${key}}}` : "";
+
+  switch (kind) {
+    case "caption":
+      return (
+        first((n) => fromGallery(n, "caption")) ||
+        first(fromAi) ||
+        first((n) => (n.type === "media.select" && String(n.params?.ideas ?? "").trim() ? `{{${n.id}.idea}}` : "")) ||
+        first((n) => (n.type === "trigger.form" ? formField(n, FORM_TEXT) : ""))
+      );
+    case "video":
+      return (
+        first((n) => (n.type === "ai.video" ? `{{${n.id}.url}}` : "")) ||
+        first((n) => (n.type === "media.gallery" && String(n.params?.video ?? "").trim() ? `{{${n.id}.video}}` : "")) ||
+        first((n) => (n.type === "trigger.form" ? formField(n, FORM_VIDEO) : ""))
+      );
+    case "sourceImage":
+      return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => (n.type === "trigger.form" ? formField(n, FORM_IMAGE) : ""));
+    case "publishTime":
+      return first((n) => (n.type === "trigger.schedule" && String(n.params?.publishTime ?? "").trim() ? `{{${n.id}.publishAt}}` : ""));
+    default:
+      // image / images: a whole gallery when there is one, otherwise a single picture
+      return (
+        first((n) => (n.type === "ai.image" ? `{{${n.id}.url}}` : "")) ||
+        first((n) => fromGallery(n, kind === "images" ? "list" : "list")) ||
+        first(fromLibrary) ||
+        first((n) => (n.type === "trigger.form" ? formField(n, FORM_IMAGE) : ""))
+      );
+  }
+}
+
+/** Fills every step's empty content boxes from the steps before it. Returns a new graph. */
+export function wireGraph(graph: WorkflowGraph, getNode: (type: string) => NodeDefinition | undefined): WorkflowGraph {
+  const nodes = graph.nodes.map((node) => {
+    const def = getNode(node.type);
+    const fields = def?.fields.filter((f) => f.autoFill) ?? [];
+    if (!fields.length) return node;
+    const earlier = ancestors(graph, node.id);
+    if (!earlier.length) return node;
+
+    let params = node.params;
+    for (const field of fields) {
+      if (!unwired(params?.[field.key])) continue;
+      const value = wireValue(field.autoFill!, earlier);
+      if (value) params = { ...params, [field.key]: value };
+    }
+    return params === node.params ? node : { ...node, params };
+  });
+  return { ...graph, nodes };
 }
 
 /** "Hook... CTA\n#tag #tag" + link -> the link sits right under the call to action, before the hashtags. */

@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { assertCanActivate } from "../billing.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { newId, now, one, parseJson, query, run } from "../db.js";
+import { wireGraph } from "../engine/autofill.js";
 import { executionFromRow } from "../engine/executor.js";
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode } from "../engine/types.js";
 import { httpError, requireString } from "../errors.js";
@@ -165,6 +166,8 @@ export async function insertWorkflow(userId: string, name: string, graph: Workfl
     }
   }
   const id = newId();
+  // Every new scenario arrives wired: empty caption / image / video boxes point at the steps before them.
+  graph = wireGraph(graph, getNode);
   await ensureTriggerPaths(graph, id);
   const trigger = triggerColumns(graph);
   const timestamp = now();
@@ -181,7 +184,7 @@ export async function updateInactiveWorkflow(userId: string, id: string, graphIn
   const row = await one("SELECT * FROM workflows WHERE id = $1 AND user_id = $2", [id, userId]);
   if (!row) throw httpError(404, "السيناريو مش موجود");
   if (row.active) throw httpError(409, "السيناريو مفعّل - لازم يتوقف الأول قبل التعديل");
-  const graph = sanitizeGraph(graphInput);
+  const graph = wireGraph(sanitizeGraph(graphInput), getNode);
   await ensureTriggerPaths(graph, id);
   const trigger = triggerColumns(graph);
   await run("UPDATE workflows SET name = $1, graph = $2, trigger_type = $3, trigger_path = $4, updated_at = $5 WHERE id = $6", [

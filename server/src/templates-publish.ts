@@ -1,9 +1,12 @@
 import type { Template } from "./templates.js";
 
 /*
- * Publishing templates: upload images once, write what goes with them, publish.
- * Every one of these starts from the image library, so there is nothing to wire by hand -
- * the customer writes @ in the images box and picks, and that is the whole setup.
+ * Publishing templates. All of them are the same shape on purpose:
+ *
+ *   متى؟  ->  الصور والكابشن  ->  النشر
+ *
+ * You fill one step - the pictures and the words - and the publishing step is already
+ * pointing at it, so the only thing left to choose there is the account.
  */
 
 const edge = (source: string, target: string) => ({ id: `e${source}-${target}`, source, target, sourceHandle: null });
@@ -14,13 +17,22 @@ const LIBRARY = "صورك مرفوعة في «مكتبة الصور» (ارفع�
 const ONE_PLATFORM = "حساب منصة واحدة على الأقل: إنستجرام أو فيسبوك أو تيليجرام أو أي منصة تانية";
 const AI_ACCOUNT = "حساب ذكاء اصطناعي: Gemini (فيه باقة مجانية) أو ChatGPT أو Claude";
 
-/** Every publish step looks the same; only the images and the caption change. */
-const publish = (id: string, x: number, params: Record<string, unknown>, name = "النشر") => ({
+/** The one step the customer fills: the pictures and the words that go with them. */
+const gallery = (id: string, x: number, params: Record<string, unknown> = {}) => ({
+  id,
+  type: "media.gallery",
+  name: "الصور والكابشن",
+  position: at(x),
+  params: { images: "", caption: "", ...params },
+});
+
+/** The publishing step, already wired to the gallery before it. */
+const publish = (id: string, x: number, from: string, params: Record<string, unknown> = {}, name = "النشر") => ({
   id,
   type: "social.publishAll",
   name,
   position: at(x),
-  params: { mediaMode: "image", ...params },
+  params: { caption: `{{${from}.caption}}`, imageUrl: `{{${from}.list}}`, mediaMode: "image", ...params },
 });
 
 export const publishTemplates: Template[] = [
@@ -28,18 +40,16 @@ export const publishTemplates: Template[] = [
     id: "post-now",
     name: "بوست دلوقتي: صورة وكابشن",
     description:
-      "أبسط حاجة ممكنة: اكتب @ واختار الصورة، اكتب الكابشن، ودوس «تشغيل مرة» - البوست ينزل على كل المنصات اللي ربطتها في نفس اللحظة",
+      "خطوة واحدة بتملاها: اكتب @ واختار الصورة واكتب الكابشن. خطوة النشر واخدة منها الصورة والكابشن لوحدها - انت بس بتختار الحساب وتدوس «تشغيل مرة»",
     category: "النشر",
     requires: [LIBRARY, ONE_PLATFORM],
     graph: {
       nodes: [
         { id: "1", type: "trigger.manual", name: "دوس تشغيل مرة", position: at(0), params: {} },
-        publish("2", 1, {
-          caption: "اكتب الكابشن هنا قبل ما تشغّل",
-          imageUrl: "",
-        }),
+        gallery("2", 1),
+        publish("3", 2, "2"),
       ],
-      edges: chain("1", "2"),
+      edges: chain("1", "2", "3"),
     },
   },
   {
@@ -52,31 +62,31 @@ export const publishTemplates: Template[] = [
     graph: {
       nodes: [
         { id: "1", type: "trigger.manual", name: "دوس تشغيل مرة", position: at(0), params: {} },
-        publish("2", 1, {
-          caption: "اكتب الكابشن هنا - هو نفسه لكل الصور",
-          imageUrl: "",
-        }, "كاروسيل"),
+        gallery("2", 1),
+        publish("3", 2, "2", {}, "كاروسيل"),
       ],
-      edges: chain("1", "2"),
+      edges: chain("1", "2", "3"),
     },
   },
   {
     id: "carousel-schedule",
     name: "كاروسيل في ميعاد تحدده",
-    description: "نفس الكاروسيل بس بميعاد: تجهّزه في أي وقت، وهو ينزل لوحده في الساعة اللي كاتبها - مفيد للعروض والإطلاقات",
+    description: "نفس الكاروسيل بس بميعاد: جهّزه في أي وقت، وهو ينزل لوحده في الساعة اللي كاتبها - مفيد للعروض والإطلاقات",
     category: "النشر",
     requires: [LIBRARY, ONE_PLATFORM],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", name: "الميعاد", position: at(0), params: { mode: "daily", time: "10:00", timezone: "Africa/Cairo" } },
-        publish("2", 1, {
-          caption: "اكتب الكابشن هنا - هو نفسه لكل الصور",
-          imageUrl: "",
-          publishAt: "19:00",
-          timezone: "Africa/Cairo",
-        }, "كاروسيل"),
+        {
+          id: "1",
+          type: "trigger.schedule",
+          name: "الميعاد",
+          position: at(0),
+          params: { mode: "daily", time: "10:00", publishTime: "19:00", timezone: "Africa/Cairo" },
+        },
+        gallery("2", 1),
+        publish("3", 2, "2", { publishAt: "{{1.publishAt}}", timezone: "Africa/Cairo" }, "كاروسيل"),
       ],
-      edges: chain("1", "2"),
+      edges: chain("1", "2", "3"),
     },
   },
   {
@@ -96,7 +106,13 @@ export const publishTemplates: Template[] = [
           position: at(1),
           params: { images: "", ideas: "", mode: "each" },
         },
-        publish("3", 2, { caption: "{{2.idea}}", imageUrl: "{{2.url}}" }),
+        {
+          id: "3",
+          type: "social.publishAll",
+          name: "النشر",
+          position: at(2),
+          params: { caption: "{{2.idea}}", imageUrl: "{{2.url}}", mediaMode: "image" },
+        },
       ],
       edges: chain("1", "2", "3"),
     },
@@ -111,11 +127,12 @@ export const publishTemplates: Template[] = [
     graph: {
       nodes: [
         { id: "1", type: "trigger.manual", name: "دوس تشغيل مرة", position: at(0), params: {} },
+        gallery("2", 1, { caption: "" }),
         {
-          id: "2",
+          id: "3",
           type: "ai.generate",
           name: "كتابة الكابشن",
-          position: at(1),
+          position: at(2),
           params: {
             system:
               "أنت كوبي رايتر سوشيال ميديا باللهجة المصرية. اكتب كابشن بوست واحد: أول سطر يشد الانتباه، بعده الفايدة في سطرين، بعده CTA واضح، وفي الآخر من 8 لـ 12 هاشتاج. اكتب الكابشن بس من غير أي شرح.",
@@ -123,9 +140,9 @@ export const publishTemplates: Template[] = [
             maxTokens: 900,
           },
         },
-        publish("3", 2, { caption: "{{2.text}}", imageUrl: "" }, "كاروسيل"),
+        publish("4", 3, "2", { caption: "{{3.text}}" }, "كاروسيل"),
       ],
-      edges: chain("1", "2", "3"),
+      edges: chain("1", "2", "3", "4"),
     },
   },
   {
@@ -137,9 +154,10 @@ export const publishTemplates: Template[] = [
     graph: {
       nodes: [
         { id: "1", type: "trigger.manual", name: "دوس تشغيل مرة", position: at(0), params: {} },
-        publish("2", 1, { caption: "اكتب كابشن الريل هنا", videoUrl: "", mediaMode: "video" }, "نشر الريل"),
+        { id: "2", type: "media.gallery", name: "الفيديو والكابشن", position: at(1), params: { images: "", caption: "", video: "" } },
+        publish("3", 2, "2", { imageUrl: "", videoUrl: "{{2.video}}", mediaMode: "video" }, "نشر الريل"),
       ],
-      edges: chain("1", "2"),
+      edges: chain("1", "2", "3"),
     },
   },
   {
@@ -151,15 +169,16 @@ export const publishTemplates: Template[] = [
     graph: {
       nodes: [
         { id: "1", type: "trigger.manual", name: "دوس تشغيل مرة", position: at(0), params: {} },
+        gallery("2", 1),
         {
-          id: "2",
+          id: "3",
           type: "telegram.sendAlbum",
           name: "ألبوم للقناة",
-          position: at(1),
-          params: { chatId: "@my_channel", photos: "", caption: "اكتب التعليق هنا" },
+          position: at(2),
+          params: { chatId: "@my_channel", photos: "{{2.list}}", caption: "{{2.caption}}" },
         },
       ],
-      edges: chain("1", "2"),
+      edges: chain("1", "2", "3"),
     },
   },
   {
@@ -171,9 +190,27 @@ export const publishTemplates: Template[] = [
     requires: ["فولدر صور في «مكتبة الصور» (مثلاً «منتجات»)", ONE_PLATFORM],
     graph: {
       nodes: [
-        { id: "1", type: "trigger.schedule", name: "كل يوم", position: at(0), params: { mode: "daily", time: "10:00", publishTime: "19:00", timezone: "Africa/Cairo" } },
+        {
+          id: "1",
+          type: "trigger.schedule",
+          name: "كل يوم",
+          position: at(0),
+          params: { mode: "daily", time: "10:00", publishTime: "19:00", timezone: "Africa/Cairo" },
+        },
         { id: "2", type: "media.pick", name: "صورة النهاردة", position: at(1), params: { folder: "منتجات", mode: "sequential" } },
-        publish("3", 2, { caption: "{{2.name}}\n\nمتاح دلوقتي - كلّمنا للطلب", imageUrl: "{{2.url}}" }),
+        {
+          id: "3",
+          type: "social.publishAll",
+          name: "النشر",
+          position: at(2),
+          params: {
+            caption: "{{2.name}}\n\nمتاح دلوقتي - كلّمنا للطلب",
+            imageUrl: "{{2.url}}",
+            mediaMode: "image",
+            publishAt: "{{1.publishAt}}",
+            timezone: "Africa/Cairo",
+          },
+        },
       ],
       edges: chain("1", "2", "3"),
     },
