@@ -1,4 +1,6 @@
+import { config } from "../config.js";
 import type { NodeDefinition } from "../engine/types.js";
+import { buildDocx, DOCX_MIME, type DocBlock, type Run } from "./docx.js";
 import { storeFile } from "./media.js";
 
 /*
@@ -6,44 +8,59 @@ import { storeFile } from "./media.js";
  *
  *  - "بيانات المشروع": the one place a customer describes their business, so every AI step
  *    after it knows who it is working for without anybody repeating themselves.
- *  - "تقرير احترافي": the writing an AI step produced, laid out as a real document with a
- *    cover, headings and tables, saved with its own link that opens on any phone and prints
- *    to PDF from the browser.
+ *  - "تقرير احترافي": what an AI step wrote, read once into a document model and then written
+ *    out twice - a page with the platform's own look, and a real Word file. Both say the same
+ *    thing because both come from the same parse.
  */
 
 const esc = (text: unknown) =>
   String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-/**
- * The small amount of Markdown an AI actually writes in a report. Everything is escaped
- * first and only then given shape, so nothing that arrives in the text can become markup.
- */
-export function renderReport(markdown: string): string {
-  const lines = esc(markdown).replace(/\r/g, "").split("\n");
-  const out: string[] = [];
-  let list: "ul" | "ol" | null = null;
+/* ---------------------------------------------------------------- *
+ * Reading the Markdown an AI writes
+ * ---------------------------------------------------------------- */
+
+/** A line, split into the pieces that are bold, linked, or plain. */
+export function parseInline(text: string): Run[] {
+  const runs: Run[] = [];
+  const pattern = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)<]+)|`([^`]+)`/g;
+  let at = 0;
+  for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+    if (match.index > at) runs.push({ text: text.slice(at, match.index) });
+    if (match[1] !== undefined) runs.push({ text: match[1], bold: true });
+    else if (match[2] !== undefined) runs.push({ text: match[2], link: match[3] });
+    else if (match[4] !== undefined) runs.push({ text: match[4], link: match[4] });
+    else if (match[5] !== undefined) runs.push({ text: match[5] });
+    at = match.index + match[0].length;
+  }
+  if (at < text.length) runs.push({ text: text.slice(at) });
+  return runs.filter((run) => run.text !== "");
+}
+
+/** The small amount of Markdown an AI actually writes in a report. */
+export function parseReport(markdown: string): DocBlock[] {
+  const blocks: DocBlock[] = [];
+  const lines = String(markdown ?? "").replace(/\r/g, "").split("\n");
+  let list: { ordered: boolean; items: Run[][] } | null = null;
   let table: string[][] | null = null;
 
   const closeList = () => {
-    if (list) out.push(`</${list}>`);
+    if (list) blocks.push({ kind: "list", ordered: list.ordered, items: list.items });
     list = null;
   };
   const closeTable = () => {
     if (!table) return;
     const [head, ...rows] = table;
-    out.push(
-      `<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>` +
-        rows.map((row) => `<tr>${row.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("") +
-        `</tbody></table>`,
-    );
+    blocks.push({ kind: "table", head: head.map(parseInline), rows: rows.map((row) => row.map(parseInline)) });
     table = null;
   };
 
   for (const raw of lines) {
     const line = raw.trim();
-    // A table row; the |---|---| separator under the header is skipped.
+
     if (/^\|.*\|$/.test(line)) {
       const cells = line.slice(1, -1).split("|").map((c) => c.trim());
+      // The |---|---| row under a header is a separator, not data.
       if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue;
       closeList();
       (table ??= []).push(cells);
@@ -58,120 +75,157 @@ export function renderReport(markdown: string): string {
     const heading = line.match(/^(#{1,4})\s+(.*)$/);
     if (heading) {
       closeList();
-      const level = Math.min(heading[1].length + 1, 4);
-      out.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      blocks.push({ kind: "heading", level: Math.min(heading[1].length, 3) as 1 | 2 | 3, runs: parseInline(heading[2]) });
       continue;
     }
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
       closeList();
-      out.push("<hr>");
+      blocks.push({ kind: "rule" });
       continue;
     }
     const bullet = line.match(/^[-*•]\s+(.*)$/);
-    if (bullet) {
-      if (list !== "ul") {
-        closeList();
-        out.push("<ul>");
-        list = "ul";
-      }
-      out.push(`<li>${inline(bullet[1])}</li>`);
-      continue;
-    }
     const numbered = line.match(/^\d+[.)]\s+(.*)$/);
-    if (numbered) {
-      if (list !== "ol") {
-        closeList();
-        out.push("<ol>");
-        list = "ol";
-      }
-      out.push(`<li>${inline(numbered[1])}</li>`);
+    if (bullet || numbered) {
+      const ordered = Boolean(numbered);
+      if (list && list.ordered !== ordered) closeList();
+      list ??= { ordered, items: [] };
+      list.items.push(parseInline((bullet ?? numbered)![1]));
       continue;
     }
     closeList();
-    out.push(`<p>${inline(line)}</p>`);
+    blocks.push({ kind: "paragraph", runs: parseInline(line) });
   }
   closeList();
   closeTable();
-  return out.join("\n");
+  return blocks;
 }
 
-/** Bold, italic and links inside a line - on text that is already escaped. */
-function inline(text: string): string {
-  return text
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noreferrer">$2</a>');
+/* ---------------------------------------------------------------- *
+ * The page
+ * ---------------------------------------------------------------- */
+
+const runsHtml = (runs: Run[]) =>
+  runs
+    .map((run) => {
+      const text = esc(run.text);
+      if (run.link) return `<a href="${esc(run.link)}" target="_blank" rel="noreferrer">${text}</a>`;
+      return run.bold ? `<strong>${text}</strong>` : text;
+    })
+    .join("");
+
+export function blocksToHtml(blocks: DocBlock[]): string {
+  return blocks
+    .map((block) => {
+      switch (block.kind) {
+        case "heading":
+          return `<h${block.level + 1}>${runsHtml(block.runs)}</h${block.level + 1}>`;
+        case "list": {
+          const tag = block.ordered ? "ol" : "ul";
+          return `<${tag}>${block.items.map((item) => `<li>${runsHtml(item)}</li>`).join("")}</${tag}>`;
+        }
+        case "table":
+          return (
+            `<div class="scroll"><table><thead><tr>${block.head.map((c) => `<th>${runsHtml(c)}</th>`).join("")}</tr></thead>` +
+            `<tbody>${block.rows.map((row) => `<tr>${row.map((c) => `<td>${runsHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
+          );
+        case "rule":
+          return "<hr>";
+        default:
+          return `<p>${runsHtml(block.runs)}</p>`;
+      }
+    })
+    .join("\n");
 }
 
-const PAGE = (title: string, subtitle: string, date: string, highlights: [string, string][], body: string, footer: string) => `<!doctype html>
+const PAGE = (
+  title: string,
+  subtitle: string,
+  date: string,
+  highlights: [string, string][],
+  body: string,
+  footer: string,
+  wordUrl: string,
+) => `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>${esc(title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&display=swap");
-  :root { --ink:#221a13; --soft:#6b5947; --line:#ece0d3; --accent:#ea580c; --bg:#f6f1ea; }
-  * { box-sizing: border-box; }
+  :root { --ink:#221a13; --soft:#6b5947; --line:#ece0d3; --accent:#ea580c; --bg:#f6f1ea; --panel:#fff; }
+  * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink);
-    font-family:"Readex Pro",Tahoma,"Segoe UI",Arial,sans-serif; line-height:1.9; }
-  .sheet { max-width:820px; margin:28px auto; background:#fff; border-radius:18px; overflow:hidden;
-    box-shadow:0 18px 60px -30px rgba(80,40,10,.45); }
-  header { background:var(--accent); color:#fff; padding:34px 38px; }
-  header .kicker { font-size:13px; opacity:.85; letter-spacing:.3px; }
-  header h1 { margin:6px 0 4px; font-size:28px; line-height:1.35; }
-  header p { margin:0; font-size:15px; opacity:.92; }
-  .meta { padding:14px 38px; border-bottom:1px solid var(--line); color:var(--soft); font-size:13px;
+    font-family:"Readex Pro",Tahoma,"Segoe UI",Arial,sans-serif; font-size:15.5px; line-height:1.95;
+    padding-bottom:90px; }
+  .sheet { max-width:840px; margin:26px auto; background:var(--panel); border-radius:20px; overflow:hidden;
+    box-shadow:0 20px 60px -32px rgba(80,40,10,.5); }
+  .cover { background:var(--accent); color:#fff; padding:32px 40px; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .brand img { width:34px; height:34px; border-radius:9px; background:rgba(255,255,255,.16); }
+  .brand span { font-weight:700; font-size:19px; }
+  .cover h1 { margin:0 0 6px; font-size:29px; font-weight:700; line-height:1.4; }
+  .cover p { margin:0; font-size:15.5px; opacity:.93; }
+  .meta { padding:13px 40px; border-bottom:1px solid var(--line); color:var(--soft); font-size:13.5px;
     display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .highlights { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
     background:var(--line); border-bottom:1px solid var(--line); }
-  .highlights div { background:#fff; padding:16px 18px; }
-  .highlights small { display:block; color:var(--soft); font-size:12.5px; margin-bottom:4px; }
-  .highlights strong { font-size:17px; }
-  main { padding:8px 38px 38px; }
-  h2 { font-size:21px; margin:30px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--accent); }
-  h3 { font-size:17px; margin:22px 0 8px; color:var(--accent); }
-  h4 { font-size:15px; margin:18px 0 6px; }
-  p { margin:0 0 12px; }
-  ul, ol { margin:0 0 14px; padding-inline-start:22px; }
-  li { margin-bottom:6px; }
-  hr { border:0; border-top:1px solid var(--line); margin:22px 0; }
-  code { background:#f6f1ea; padding:2px 6px; border-radius:5px; font-size:13px; }
-  a { color:var(--accent); }
-  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:14.5px; }
+  .highlights div { background:var(--panel); padding:16px 20px; }
+  .highlights small { display:block; color:var(--soft); font-size:12.5px; margin-bottom:5px; }
+  .highlights strong { font-size:18px; font-weight:700; }
+  main { padding:10px 40px 36px; }
+  h2 { font-size:22px; font-weight:700; margin:32px 0 12px; padding-bottom:9px; border-bottom:2px solid var(--accent); }
+  h3 { font-size:18px; font-weight:600; margin:24px 0 8px; color:var(--accent); }
+  h4 { font-size:16px; font-weight:600; margin:18px 0 6px; }
+  p { margin:0 0 13px; }
+  ul, ol { margin:0 0 16px; padding-inline-start:24px; }
+  li { margin-bottom:7px; }
+  li::marker { color:var(--accent); }
+  hr { border:0; border-top:1px solid var(--line); margin:24px 0; }
+  a { color:var(--accent); overflow-wrap:anywhere; }
+  .scroll { overflow-x:auto; margin:16px 0 22px; }
+  table { width:100%; border-collapse:collapse; font-size:14.5px; }
   /* plaintext picks each cell's direction from its own first letter, so "800 - 2500"
      stays in that order instead of being flipped by the Arabic page around it. */
-  th, td { border:1px solid var(--line); padding:10px 12px; text-align:right; vertical-align:top; unicode-bidi:plaintext; }
+  th, td { border:1px solid var(--line); padding:10px 13px; text-align:right; vertical-align:top; unicode-bidi:plaintext; }
   th { background:#fbf6f0; font-weight:600; }
   tbody tr:nth-child(even) td { background:#fdfaf7; }
-  footer { padding:18px 38px 30px; color:var(--soft); font-size:13px; border-top:1px solid var(--line); }
-  .print { position:fixed; inset-block-start:16px; inset-inline-start:16px; background:var(--accent); color:#fff;
-    border:0; border-radius:10px; padding:11px 18px; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
-    box-shadow:0 8px 20px -8px rgba(234,88,12,.8); }
+  footer { padding:18px 40px 30px; color:var(--soft); font-size:13px; border-top:1px solid var(--line); }
+  .actions { position:fixed; inset-block-end:0; inset-inline:0; z-index:5;
+    display:flex; gap:10px; justify-content:center; padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(10px);
+    border-top:1px solid var(--line); }
+  .actions a, .actions button { font:inherit; font-size:14.5px; font-weight:600; border-radius:11px;
+    padding:11px 20px; cursor:pointer; text-decoration:none; border:1px solid var(--line); background:var(--panel); color:var(--ink); }
+  .actions .main { background:var(--accent); border-color:var(--accent); color:#fff; }
   @media print {
-    body { background:#fff; }
+    body { background:#fff; padding:0; }
     .sheet { margin:0; box-shadow:none; border-radius:0; max-width:none; }
-    .print { display:none; }
+    .actions { display:none; }
+    .scroll { overflow:visible; }
     h2, h3 { break-after:avoid; }
     table, ul, ol { break-inside:avoid; }
   }
   @media (max-width:700px) {
+    body { font-size:15px; }
     .sheet { margin:0; border-radius:0; }
-    header, .meta, main, footer { padding-inline:20px; }
-    header h1 { font-size:23px; }
+    .cover, .meta, main, footer { padding-inline:20px; }
+    .cover { padding-block:26px; }
+    .cover h1 { font-size:23px; }
+    h2 { font-size:19px; }
   }
 </style>
 </head>
 <body>
-<button class="print" onclick="window.print()">حفظ PDF / طباعة</button>
 <div class="sheet">
-  <header>
-    <div class="kicker">تقرير من تدفّق</div>
+  <div class="cover">
+    <div class="brand"><img src="${esc(config.publicUrl)}/logo.png" alt=""><span>تدفّق</span></div>
     <h1>${esc(title)}</h1>
     ${subtitle ? `<p>${esc(subtitle)}</p>` : ""}
-  </header>
+  </div>
   <div class="meta"><span>${esc(date)}</span><span>اتعمل تلقائياً</span></div>
   ${
     highlights.length
@@ -180,6 +234,10 @@ const PAGE = (title: string, subtitle: string, date: string, highlights: [string
   }
   <main>${body}</main>
   ${footer ? `<footer>${esc(footer)}</footer>` : ""}
+</div>
+<div class="actions">
+  ${wordUrl ? `<a class="main" href="${esc(wordUrl)}" download>حمّل ملف Word</a>` : ""}
+  <button onclick="window.print()">حفظ PDF / طباعة</button>
 </div>
 </body>
 </html>`;
@@ -193,6 +251,9 @@ function parseHighlights(text: string): [string, string][] {
     .slice(0, 6)
     .map((parts) => [parts[0].trim(), parts.slice(1).join(":").trim()] as [string, string]);
 }
+
+const arabicDate = () =>
+  new Intl.DateTimeFormat("ar-EG-u-nu-latn", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" }).format(new Date());
 
 export const reportNodes: NodeDefinition[] = [
   {
@@ -210,6 +271,7 @@ export const reportNodes: NodeDefinition[] = [
       { key: "offer", label: "بتبيع إيه بالظبط", type: "textarea", required: true, placeholder: "شنط جلد طبيعي حريمي، من 800 لـ 2500 جنيه" },
       { key: "audience", label: "عملاؤك مين", type: "text", placeholder: "بنات وستات من 22 لـ 40 سنة في القاهرة والإسكندرية" },
       { key: "market", label: "السوق / البلد", type: "text", default: "مصر" },
+      { key: "site", label: "موقعك أو صفحتك (اختياري)", type: "text", placeholder: "https://mystore.com أو رابط صفحتك على إنستجرام" },
       {
         key: "competitors",
         label: "منافسينك",
@@ -225,6 +287,7 @@ export const reportNodes: NodeDefinition[] = [
       offer: "شنط جلد طبيعي حريمي",
       audience: "بنات وستات من 22 لـ 40 سنة",
       market: "مصر",
+      site: "https://mystore.com",
       competitors: ["شنط الأصالة", "Bag House"],
       goal: "أعرف أسعارهم وإزاي أسبقهم",
       text: "المشروع: متجر نور للشنط\nبيبيع: شنط جلد طبيعي حريمي\n...",
@@ -239,6 +302,7 @@ export const reportNodes: NodeDefinition[] = [
         ["بيبيع", String(params.offer ?? "")],
         ["العملاء", String(params.audience ?? "")],
         ["السوق", String(params.market ?? "")],
+        ["موقعه / صفحته", String(params.site ?? "")],
         ["المنافسين", competitors.join(" | ")],
         ["اللي يهمه", String(params.goal ?? "")],
         ["ملاحظات", String(params.notes ?? "")],
@@ -254,6 +318,7 @@ export const reportNodes: NodeDefinition[] = [
           offer: String(params.offer ?? ""),
           audience: String(params.audience ?? ""),
           market: String(params.market ?? ""),
+          site: String(params.site ?? ""),
           competitors,
           competitorsText: competitors.join("\n"),
           count: competitors.length,
@@ -266,9 +331,9 @@ export const reportNodes: NodeDefinition[] = [
   },
   {
     type: "report.document",
-    name: "تقرير احترافي (PDF / صفحة)",
+    name: "تقرير احترافي (Word + صفحة)",
     description:
-      "بياخد اللي الذكاء الاصطناعي كتبه ويطلّعه تقرير مصفوف بعناوين وجداول وغلاف، وبيديك رابط يفتح على أي موبايل وفيه زرار «حفظ PDF»",
+      "بياخد اللي الذكاء الاصطناعي كتبه ويطلّعه تقرير مصفوف بهوية المنصة: ملف Word حقيقي تفتحه وتحفظه PDF، وصفحة تفتح على أي موبايل - الاتنين بنفس المحتوى",
     app: "manual",
     appName: "تقرير",
     color: "#0f766e",
@@ -298,34 +363,43 @@ export const reportNodes: NodeDefinition[] = [
     ],
     sampleOutput: {
       url: "https://your-domain/media/9f1c2d34-...",
+      wordUrl: "https://your-domain/media/7b2e1a88-...",
       id: "9f1c2d34-...",
       title: "تحليل المنافسين - سبتمبر",
       words: 940,
     },
     async run({ params, workflow }) {
       const title = String(params.title ?? "").trim() || "تقرير";
+      const subtitle = String(params.subtitle ?? "").trim();
       const content = String(params.content ?? "").trim();
       if (!content) throw new Error("محتوى التقرير فاضي - وصّل الخطوة دي بخطوة ذكاء اصطناعي قبلها، أو اكتب المحتوى بنفسك");
-      const date = new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: "Africa/Cairo",
-      }).format(new Date());
-      const html = PAGE(
-        title,
-        String(params.subtitle ?? "").trim(),
-        date,
-        parseHighlights(params.highlights),
-        renderReport(content),
-        String(params.footer ?? "").trim() || "اتعمل تلقائياً بواسطة تدفّق",
-      );
-      const stored = await storeFile(workflow.userId, Buffer.from(html, "utf8"), "text/html", {
-        name: String(params.fileName ?? "").trim() || title,
+      const footer = String(params.footer ?? "").trim() || "اتعمل تلقائياً بواسطة تدفّق";
+      const name = String(params.fileName ?? "").trim() || title;
+      const date = arabicDate();
+      const blocks = parseReport(content);
+
+      // The Word file first, so the page can offer it as a download.
+      const word = await storeFile(workflow.userId, buildDocx({ title, subtitle, date, blocks, footer }), DOCX_MIME, {
+        name: `${name}.docx`,
         folder: "تقارير",
         source: "generated",
       });
-      return { output: { ...stored, title, date, words: content.split(/\s+/).filter(Boolean).length } };
+      const page = await storeFile(
+        workflow.userId,
+        Buffer.from(PAGE(title, subtitle, date, parseHighlights(params.highlights), blocksToHtml(blocks), footer, word.url), "utf8"),
+        "text/html",
+        { name, folder: "تقارير", source: "generated" },
+      );
+      return {
+        output: {
+          ...page,
+          wordUrl: word.url,
+          wordId: word.id,
+          title,
+          date,
+          words: content.split(/\s+/).filter(Boolean).length,
+        },
+      };
     },
   },
 ];

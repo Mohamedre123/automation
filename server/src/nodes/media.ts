@@ -28,7 +28,15 @@ export const mediaUrlFor = (row: { id: string; url?: string | null }) => row.url
 // A Vercel function can't return more than ~4.5MB, so bigger files need external storage.
 const MAX_DB_FILE_BYTES = config.isVercel ? 4 * 1024 * 1024 : 60 * 1024 * 1024;
 const storageEnabled = () => Boolean(config.storage.url && config.storage.serviceKey);
-const EXTENSIONS: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif", "video/mp4": "mp4" };
+const EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "video/mp4": "mp4",
+  "text/html": "html",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+};
 
 async function uploadToStorage(path: string, body: Buffer, mimeType: string) {
   const { url, serviceKey, bucket } = config.storage;
@@ -123,7 +131,7 @@ export const urlList = (value: unknown) =>
     .filter((item) => /^https?:\/\//i.test(item));
 
 export const loadMedia = (id: string) =>
-  one<{ mime_type: string; data: string; url: string }>("SELECT mime_type, data, url FROM media WHERE id = $1", [id]);
+  one<{ mime_type: string; data: string; url: string; name: string }>("SELECT mime_type, data, url, name FROM media WHERE id = $1", [id]);
 
 /** Fetches an image as base64, reading our own /media files straight from the database. */
 /** Any file (video, image, document) as bytes - our own library straight from storage, others over HTTP. */

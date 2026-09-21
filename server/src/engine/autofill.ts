@@ -113,6 +113,7 @@ export function autoFillFromRun(
 
   const next = { ...params };
   for (const field of fields) {
+    if (field.autoFill === "replyTo") continue;
     if (!empty(next[field.key])) continue;
     const value =
       field.autoFill === "record"
@@ -223,6 +224,10 @@ export function wireGraph(graph: WorkflowGraph, getNode: (type: string) => NodeD
 
     let params = node.params;
     for (const field of fields) {
+      // "Reply to whoever wrote in" is only worked out in the editor, when somebody swaps a bot
+      // or a trigger. A template ships with that box empty on purpose - it is the owner's own
+      // number - and filling it here would send the owner's alerts to the customer.
+      if (field.autoFill === "replyTo") continue;
       if (!unwired(params?.[field.key])) continue;
       const value = wireValue(field.autoFill!, earlier);
       if (value) params = { ...params, [field.key]: value };

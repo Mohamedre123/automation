@@ -11,13 +11,19 @@ export async function mediaRoutes(app: FastifyInstance) {
     if (!file) return reply.status(404).send({ error: "الملف مش موجود" });
     if (!file.data && file.url) return reply.redirect(file.url, 302);
     const html = file.mime_type === "text/html";
+    if (/officedocument|msword/.test(file.mime_type)) {
+      // A Word file is meant to be saved, so it arrives with its own name.
+      const base = (file.name || "report").replace(/[\r\n"\\]/g, "").trim() || "report";
+      const name = encodeURIComponent(/\.docx$/i.test(base) ? base : `${base}.docx`);
+      reply.header("content-disposition", `attachment; filename*=UTF-8''${name}`);
+    }
     return reply
       .type(file.mime_type)
       .header("cache-control", html ? "no-store" : "public, max-age=604800, immutable")
       // A generated report is a document, not an app: no scripts, no fetching, nothing but itself.
       .header(
         "content-security-policy",
-        html ? "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https:; script-src 'unsafe-inline'" : "default-src 'none'",
+        html ? "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https: http:; script-src 'unsafe-inline'" : "default-src 'none'",
       )
       .send(Buffer.from(file.data, "base64"));
   });

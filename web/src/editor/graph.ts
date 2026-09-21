@@ -74,6 +74,7 @@ export function isFieldVisible(def: NodeDefinition, fieldKey: string, params: Re
 const FORM_IMAGE = /\((صورة|صوره|image|photo)\)/i;
 const FORM_VIDEO = /\((فيديو|video)\)/i;
 const FORM_TEXT = /محتوى|كابشن|نص|بوست|caption|content|post/i;
+const FORM_PHONE = /واتساب|تليفون|موبايل|رقم|phone|whatsapp|mobile/i;
 /** A box counts as unwired when it is empty, or still holds a "write here" note. */
 const NOTE = /^\s*(اكتب|حدد|سيب|ضع|\(اكتب)/;
 const unwired = (value: unknown) =>
@@ -130,6 +131,13 @@ export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["au
     case "record":
       // A whole result, so a sheet or a table can match its own columns against it by name.
       return first((n) => `{{${n.id}}}`);
+    case "replyTo":
+      // Whoever wrote in: the phone that messaged, the chat that messaged, or the number on the form.
+      return (
+        first((n) => (["wasender.trigger", "whatsapp.trigger"].includes(n.type) ? `{{${n.id}.phone}}` : "")) ||
+        first((n) => (n.type === "telegram.trigger" ? `{{${n.id}.message.chat.id}}` : "")) ||
+        first((n) => formKey(n, FORM_PHONE))
+      );
     default:
       return (
         first((n) => (n.type === "ai.image" ? `{{${n.id}.url}}` : "")) ||
