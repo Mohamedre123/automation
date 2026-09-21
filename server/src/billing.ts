@@ -2,7 +2,17 @@ import type { FastifyInstance } from "fastify";
 import { config } from "./config.js";
 import { newId, now, one, query, run } from "./db.js";
 import { httpError } from "./errors.js";
-import { codeEmail, mailAccount, saveMailAccount, sendPlatformMail } from "./mailer.js";
+import { isConfigured, mailSettings, saveMailSettings, sendPlatformMail, sendQuietly, type MailSettings } from "./mailer.js";
+import {
+  creditsAddedEmail,
+  newRequestEmail,
+  paymentReceivedEmail,
+  planActivatedEmail,
+  planEndedEmail,
+  planExpiringEmail,
+  requestRejectedEmail,
+  testEmail,
+} from "./emails.js";
 
 /*
  * Plans and virtual credits. Customers pay for their own AI / app usage with their own keys, so credits
@@ -279,6 +289,8 @@ function toAccount(row: AccountRow): Account {
 
 /** Sets a plan and fills its monthly credits. */
 async function setPlan(userId: string, plan: PlanKey, period: Period, expiresAt: string | null, trialEndsAt?: string | null) {
+  // A new subscription starts a new cycle of notices.
+  await run("UPDATE users SET plan_notice = '' WHERE id = $1", [userId]);
   const p = PLANS[plan];
   const resetAt = plan === "trial" ? trialEndsAt ?? addDays(new Date(), TRIAL_DAYS) : addDays(new Date(), 30);
   await run(
@@ -471,13 +483,21 @@ export async function billingRoutes(app: FastifyInstance) {
   app.post("/api/billing/request", async (req) => {
     const body = (req.body ?? {}) as { kind?: string; plan?: string; period?: string; pack?: string; note?: string };
     const note = String(body.note ?? "").slice(0, 500);
+    // Both sides hear about it: the customer gets a receipt, the owner gets something to review.
+    const told = (what: string, amount: string) => {
+      void sendQuietly(req.user.email, paymentReceivedEmail(req.user.name, what, amount), "payment received");
+      for (const owner of config.adminEmails) {
+        void sendQuietly(owner, newRequestEmail({ name: req.user.name, email: req.user.email, id: req.user.id }, what, amount), "new request");
+      }
+    };
     if (body.kind === "credits") {
       const pack = CREDIT_PACKS.find((p) => p.key === body.pack);
       if (!pack) throw httpError(400, "اختار باقة كريديت");
       await run(
         "INSERT INTO subscription_requests (id, user_id, kind, plan, pack, amount, period, note, status, created_at) VALUES ($1, $2, 'credits', '', $3, $4, 'monthly', $5, 'pending', $6)",
-        [newId(), req.user.id, pack.key, `$${pack.price}`, note, now()],
+        [newId(), req.user.id, pack.key, `${pack.price}`, note, now()],
       );
+      told(pack.name, `${pack.price}`);
       return { ok: true };
     }
     const plan = PLANS[body.plan as PlanKey];
@@ -501,8 +521,56 @@ export async function billingRoutes(app: FastifyInstance) {
         [newId(), req.user.id, plan.key, amount, period, note, now()],
       );
     }
+    told(`باقة ${plan.name} (${period === "yearly" ? "سنوي" : "شهري"})`, amount);
     return { ok: true };
   });
+}
+
+
+/*
+ * Subscription mail that nobody triggers by clicking: a heads-up before a plan runs out, and a
+ * note once it has. Runs on the same tick as the schedules; plan_notice remembers which of the
+ * two an account already had, so neither is ever sent twice for the same subscription.
+ */
+export async function runSubscriptionMail(): Promise<{ warned: number; ended: number }> {
+  const settings = await mailSettings();
+  if (!isConfigured(settings)) return { warned: 0, ended: 0 };
+
+  const soon = addDays(new Date(), 3);
+  const nowIso = now();
+  let warned = 0;
+  let ended = 0;
+
+  const expiring = await query<{ id: string; email: string; name: string; plan: string; plan_expires_at: string }>(
+    `SELECT id, email, name, plan, plan_expires_at FROM users
+     WHERE plan NOT IN ('free', 'trial') AND plan_expires_at IS NOT NULL
+       AND plan_expires_at > $1 AND plan_expires_at <= $2 AND plan_notice <> 'expiring'
+     LIMIT 200`,
+    [nowIso, soon],
+  );
+  for (const user of expiring) {
+    const daysLeft = Math.max(1, Math.ceil((Date.parse(user.plan_expires_at) - Date.now()) / DAY));
+    await run("UPDATE users SET plan_notice = 'expiring' WHERE id = $1", [user.id]);
+    await sendQuietly(
+      user.email,
+      planExpiringEmail(user.name, { name: PLANS[user.plan as PlanKey]?.name ?? user.plan, expiresAt: user.plan_expires_at, daysLeft }),
+      "plan expiring",
+    );
+    warned++;
+  }
+
+  const over = await query<{ id: string; email: string; name: string; plan: string }>(
+    `SELECT id, email, name, plan FROM users
+     WHERE plan NOT IN ('free', 'trial') AND plan_expires_at IS NOT NULL AND plan_expires_at <= $1 AND plan_notice <> 'ended'
+     LIMIT 200`,
+    [nowIso],
+  );
+  for (const user of over) {
+    await run("UPDATE users SET plan_notice = 'ended' WHERE id = $1", [user.id]);
+    await sendQuietly(user.email, planEndedEmail(user.name, PLANS[user.plan as PlanKey]?.name ?? user.plan), "plan ended");
+    ended++;
+  }
+  return { warned, ended };
 }
 
 /** Owner console: every account, and switches to grant / remove plans, trials and credits. */
@@ -554,33 +622,40 @@ export async function adminRoutes(app: FastifyInstance) {
     return { ...(await paymentInfo()), ...(await contactInfo()), assistantModel: (await getSetting("assistantModel")) ?? "claude-opus-5" };
   });
 
-  /** The platform's sending account for verification codes (password never sent back). */
-  app.get("/api/admin/mail", async () => {
-    const account = await mailAccount();
-    return account ? { configured: true, host: account.host, port: account.port, user: account.user, fromName: account.fromName } : { configured: false };
-  });
+  /** The platform's sending account (the key and the password are never sent back). */
+  app.get("/api/admin/mail", async () => mailSummary(await mailSettings()));
 
   app.put("/api/admin/mail", async (req) => {
     const body = (req.body ?? {}) as Record<string, string | undefined>;
-    const current = await mailAccount();
-    const account = {
-      host: String(body.host ?? current?.host ?? "smtp.gmail.com").trim(),
-      port: String(body.port ?? current?.port ?? "465").trim(),
-      user: String(body.user ?? current?.user ?? "").trim(),
-      // Empty password box = keep the saved one.
+    const current = await mailSettings();
+    const text = (key: keyof MailSettings, fallback = "") => String(body[key] ?? current?.[key] ?? fallback).trim();
+    const settings: MailSettings = {
+      provider: body.provider === "smtp" ? "smtp" : body.provider === "resend" ? "resend" : (current?.provider ?? "resend"),
+      // Empty secret boxes mean "keep the saved one".
+      apiKey: String(body.apiKey || current?.apiKey || "").trim(),
+      fromName: text("fromName", "تدفّق") || "تدفّق",
+      fromEmail: text("fromEmail").toLowerCase(),
+      replyTo: text("replyTo").toLowerCase(),
+      host: text("host"),
+      port: text("port", "465"),
+      user: text("user"),
       password: String(body.password || current?.password || "").replace(/\s+/g, ""),
-      fromName: String(body.fromName ?? current?.fromName ?? "تدفّق").trim() || "تدفّق",
-      secure: ["tls", "starttls"].includes(String(body.secure)) ? String(body.secure) : current?.secure ?? "",
+      secure: ["tls", "starttls"].includes(String(body.secure)) ? String(body.secure) : (current?.secure ?? ""),
     };
-    if (!account.host || !account.user || !account.password) throw httpError(400, "اكتب السيرفر والإيميل وكلمة سر التطبيقات");
-    // Prove it works before saving: send a sample code email to the admin.
+    if (settings.provider === "resend") {
+      if (!settings.apiKey) throw httpError(400, "اكتب API Key بتاع Resend");
+      if (!settings.fromEmail.includes("@")) throw httpError(400, "اكتب الإيميل اللي هيبعت منه (لازم يكون على دومينك)");
+    } else if (!settings.host || !settings.user || !settings.password) {
+      throw httpError(400, "اكتب السيرفر والإيميل وكلمة سر التطبيقات");
+    }
+    // Prove it works before saving: send the test email to whoever is setting it up.
     try {
-      await sendPlatformMail(req.user.email, codeEmail("123456", req.user.name, "register"), account);
+      await sendPlatformMail(req.user.email, testEmail(), settings);
     } catch (error) {
       throw httpError(400, `ما قدرناش نبعت بالإعدادات دي: ${error instanceof Error ? error.message : error}`);
     }
-    await saveMailAccount(account);
-    return { configured: true, host: account.host, port: account.port, user: account.user, fromName: account.fromName };
+    await saveMailSettings(settings);
+    return mailSummary(settings);
   });
 
   app.get("/api/admin/users", async () => {
@@ -611,6 +686,27 @@ export async function adminRoutes(app: FastifyInstance) {
     return { users, requests, plans: Object.values(PLANS), packs: CREDIT_PACKS };
   });
 
+  /** What the admin console shows about the sending account - never the key or the password. */
+  const mailSummary = (settings: MailSettings | null) => {
+    const provider = settings?.provider ?? "resend";
+    return isConfigured(settings)
+      ? {
+          configured: true,
+          provider: settings.provider,
+          fromName: settings.fromName,
+          fromEmail: settings.fromEmail,
+          replyTo: settings.replyTo,
+          host: settings.host,
+          port: settings.port,
+          user: settings.user,
+        }
+      : { configured: false, provider };
+  };
+
+  /** Who an email is going to. */
+  const person = async (userId: string) =>
+    (await one<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = $1", [userId])) ?? { email: "", name: "" };
+
   const target = async (id: string) => {
     const row = await one<{ id: string }>("SELECT id FROM users WHERE id = $1", [id]);
     if (!row) throw httpError(404, "المستخدم مش موجود");
@@ -632,7 +728,22 @@ export async function adminRoutes(app: FastifyInstance) {
       await setPlan(userId, plan.key, period, addDays(new Date(), days));
     }
     await run("UPDATE subscription_requests SET status = 'done' WHERE user_id = $1 AND status = 'pending' AND kind = 'plan'", [userId]);
-    return publicAccount(await getAccount(userId));
+    const account = await getAccount(userId);
+    if (plan.key !== "free") {
+      const who = await person(userId);
+      void sendQuietly(
+        who.email,
+        planActivatedEmail(who.name, {
+          name: account.plan.name,
+          period: account.period,
+          expiresAt: account.expiresAt,
+          credits: account.plan.credits,
+          assistantCredits: account.plan.assistantCredits,
+        }),
+        "plan activated",
+      );
+    }
+    return publicAccount(account);
   });
 
   app.post("/api/admin/users/:id/credits", async (req) => {
@@ -641,29 +752,71 @@ export async function adminRoutes(app: FastifyInstance) {
     const credits = Math.trunc(Number(body.credits) || 0);
     const assistant = Math.trunc(Number(body.assistantCredits) || 0);
     await addCredits(userId, credits, assistant);
-    return publicAccount(await getAccount(userId));
+    const account = await getAccount(userId);
+    if (credits > 0 || assistant > 0) {
+      const who = await person(userId);
+      void sendQuietly(
+        who.email,
+        creditsAddedEmail(
+          who.name,
+          { credits, assistantCredits: assistant },
+          { credits: account.credits, assistantCredits: account.assistantCredits },
+        ),
+        "credits added",
+      );
+    }
+    return publicAccount(account);
   });
 
   /** Approve (apply what was paid for) or reject a request. */
   app.post("/api/admin/requests/:id", async (req) => {
-    const body = (req.body ?? {}) as { status?: string };
+    const body = (req.body ?? {}) as { status?: string; reason?: string };
     const request = await one<{ id: string; user_id: string; kind: string; plan: string; pack: string; period: string; status: string }>(
       "SELECT * FROM subscription_requests WHERE id = $1",
       [(req.params as { id: string }).id],
     );
     if (!request) throw httpError(404, "الطلب مش موجود");
     if (request.status !== "pending") throw httpError(400, "الطلب ده اتقفل قبل كده");
+    const who = await person(request.user_id);
+    const what =
+      request.kind === "credits"
+        ? (CREDIT_PACKS.find((p) => p.key === request.pack)?.name ?? "كريديت إضافي")
+        : `باقة ${PLANS[request.plan as PlanKey]?.name ?? request.plan}`;
+
     if (body.status === "rejected") {
       await run("UPDATE subscription_requests SET status = 'rejected' WHERE id = $1", [request.id]);
+      void sendQuietly(who.email, requestRejectedEmail(who.name, what, String(body.reason ?? "").trim()), "request rejected");
       return { ok: true };
     }
     if (request.kind === "credits") {
       const pack = CREDIT_PACKS.find((p) => p.key === request.pack);
       if (!pack) throw httpError(400, "باقة الكريديت دي مش موجودة");
       await addCredits(request.user_id, pack.credits, pack.assistantCredits);
+      const account = await getAccount(request.user_id);
+      void sendQuietly(
+        who.email,
+        creditsAddedEmail(
+          who.name,
+          { credits: pack.credits, assistantCredits: pack.assistantCredits },
+          { credits: account.credits, assistantCredits: account.assistantCredits },
+        ),
+        "credits added",
+      );
     } else {
       const period: Period = request.period === "yearly" ? "yearly" : "monthly";
       await setPlan(request.user_id, request.plan as PlanKey, period, addDays(new Date(), period === "yearly" ? 365 : 30));
+      const account = await getAccount(request.user_id);
+      void sendQuietly(
+        who.email,
+        planActivatedEmail(who.name, {
+          name: account.plan.name,
+          period: account.period,
+          expiresAt: account.expiresAt,
+          credits: account.plan.credits,
+          assistantCredits: account.plan.assistantCredits,
+        }),
+        "plan activated",
+      );
     }
     await run("UPDATE subscription_requests SET status = 'done' WHERE id = $1", [request.id]);
     return { ok: true };

@@ -1,5 +1,6 @@
 import type { CredentialType, NodeDefinition } from "../engine/types.js";
 import { apiRequest, checkAuth, parseJsonParam } from "./api.js";
+import { asRecord, matchByName, NO_DATA } from "./mapping.js";
 import { checkEveryField } from "./feeds.js";
 import { toNumber } from "./util.js";
 
@@ -54,6 +55,40 @@ const airtableUrl = (baseId: string, table: string) =>
 const baseField = { key: "baseId", label: "Base ID", type: "text" as const, required: true, help: "من رابط القاعدة: الجزء اللي بيبدأ بـ app" };
 const tableField = { key: "table", label: "اسم الجدول", type: "text" as const, required: true };
 
+/** The Notion column types we can fill from plain text, and how each one wants its value. */
+const NOTION_WRITABLE = new Set(["rich_text", "number", "select", "multi_select", "date", "checkbox", "url", "email", "phone_number", "status"]);
+
+function notionValue(type: string, text: string): Record<string, unknown> | null {
+  switch (type) {
+    case "rich_text":
+      return { rich_text: [{ text: { content: text.slice(0, 2000) } }] };
+    case "number": {
+      const n = Number(String(text).replace(/[^\d.-]/g, ""));
+      return Number.isFinite(n) ? { number: n } : null;
+    }
+    case "select":
+      return { select: { name: text.slice(0, 100) } };
+    case "status":
+      return { status: { name: text.slice(0, 100) } };
+    case "multi_select":
+      return { multi_select: text.split(/[,،]/).map((part) => part.trim()).filter(Boolean).slice(0, 20).map((name) => ({ name: name.slice(0, 100) })) };
+    case "date": {
+      const at = Date.parse(text);
+      return Number.isFinite(at) ? { date: { start: new Date(at).toISOString() } } : null;
+    }
+    case "checkbox":
+      return { checkbox: /^(true|1|نعم|أيوه|ايوه|yes)$/i.test(text.trim()) };
+    case "url":
+      return { url: text };
+    case "email":
+      return { email: text };
+    case "phone_number":
+      return { phone_number: text };
+    default:
+      return null;
+  }
+}
+
 /** Notion property objects -> plain values. */
 function notionPlain(properties: Record<string, any>) {
   return Object.fromEntries(
@@ -80,24 +115,65 @@ export const productivityNodes: NodeDefinition[] = [
       baseField,
       tableField,
       {
+        key: "mode",
+        label: "طريقة الملء",
+        type: "select",
+        default: "auto",
+        options: [
+          { value: "auto", label: "طابق الحقول بالاسم (تلقائي)" },
+          { value: "manual", label: "أنا هحدد كل حقل" },
+        ],
+        help: "التلقائي بيقرا أسماء الحقول من الجدول نفسه، وبيحط في كل حقل القيمة اللي ليها نفس الاسم من الخطوة اللي قبله",
+      },
+      {
+        key: "record",
+        label: "البيانات",
+        type: "json",
+        autoFill: "record",
+        showIf: { field: "mode", values: ["auto"] },
+        help: "نتيجة الخطوة اللي قبلها - بتتحط لوحدها",
+      },
+      {
         key: "fields",
         label: "الحقول (JSON)",
         type: "json",
-        required: true,
         placeholder: '{ "Name": "أحمد محمد", "Phone": "201012345678" }',
-        help: "اسم العمود زي ما هو في Airtable، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
+        showIf: { field: "mode", values: ["manual"] },
+        help: "اسم الحقل زي ما هو في Airtable، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
       },
     ],
     sampleOutput: { id: "recXXXXXXXX", createdTime: "2026-09-16T10:00:00.000Z", fields: { Name: "Ahmed" } },
     async run({ params, credential, signal }) {
-      const fields = parseJsonParam(params.fields, "الحقول");
-      return {
-        output: await apiRequest("Airtable", airtableUrl(String(params.baseId), String(params.table)), {
-          json: { fields, typecast: true },
-          headers: { authorization: `Bearer ${credential?.data.token}` },
-          signal,
-        }),
-      };
+      const headers = { authorization: `Bearer ${credential?.data.token}` };
+      const base = String(params.baseId);
+      const table = String(params.table);
+      let fields = parseJsonParam(params.fields, "الحقول");
+      let mapped: ReturnType<typeof matchByName> | undefined;
+
+      if (params.mode !== "manual") {
+        const record = asRecord(params.record);
+        if (!record) throw new Error(NO_DATA);
+        // The table tells us its own field names; one existing record is enough to learn them.
+        const url = new URL(airtableUrl(base, table));
+        url.searchParams.set("maxRecords", "1");
+        const sample = await apiRequest("Airtable", url, { headers, signal });
+        const columns = Object.keys(sample?.records?.[0]?.fields ?? {});
+        if (!columns.length) {
+          throw new Error(
+            `الجدول «${table}» فاضي، فمقدرناش نعرف أسماء حقوله. ضيف سجل واحد فيه بإيدك الأول، أو غيّر «طريقة الملء» لـ «أنا هحدد كل حقل»`,
+          );
+        }
+        mapped = matchByName(columns, record);
+        if (!mapped.matched.length) {
+          throw new Error(
+            `مفيش ولا حقل اتطابق. حقول الجدول: ${columns.join("، ")} - والبيانات الجاية: ${mapped.unused.join("، ") || "فاضية"}`,
+          );
+        }
+        fields = Object.fromEntries(mapped.matched.map((column) => [column, mapped!.values[column]]));
+      }
+
+      const created = await apiRequest("Airtable", airtableUrl(base, table), { json: { fields, typecast: true }, headers, signal });
+      return { output: { ...created, ...(mapped ? { columns: mapped.matched, missing: mapped.missing, unused: mapped.unused } : {}) } };
     },
   },
   {
@@ -168,21 +244,71 @@ export const productivityNodes: NodeDefinition[] = [
       { key: "titleProperty", label: "اسم عمود العنوان", type: "text", default: "Name" },
       { key: "title", label: "العنوان", type: "text", required: true },
       {
+        key: "mode",
+        label: "باقي الأعمدة",
+        type: "select",
+        default: "auto",
+        options: [
+          { value: "auto", label: "طابق الأعمدة بالاسم (تلقائي)" },
+          { value: "manual", label: "أنا هحددها" },
+        ],
+        help: "التلقائي بيقرا أعمدة القاعدة وأنواعها، وبيحط في كل عمود القيمة اللي ليها نفس الاسم من الخطوة اللي قبله",
+      },
+      {
+        key: "record",
+        label: "البيانات",
+        type: "json",
+        autoFill: "record",
+        showIf: { field: "mode", values: ["auto"] },
+        help: "نتيجة الخطوة اللي قبلها - بتتحط لوحدها",
+      },
+      {
         key: "properties",
         label: "خصائص إضافية (JSON بصيغة Notion)",
         type: "json",
         placeholder: '{ "Status": { "select": { "name": "جديد" } } }',
+        showIf: { field: "mode", values: ["manual"] },
       },
       { key: "content", label: "محتوى الصفحة (اختياري)", type: "textarea" },
     ],
-    sampleOutput: { id: "8a2f...", url: "https://www.notion.so/..." },
+    sampleOutput: { id: "8a2f...", url: "https://www.notion.so/...", columns: ["Status", "Phone"] },
     async run({ params, credential, signal }) {
-      const extra = parseJsonParam(params.properties, "الخصائص الإضافية") ?? {};
+      const headers = { authorization: `Bearer ${credential?.data.token}`, "Notion-Version": NOTION_VERSION };
+      const databaseId = String(params.databaseId).trim();
+      const titleProperty = String(params.titleProperty || "Name");
+      let extra = parseJsonParam(params.properties, "الخصائص الإضافية") ?? {};
+      let matched: string[] = [];
+
+      if (params.mode !== "manual") {
+        const record = asRecord(params.record);
+        if (record) {
+          // Notion says what each column is called and what type it holds; we shape the values to fit.
+          const schema = await apiRequest("Notion", `https://api.notion.com/v1/databases/${databaseId}`, { headers, signal });
+          const columns = Object.entries(schema?.properties ?? {}).filter(
+            ([name, prop]: [string, any]) => name !== titleProperty && NOTION_WRITABLE.has(prop?.type),
+          );
+          const mapped = matchByName(
+            columns.map(([name]) => name),
+            record,
+          );
+          extra = { ...extra };
+          for (const [name, prop] of columns) {
+            const value = mapped.values[name];
+            if (!value) continue;
+            const built = notionValue((prop as any).type, value);
+            if (built) {
+              extra[name] = built;
+              matched.push(name);
+            }
+          }
+        }
+      }
+
       const content = String(params.content ?? "").trim();
       const res = await apiRequest("Notion", "https://api.notion.com/v1/pages", {
         json: {
-          parent: { database_id: String(params.databaseId).trim() },
-          properties: { ...extra, [String(params.titleProperty || "Name")]: { title: [{ text: { content: String(params.title ?? "") } }] } },
+          parent: { database_id: databaseId },
+          properties: { ...extra, [titleProperty]: { title: [{ text: { content: String(params.title ?? "") } }] } },
           ...(content
             ? {
                 children: content.split(/\n{2,}/).slice(0, 50).map((paragraph) => ({
@@ -196,7 +322,7 @@ export const productivityNodes: NodeDefinition[] = [
         headers: { authorization: `Bearer ${credential?.data.token}`, "Notion-Version": NOTION_VERSION },
         signal,
       });
-      return { output: { id: res.id, url: res.url } };
+      return { output: { id: res.id, url: res.url, ...(matched.length ? { columns: matched } : {}) } };
     },
   },
   {

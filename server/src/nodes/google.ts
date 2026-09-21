@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
 import { apiRequest, parseJsonParam } from "./api.js";
+import { asRecord, matchByName, NO_DATA } from "./mapping.js";
 import { checkEveryField } from "./feeds.js";
 
 const GOOGLE_SCOPES = [
@@ -96,25 +97,75 @@ export const googleNodes: NodeDefinition[] = [
       spreadsheetField,
       sheetField,
       {
+        key: "mode",
+        label: "طريقة الملء",
+        type: "select",
+        default: "auto",
+        options: [
+          { value: "auto", label: "طابق الأعمدة بالاسم (تلقائي)" },
+          { value: "order", label: "أنا هحدد كل عمود بالترتيب" },
+        ],
+        help: "التلقائي بيقرا أسماء الأعمدة من أول صف في الشيت، وبيحط في كل عمود القيمة اللي ليها نفس الاسم من الخطوة اللي قبله",
+      },
+      {
+        key: "record",
+        label: "البيانات",
+        type: "json",
+        autoFill: "record",
+        showIf: { field: "mode", values: ["auto"] },
+        help: "نتيجة الخطوة اللي قبلها - بتتحط لوحدها. وتقدر تدوس زرار البيانات وتختار خطوة تانية",
+      },
+      {
         key: "row",
         label: "قيم الصف (بالترتيب)",
         type: "json",
-        required: true,
         placeholder: '["أحمد محمد", "201012345678", "القاهرة"]',
+        showIf: { field: "mode", values: ["order"] },
         help: "قيمة لكل عمود بالترتيب، ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
       },
     ],
-    sampleOutput: { updatedRange: "Sheet1!A12:C12", updatedRows: 1 },
+    sampleOutput: { updatedRange: "Sheet1!A12:C12", updatedRows: 1, columns: ["الاسم", "التليفون"], missing: [] },
     async run({ params, credential, signal }) {
-      const row = parseJsonParam(params.row, "قيم الصف");
-      if (!Array.isArray(row)) throw new Error("قيم الصف لازم تكون مصفوفة JSON");
+      const spreadsheetId = String(params.spreadsheetId);
+      const sheet = String(params.sheet || "Sheet1");
       const token = await googleToken(credential, signal);
+      let row: unknown[];
+      let mapped: ReturnType<typeof matchByName> | undefined;
+
+      if (params.mode === "order") {
+        const given = parseJsonParam(params.row, "قيم الصف");
+        if (!Array.isArray(given)) throw new Error("قيم الصف لازم تكون مصفوفة JSON");
+        row = given;
+      } else {
+        const record = asRecord(params.record);
+        if (!record) throw new Error(NO_DATA);
+        const header = (await readSheet(credential, spreadsheetId, `${sheet}!1:1`, signal))[0] ?? [];
+        const columns = header.map((name) => String(name ?? "").trim()).filter(Boolean);
+        if (!columns.length) {
+          throw new Error(`أول صف في «${sheet}» فاضي - اكتب أسماء الأعمدة في أول صف (الاسم، التليفون...) عشان نعرف كل قيمة تروح فين`);
+        }
+        mapped = matchByName(columns, record);
+        if (!mapped.matched.length) {
+          throw new Error(
+            `مفيش ولا عمود اتطابق. أعمدة الشيت: ${columns.join("، ")} - والبيانات الجاية: ${mapped.unused.join("، ") || "فاضية"}. ` +
+              `سمّي الأعمدة بنفس أسماء البيانات، أو غيّر «طريقة الملء» لـ «أنا هحدد كل عمود»`,
+          );
+        }
+        row = columns.map((column) => mapped!.values[column]);
+      }
+
       const res = await apiRequest(
         "Google Sheets",
-        sheetsUrl(String(params.spreadsheetId), String(params.sheet || "Sheet1"), ":append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS"),
+        sheetsUrl(spreadsheetId, sheet, ":append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS"),
         { json: { values: [row] }, headers: { authorization: `Bearer ${token}` }, signal },
       );
-      return { output: { updatedRange: res.updates?.updatedRange, updatedRows: res.updates?.updatedRows } };
+      return {
+        output: {
+          updatedRange: res.updates?.updatedRange,
+          updatedRows: res.updates?.updatedRows,
+          ...(mapped ? { columns: mapped.matched, missing: mapped.missing, unused: mapped.unused } : {}),
+        },
+      };
     },
   },
   {

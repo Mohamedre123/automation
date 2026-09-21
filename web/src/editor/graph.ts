@@ -127,6 +127,9 @@ export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["au
       return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => formKey(n, FORM_IMAGE));
     case "publishTime":
       return first((n) => (n.type === "trigger.schedule" && String(n.params.publishTime ?? "").trim() ? `{{${n.id}.publishAt}}` : ""));
+    case "record":
+      // A whole result, so a sheet or a table can match its own columns against it by name.
+      return first((n) => `{{${n.id}}}`);
     default:
       return (
         first((n) => (n.type === "ai.image" ? `{{${n.id}.url}}` : "")) ||

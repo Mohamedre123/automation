@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { codeEmail, mailAccount, sendPlatformMail, type MailAccount } from "./mailer.js";
+import { codeEmail, isConfigured, mailSettings, sendPlatformMail, sendQuietly, type MailSettings } from "./mailer.js";
+import { welcomeEmail } from "./emails.js";
 import { config } from "./config.js";
 import { hashPassword, randomToken, sha256, verifyPassword } from "./crypto.js";
 import { newId, now, one, run } from "./db.js";
@@ -49,7 +50,7 @@ const CODE_MINUTES = 10;
 const CODE_ATTEMPTS = 5;
 
 /** Emails a fresh 6-digit code (replacing any earlier one). At most one per minute per address. */
-async function sendCode(userId: string, email: string, name: string, purpose: "register" | "login", account: MailAccount, quietIfRecent = false) {
+async function sendCode(userId: string, email: string, name: string, purpose: "register" | "login", account: MailSettings, quietIfRecent = false) {
   const previous = await one<{ sent_at: string }>("SELECT sent_at FROM email_codes WHERE email = $1", [email]);
   if (previous && Date.now() - new Date(previous.sent_at).getTime() < 55_000) {
     // A code just went out (e.g. signed up a moment ago): the one in the inbox is still good.
@@ -92,7 +93,7 @@ export async function authRoutes(app: FastifyInstance) {
     if (existing?.email_verified) throw httpError(409, "الإيميل ده متسجل قبل كده - سجّل دخول");
 
     // Accounts are confirmed by a code sent to the email (when the platform's mail is set up).
-    const mail = await mailAccount();
+    const mail = await mailSettings();
     let id = existing?.id;
     if (id) {
       // Signed up before but never confirmed: take over with the new details and send a fresh code.
@@ -126,7 +127,7 @@ export async function authRoutes(app: FastifyInstance) {
     );
     if (!user || !verifyPassword(password, user.password_hash)) throw httpError(401, "الإيميل أو كلمة السر غلط");
     if (!user.email_verified) {
-      const mail = await mailAccount();
+      const mail = await mailSettings();
       if (mail) {
         await sendCode(user.id, user.email, user.name, "register", mail, true);
         return { verify: true, email: user.email };
@@ -165,6 +166,7 @@ export async function authRoutes(app: FastifyInstance) {
       await run("UPDATE users SET email_verified = 1 WHERE id = $1", [user.id]);
       // The free trial starts once the account is confirmed.
       await startTrial(user.id);
+      void sendQuietly(user.email, welcomeEmail(user.name), "welcome");
     }
     return { token: await createSession(user.id), user: { id: user.id, email: user.email, name: user.name, isAdmin: isAdminEmail(user.email) } };
   });
@@ -175,7 +177,7 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await one<AuthUser & { email_verified: number }>("SELECT id, email, name, email_verified FROM users WHERE email = $1", [email]);
     // Same answer either way: no hint about which emails have accounts.
     if (user && !user.email_verified) {
-      const mail = await mailAccount();
+      const mail = await mailSettings();
       if (mail) await sendCode(user.id, user.email, user.name, "register", mail);
     }
     return { ok: true };

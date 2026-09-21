@@ -23,6 +23,7 @@ import type {
 } from "../engine/types.js";
 import { getNode } from "../nodes/index.js";
 import { parsePublishAt, runScheduledPosts } from "../nodes/publishAll.js";
+import { runSubscriptionMail } from "../billing.js";
 import { cleanupRateLimits } from "../protection.js";
 import { errorMessage, sleep, toNumber } from "../nodes/util.js";
 
@@ -521,6 +522,10 @@ export async function runDueSchedules(limit = 25): Promise<number> {
   });
   await markStaleExecutions(20 * 60_000);
   await cleanupRateLimits().catch(() => undefined);
+  // The heartbeat itself: the admin console shows it, so a scheduler that stopped is visible.
+  await run("INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", ["lastTick", now()]);
+  // Once an hour is plenty for "your plan is about to run out".
+  if (new Date().getUTCMinutes() < 20) await runSubscriptionMail().catch((e) => console.error("[subscription mail]", e));
   await run("DELETE FROM test_sessions WHERE created_at < $1", [new Date(Date.now() - 86_400_000).toISOString()]);
   // Generated images expire; images the customer uploaded stay until they delete them.
   await run("DELETE FROM media WHERE source = 'generated' AND created_at < $1", [new Date(Date.now() - 30 * 86_400_000).toISOString()]);

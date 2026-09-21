@@ -63,6 +63,11 @@ export async function buildApp() {
       health.databasePingMs = pings;
       health.serverRegion = process.env.VERCEL_REGION ?? "local";
       health.databaseRegion = config.databaseUrl.match(/aws-\d+-([a-z]+-[a-z]+-\d+)/)?.[1] ?? "unknown";
+      // Scheduled scenarios only run when something pings /api/cron/tick, so how long ago that
+      // last happened is the one number that says whether schedules are alive.
+      const tick = await one<{ value: string }>("SELECT value FROM app_settings WHERE key = 'lastTick'");
+      health.lastTickAt = tick?.value ?? null;
+      health.minutesSinceTick = tick?.value ? Math.round((Date.now() - Date.parse(tick.value)) / 60_000) : null;
     } catch (error) {
       health.ok = false;
       health.database = error instanceof Error ? error.message : String(error);

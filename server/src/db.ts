@@ -154,6 +154,8 @@ const SCHEMA = `
   );
   ALTER TABLE media ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT '';
   ALTER TABLE executions ADD COLUMN IF NOT EXISTS current_node TEXT;
+  /* Which subscription email this account has already had, so a reminder is never sent twice. */
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_notice TEXT NOT NULL DEFAULT '';
 
   CREATE TABLE IF NOT EXISTS scheduled_posts (
     id TEXT PRIMARY KEY,

@@ -96,6 +96,14 @@ export function autoFillFromRun(
     return "";
   };
 
+  const wholeResult = () => {
+    for (const n of earlier) {
+      const value = outputs[n.id];
+      if (value && typeof value === "object" && !Array.isArray(value)) return value;
+    }
+    return "";
+  };
+
   const publishTime = () => {
     const trigger = earlier.find((n) => n.type === "trigger.schedule");
     const at = trigger ? out(trigger).publishAt : undefined;
@@ -107,7 +115,9 @@ export function autoFillFromRun(
   for (const field of fields) {
     if (!empty(next[field.key])) continue;
     const value =
-      field.autoFill === "publishTime"
+      field.autoFill === "record"
+        ? wholeResult()
+        : field.autoFill === "publishTime"
         ? publishTime()
         : field.autoFill === "caption"
         ? caption()
@@ -188,6 +198,9 @@ function wireValue(kind: NonNullable<FieldDef["autoFill"]>, earlier: WorkflowNod
       return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => (n.type === "trigger.form" ? formField(n, FORM_IMAGE) : ""));
     case "publishTime":
       return first((n) => (n.type === "trigger.schedule" && String(n.params?.publishTime ?? "").trim() ? `{{${n.id}.publishAt}}` : ""));
+    case "record":
+      // A whole result, so a sheet or a table can match its own columns against it by name.
+      return first((n) => `{{${n.id}}}`);
     default:
       // image / images: a whole gallery when there is one, otherwise a single picture
       return (

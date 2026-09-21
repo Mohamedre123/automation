@@ -134,6 +134,7 @@ export function Admin() {
         </div>
       </div>
 
+      <SchedulerCard />
       <MailCard />
       <SettingsCard />
 
@@ -238,29 +239,124 @@ export function Admin() {
 }
 
 /** The Gmail (or any SMTP) account that sends sign-up codes. Saved only after a test email goes through. */
+/*
+ * Scheduled scenarios only run when something calls /api/cron/tick. Webhooks and chat bots do not
+ * need it - they arrive on their own - but a schedule that nobody is ticking is silent, so the
+ * heartbeat is shown here with what to do when it stops.
+ */
+function SchedulerCard() {
+  const [health, setHealth] = useState<{ webhooksReachable?: boolean; minutesSinceTick?: number | null; lastTickAt?: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then(setHealth)
+      .catch(() => {});
+  }, []);
+  if (!health) return null;
+  const minutes = health.minutesSinceTick;
+  const stalled = minutes === null || minutes === undefined || minutes > 15;
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 22 }}>
+      <h3 style={{ marginBottom: 4 }}>
+        <Icon name="clock" size={17} /> التشغيل التلقائي
+      </h3>
+      <div className="ov-list" style={{ marginTop: 10 }}>
+        <div className="ov-row">
+          <Icon name="webhook" size={17} style={{ color: health.webhooksReachable ? "var(--success)" : "var(--danger)", flexShrink: 0 }} />
+          <div className="grow">
+            <div>البوتات والفورمات والـ Webhooks</div>
+            <div>{health.webhooksReachable ? "شغالة على مدار الساعة - بتوصل للمنصة لوحدها من غير أي تشغيل" : "مش قادرة توصل للمنصة"}</div>
+          </div>
+        </div>
+        <div className="ov-row">
+          <Icon name="schedule" size={17} style={{ color: stalled ? "var(--danger)" : "var(--success)", flexShrink: 0 }} />
+          <div className="grow">
+            <div>السيناريوهات اللي بميعاد والنشر المؤجّل</div>
+            <div>
+              {minutes === null || minutes === undefined
+                ? "لسه مفيش نبضة - الجدولة مش شغالة"
+                : `آخر نبضة من ${minutes} دقيقة${stalled ? " - المفروض كل دقيقة" : ""}`}
+            </div>
+          </div>
+        </div>
+      </div>
+      {stalled && (
+        <div className="guide-note" style={{ marginTop: 12, display: "block" }}>
+          <strong style={{ display: "block", marginBottom: 6 }}>عشان المواعيد تشتغل بالدقيقة</strong>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.95, color: "var(--text-2)" }}>
+            اعمل حساب مجاني على cron-job.org وضيف Cron Job كل دقيقة على الرابط:
+            <br />
+            <span className="mono" dir="ltr" style={{ fontSize: 12.5, wordBreak: "break-all" }}>
+              {location.origin}/api/cron/tick?secret=CRON_SECRET
+            </span>
+            <br />
+            وحط مكان CRON_SECRET نفس القيمة اللي في متغيرات البيئة على Vercel. من غير ده المواعيد بتشتغل مرة واحدة في اليوم بس
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface MailState {
+  configured: boolean;
+  provider: "resend" | "smtp";
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  host?: string;
+  port?: string;
+  user?: string;
+}
+
+/** Where the platform's own mail goes out from: verification codes, receipts, subscription news. */
 function MailCard() {
   const toast = useToast();
-  const [state, setState] = useState<{ configured: boolean; host?: string; port?: string; user?: string; fromName?: string } | null>(null);
-  const [form, setForm] = useState({ host: "smtp.gmail.com", port: "465", user: "", password: "", fromName: "تدفّق" });
+  const [state, setState] = useState<MailState | null>(null);
+  const [form, setForm] = useState({
+    provider: "resend" as "resend" | "smtp",
+    apiKey: "",
+    fromName: "تدفّق",
+    fromEmail: "",
+    replyTo: "",
+    host: "smtp.gmail.com",
+    port: "465",
+    user: "",
+    password: "",
+  });
   const [saving, setSaving] = useState(false);
+  const [guide, setGuide] = useState(false);
 
   useEffect(() => {
-    api<{ configured: boolean; host?: string; port?: string; user?: string; fromName?: string }>("/admin/mail")
+    api<MailState>("/admin/mail")
       .then((res) => {
         setState(res);
-        if (res.configured) setForm((f) => ({ ...f, host: res.host ?? f.host, port: res.port ?? f.port, user: res.user ?? "", fromName: res.fromName ?? f.fromName }));
+        setForm((f) => ({
+          ...f,
+          provider: res.provider ?? "resend",
+          fromName: res.fromName ?? f.fromName,
+          fromEmail: res.fromEmail ?? "",
+          replyTo: res.replyTo ?? "",
+          host: res.host || f.host,
+          port: res.port || f.port,
+          user: res.user ?? "",
+        }));
       })
       .catch(() => {});
   }, []);
 
   if (!state) return null;
+  const resend = form.provider === "resend";
+  const ready = resend ? (form.apiKey || state.configured) && form.fromEmail.includes("@") : form.user && (form.password || state.configured);
+
   const save = async () => {
     setSaving(true);
     try {
-      const res = await api<typeof state>("/admin/mail", { method: "PUT", body: form });
+      const res = await api<MailState>("/admin/mail", { method: "PUT", body: form });
       setState(res);
-      setForm((f) => ({ ...f, password: "" }));
-      toast("اشتغل ✓ بعتنالك إيميل تجربة - من دلوقتي أي حساب جديد لازم يأكد بكود على الإيميل", "success");
+      setForm((f) => ({ ...f, apiKey: "", password: "" }));
+      toast("اشتغل ✓ بعتنالك إيميل تجربة - من دلوقتي كل إيميلات المنصة هتخرج من هنا", "success");
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -271,51 +367,128 @@ function MailCard() {
   return (
     <div className="card" style={{ padding: 18, marginBottom: 22 }}>
       <h3 style={{ marginBottom: 4 }}>
-        <Icon name="mail" size={17} /> إيميل المنصة (كود التحقق عند التسجيل)
+        <Icon name="mail" size={17} /> إيميل المنصة
       </h3>
       <p className="faint" style={{ margin: "0 0 12px", fontSize: 13 }}>
         {state.configured
-          ? `شغال من ${state.user} - أي حساب جديد بيوصله كود من 6 أرقام لازم يكتبه قبل ما يدخل`
-          : "لسه مش متضبط، فالحسابات الجديدة بتدخل من غير تحقق. حط إيميل Gmail وكلمة سر التطبيقات (App Password) هنا"}
+          ? `شغال من ${state.fromEmail || state.user} - أكواد التحقق وإيصالات الدفع وتنبيهات الاشتراك كلها بتخرج من هنا`
+          : "لسه مش متضبط: الحسابات الجديدة بتدخل من غير كود تحقق، ومفيش إيميلات اشتراك بتتبعت"}
       </p>
+
+      <div className="seg" style={{ marginBottom: 14 }}>
+        <button className={resend ? "on" : ""} onClick={() => setForm({ ...form, provider: "resend" })}>
+          Resend (المفضّل)
+        </button>
+        <button className={!resend ? "on" : ""} onClick={() => setForm({ ...form, provider: "smtp" })}>
+          SMTP
+        </button>
+      </div>
+
       <div className="settings-grid">
-        <div className="field">
-          <label className="label">الإيميل اللي هيبعت</label>
-          <input className="input mono" dir="ltr" value={form.user} onChange={(e) => setForm({ ...form, user: e.target.value })} placeholder="you@gmail.com" />
-        </div>
-        <div className="field">
-          <label className="label">كلمة سر التطبيقات (App Password)</label>
-          <input
-            className="input mono"
-            dir="ltr"
-            type="password"
-            autoComplete="new-password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder={state.configured ? "سيبها فاضية عشان تفضل زي ما هي" : "16 حرف من جوجل"}
-          />
-          <div className="help">
-            من <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a> (لازم التحقق بخطوتين يكون مفعّل)
-          </div>
-        </div>
+        {resend ? (
+          <>
+            <div className="field">
+              <label className="label">API Key</label>
+              <input
+                className="input mono"
+                dir="ltr"
+                type="password"
+                autoComplete="new-password"
+                value={form.apiKey}
+                onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+                placeholder={state.configured ? "سيبه فاضي عشان يفضل زي ما هو" : "re_..."}
+              />
+              <div className="help">
+                من <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer">resend.com/api-keys</a> بصلاحية Sending access
+              </div>
+            </div>
+            <div className="field">
+              <label className="label">الإيميل اللي بيبعت</label>
+              <input
+                className="input mono"
+                dir="ltr"
+                value={form.fromEmail}
+                onChange={(e) => setForm({ ...form, fromEmail: e.target.value })}
+                placeholder="no-reply@yourdomain.com"
+              />
+              <div className="help">لازم يكون على دومين متحقق منه في Resend ← Domains</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="field">
+              <label className="label">الإيميل اللي بيبعت</label>
+              <input className="input mono" dir="ltr" value={form.user} onChange={(e) => setForm({ ...form, user: e.target.value })} placeholder="you@gmail.com" />
+            </div>
+            <div className="field">
+              <label className="label">كلمة سر التطبيقات (App Password)</label>
+              <input
+                className="input mono"
+                dir="ltr"
+                type="password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder={state.configured ? "سيبها فاضية عشان تفضل زي ما هي" : "16 حرف من جوجل"}
+              />
+            </div>
+            <div className="field">
+              <label className="label">سيرفر SMTP والبورت</label>
+              <div className="row">
+                <input className="input mono" dir="ltr" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+                <input className="input mono" dir="ltr" style={{ width: 90 }} value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
+              </div>
+            </div>
+          </>
+        )}
         <div className="field">
           <label className="label">اسم المرسل</label>
           <input className="input" value={form.fromName} onChange={(e) => setForm({ ...form, fromName: e.target.value })} />
         </div>
         <div className="field">
-          <label className="label">سيرفر SMTP والبورت</label>
-          <div className="row">
-            <input className="input mono" dir="ltr" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
-            <input className="input mono" dir="ltr" style={{ width: 90 }} value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
-          </div>
+          <label className="label">الرد يروح فين (اختياري)</label>
+          <input
+            className="input mono"
+            dir="ltr"
+            value={form.replyTo}
+            onChange={(e) => setForm({ ...form, replyTo: e.target.value })}
+            placeholder="support@yourdomain.com"
+          />
+          <div className="help">لما عميل يرد على أي إيميل، الرد هيوصل على العنوان ده</div>
         </div>
       </div>
-      <button className="btn primary" onClick={save} disabled={saving || !form.user || (!form.password && !state.configured)}>
-        {saving ? <Spinner size={14} /> : "جرّب واحفظ"}
-      </button>
-      <span className="faint" style={{ fontSize: 12.5, marginInlineStart: 10 }}>
-        هيتبعت إيميل تجربة على إيميلك الأول، ولو وصل بيتحفظ
-      </span>
+
+      <div className="row" style={{ marginTop: 4 }}>
+        <button className="btn primary" onClick={save} disabled={saving || !ready}>
+          {saving ? <Spinner size={14} /> : "جرّب واحفظ"}
+        </button>
+        <button className="btn ghost sm" onClick={() => setGuide(!guide)}>
+          <Icon name="info" size={15} /> {guide ? "إخفاء الشرح" : "إزاي أضبطه؟"}
+        </button>
+        <span className="faint" style={{ fontSize: 12.5 }}>
+          هيتبعت إيميل تجربة على إيميلك الأول، ولو وصل بيتحفظ
+        </span>
+      </div>
+
+      {guide && (
+        <div className="guide-note" style={{ marginTop: 14, display: "block" }}>
+          <strong style={{ display: "block", marginBottom: 8 }}>خطوات Resend (أول ما تشتري الدومين)</strong>
+          <ol style={{ margin: 0, paddingInlineStart: 18, lineHeight: 2, fontSize: 13.5, color: "var(--text-2)" }}>
+            <li>اعمل حساب على resend.com - الباقة المجانية بتسمح بـ 3,000 إيميل في الشهر و100 في اليوم</li>
+            <li>Domains ← Add Domain واكتب دومينك، واختار المنطقة الأقرب</li>
+            <li>هيديك سجلات DNS (سجل MX وسجلين TXT للـ DKIM والـ SPF) - حطهم عند اللي شاريت منه الدومين</li>
+            <li>استنى لحد ما الحالة تبقى Verified (عادة دقايق، ممكن توصل ساعات)</li>
+            <li>زوّد سجل DMARC: اسمه _dmarc وقيمته v=DMARC1; p=none; - ده بيخلي الإيميلات تدخل الوارد مش السبام</li>
+            <li>API Keys ← Create API Key بصلاحية Sending access، وانسخه والصقه فوق</li>
+            <li>اكتب «الإيميل اللي بيبعت» على دومينك (مثلاً no-reply@yourdomain.com) ودوس «جرّب واحفظ»</li>
+          </ol>
+          <strong style={{ display: "block", margin: "12px 0 6px" }}>الإيميلات اللي بتتبعت لوحدها</strong>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.9, color: "var(--text-2)" }}>
+            كود التحقق عند التسجيل · ترحيب بعد التفعيل · إيصال «استلمنا طلبك وبنراجع التحويل» · تفعيل الباقة · إضافة كريديت · رفض الطلب بسببه ·
+            تنبيه قبل ما الاشتراك يخلص بـ 3 أيام · إشعار لما يخلص. وانت كمان بيوصلك إيميل بكل طلب دفع جديد
+          </p>
+        </div>
+      )}
     </div>
   );
 }

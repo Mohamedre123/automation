@@ -1,107 +1,175 @@
-import { config } from "./config.js";
 import { decrypt, encrypt } from "./crypto.js";
+import type { Mail } from "./emails.js";
 import { one, run } from "./db.js";
 import { sendSmtpMail } from "./nodes/smtp.js";
 
 /*
- * The platform's own mail (verification codes). The owner sets the sending account (e.g. a Gmail with an
- * App Password) in the admin console; it is stored encrypted. MAIL_* env vars work as a fallback.
+ * The platform's own mail: verification codes, subscription news, payment receipts.
+ *
+ * Two ways to send, both set from the admin console and stored encrypted:
+ *  - Resend (what we recommend): an API key, and a sender on your own domain. Nothing to open,
+ *    no ports, and it works the same on a serverless host.
+ *  - SMTP: any mailbox with a host, a user and a password.
+ *
+ * MAIL_* environment variables still work as a fallback so a fresh deploy can send before
+ * anybody opens the admin console.
  */
 
-export interface MailAccount {
+export interface MailSettings {
+  provider: "resend" | "smtp";
+  /** Resend. */
+  apiKey: string;
+  /** Shown as the sender: "تدفّق <no-reply@yourdomain.com>". */
+  fromName: string;
+  fromEmail: string;
+  /** Where a customer's reply lands (optional). */
+  replyTo: string;
+  /** SMTP. */
   host: string;
   port: string;
   user: string;
   password: string;
-  fromName: string;
   /** "tls" = TLS from the start on any port, "starttls" = upgrade; empty = by port (465 TLS). */
-  secure?: string;
+  secure: string;
 }
 
-export async function mailAccount(): Promise<MailAccount | null> {
+const EMPTY: MailSettings = {
+  provider: "resend",
+  apiKey: "",
+  fromName: "تدفّق",
+  fromEmail: "",
+  replyTo: "",
+  host: "",
+  port: "465",
+  user: "",
+  password: "",
+  secure: "",
+};
+
+/** Older installs stored an SMTP-only account; it still reads as settings. */
+function normalize(saved: Partial<MailSettings> & { fromName?: string }): MailSettings {
+  const settings = { ...EMPTY, ...saved };
+  if (!saved.provider) settings.provider = saved.apiKey ? "resend" : "smtp";
+  if (!settings.fromEmail && settings.user.includes("@")) settings.fromEmail = settings.user;
+  return settings;
+}
+
+export function isConfigured(settings: MailSettings | null): settings is MailSettings {
+  if (!settings) return false;
+  return settings.provider === "resend"
+    ? Boolean(settings.apiKey && settings.fromEmail)
+    : Boolean(settings.host && settings.user && settings.password);
+}
+
+export async function mailSettings(): Promise<MailSettings | null> {
   const row = await one<{ value: string }>("SELECT value FROM app_settings WHERE key = 'mailAccount'");
   if (row) {
     try {
-      const saved = decrypt<MailAccount>(row.value);
-      if (saved.host && saved.user && saved.password) return saved;
+      const saved = normalize(decrypt<Partial<MailSettings>>(row.value));
+      if (isConfigured(saved)) return saved;
     } catch {
-      /* unreadable (secret changed): fall through */
+      /* unreadable (the secret changed): fall through to the environment */
     }
   }
   const env = process.env;
+  if (env.RESEND_API_KEY && env.MAIL_FROM) {
+    return normalize({
+      provider: "resend",
+      apiKey: env.RESEND_API_KEY,
+      fromEmail: env.MAIL_FROM,
+      fromName: env.MAIL_FROM_NAME || "تدفّق",
+      replyTo: env.MAIL_REPLY_TO || "",
+    });
+  }
   if (env.MAIL_HOST && env.MAIL_USER && env.MAIL_PASSWORD) {
-    return { host: env.MAIL_HOST, port: env.MAIL_PORT || "465", user: env.MAIL_USER, password: env.MAIL_PASSWORD, fromName: env.MAIL_FROM_NAME || "تدفّق", secure: env.MAIL_SECURE || "" };
+    return normalize({
+      provider: "smtp",
+      host: env.MAIL_HOST,
+      port: env.MAIL_PORT || "465",
+      user: env.MAIL_USER,
+      password: env.MAIL_PASSWORD,
+      fromName: env.MAIL_FROM_NAME || "تدفّق",
+      fromEmail: env.MAIL_FROM || env.MAIL_USER,
+      secure: env.MAIL_SECURE || "",
+    });
   }
   return null;
 }
 
-export async function saveMailAccount(account: MailAccount) {
-  await run("INSERT INTO app_settings (key, value) VALUES ('mailAccount', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [encrypt(account)]);
+export async function saveMailSettings(settings: MailSettings) {
+  await run("INSERT INTO app_settings (key, value) VALUES ('mailAccount', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [
+    encrypt(settings),
+  ]);
 }
 
-export async function sendPlatformMail(to: string, mail: { subject: string; html: string; text: string }, account?: MailAccount | null) {
-  const from = account ?? (await mailAccount());
-  if (!from) throw new Error("إيميل المنصة مش متضبط");
+/** Resend errors say exactly what is wrong; this keeps that and adds what to do about it. */
+function resendMessage(status: number, body: any): string {
+  const message = body?.message ?? body?.error?.message ?? `HTTP ${status}`;
+  if (status === 401 || status === 403) return `Resend: المفتاح مرفوض - اتأكد إن API Key صح وإنه لسه شغال (${message})`;
+  if (/domain is not verified|not verified/i.test(message)) {
+    return "Resend: الدومين لسه مش متحقق منه - ادخل Resend ← Domains وكمّل سجلات الـ DNS، وبعدين استنى لحد ما يبقى Verified";
+  }
+  if (/you can only send testing emails|own email address/i.test(message)) {
+    return "Resend: لسه بتستخدم دومين التجربة، فمينفعش تبعت غير لإيميلك انت. ضيف دومينك في Resend ← Domains وغيّر «الإيميل اللي بيبعت»";
+  }
+  if (status === 422 || /from/i.test(message)) return `Resend: «الإيميل اللي بيبعت» مرفوض - لازم يكون على دومين متحقق منه (${message})`;
+  if (status === 429) return "Resend: وصلت للحد المسموح من الإرسال - استنى شوية وجرّب تاني";
+  return `Resend: ${message}`;
+}
+
+async function sendWithResend(settings: MailSettings, to: string, mail: Mail) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${settings.apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: `${settings.fromName || "تدفّق"} <${settings.fromEmail}>`,
+      to: [to],
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      ...(settings.replyTo ? { reply_to: settings.replyTo } : {}),
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(resendMessage(response.status, body));
+  return { id: (body as any)?.id ?? "" };
+}
+
+export async function sendPlatformMail(to: string, mail: Mail, override?: MailSettings | null) {
+  const settings = override ?? (await mailSettings());
+  if (!isConfigured(settings)) throw new Error("إيميل المنصة مش متضبط - افتح لوحة الأدمن واضبط «إيميل المنصة»");
+  if (settings.provider === "resend") return sendWithResend(settings, to, mail);
   return sendSmtpMail(
-    { id: "platform", type: "smtpAccount", data: { ...from, fromName: from.fromName || "تدفّق" } },
+    {
+      id: "platform",
+      type: "smtpAccount",
+      data: {
+        host: settings.host,
+        port: settings.port,
+        user: settings.user,
+        password: settings.password,
+        secure: settings.secure,
+        fromName: settings.fromName || "تدفّق",
+        from: settings.fromEmail || settings.user,
+      },
+    },
     { to: [to], subject: mail.subject, body: mail.html, html: true, text: mail.text },
     AbortSignal.timeout(25_000),
   );
 }
 
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-
 /**
- * Verification email. The code is the only number anywhere in it (subject, body and text part), written as
- * one run of Western digits, so Gmail's "copy code" and the reader both pick exactly those six digits.
+ * Mail that is nice to have but must never break what the customer was doing:
+ * a subscription is activated whether or not the receipt email goes out.
  */
-export function codeEmail(code: string, name: string, purpose: "register" | "login") {
-  const who = escapeHtml(name.trim() || "بيك");
-  const intro = purpose === "register" ? "أهلاً بيك في تدفّق! عشان نفعّل حسابك، اكتب الكود ده في صفحة التسجيل:" : "حد (غالباً انت) بيحاول يدخل حسابك في تدفّق. اكتب الكود ده عشان تكمّل:";
-  const site = config.publicUrl;
-  const subject = `${code} هو كود التحقق بتاعك في تدفّق`;
-  const html = `<!doctype html>
-<html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>${subject}</title></head>
-<body style="margin:0;padding:0;background:#f5efe8;font-family:Tahoma,'Segoe UI',Arial,sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">كود التحقق بتاعك: ${code}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5efe8;padding:28px 12px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(120,60,20,0.12);">
-        <tr><td style="background:linear-gradient(135deg,#f97316,#ea580c 55%,#e11d48);background-color:#ea580c;padding:26px 28px;text-align:center;">
-          <img src="${site}/logo.png" alt="" width="44" height="44" style="display:inline-block;vertical-align:middle;border:0;">
-          <span style="display:inline-block;vertical-align:middle;color:#ffffff;font-size:26px;font-weight:bold;margin-right:10px;">تدفّق</span>
-        </td></tr>
-        <tr><td style="padding:30px 28px 10px;text-align:right;color:#2b1d12;direction:rtl;">
-          <p style="margin:0 0 8px;font-size:18px;font-weight:bold;">أهلاً ${who} 👋</p>
-          <p style="margin:0;font-size:15px;line-height:1.9;color:#5b4a3c;">${intro}</p>
-        </td></tr>
-        <tr><td align="center" style="padding:18px 28px 8px;">
-          <div dir="ltr" style="display:inline-block;background:#fff7ed;border:2px dashed #fb923c;border-radius:14px;padding:16px 26px;font-family:'Courier New',Consolas,monospace;font-size:36px;font-weight:bold;letter-spacing:10px;color:#c2410c;">${code}</div>
-        </td></tr>
-        <tr><td style="padding:10px 28px 26px;text-align:right;direction:rtl;">
-          <p style="margin:0 0 6px;font-size:13.5px;color:#8a7461;">الكود صالح لمدة عشر دقائق بس، ومتقولوش لأي حد - فريق تدفّق عمره ما هيطلبه منك</p>
-          <p style="margin:0;font-size:13.5px;color:#8a7461;">لو مش انت اللي طلبته، تجاهل الإيميل ده وحسابك في أمان</p>
-        </td></tr>
-        <tr><td style="background:#fbf6f0;padding:18px 28px;text-align:center;border-top:1px solid #f1e4d6;">
-          <p style="margin:0 0 4px;font-size:13px;color:#8a7461;">تدفّق - أتمت شغلك كله من غير كود</p>
-          <a href="${site}" style="font-size:13px;color:#ea580c;text-decoration:none;">افتح تدفّق</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-  const text = [
-    `أهلاً ${name.trim() || "بيك"}،`,
-    "",
-    purpose === "register" ? "كود تفعيل حسابك في تدفّق:" : "كود الدخول لحسابك في تدفّق:",
-    "",
-    code,
-    "",
-    "الكود صالح لمدة عشر دقائق بس. لو مش انت اللي طلبته تجاهل الإيميل ده",
-    "",
-    `تدفّق - ${site}`,
-  ].join("\n");
-  return { subject, html, text };
+export async function sendQuietly(to: string, mail: Mail, label: string) {
+  try {
+    if (!to?.includes("@")) return;
+    await sendPlatformMail(to, mail);
+  } catch (error) {
+    console.error(`[mail] ${label} -> ${to}:`, error instanceof Error ? error.message : error);
+  }
 }
+
+export { codeEmail } from "./emails.js";
