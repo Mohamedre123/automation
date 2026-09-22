@@ -494,6 +494,13 @@ h4,
   padding: 22px 0;
   overflow: hidden;
   mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  /*
+   * The page is right to left, so a track wider than the screen would hang off to the LEFT -
+   * its right edge pinned here and everything else out past the left side. Sliding it further
+   * left then drags it off the screen entirely and the strip goes empty until the loop restarts.
+   * The strip reads left to right so the track starts at the left edge and always has more to come.
+   */
+  direction: ltr;
 }
 .lp-logos-track {
   display: flex;
@@ -540,6 +547,7 @@ h4,
   opacity: 0.85;
 }
 .lp-logos-note {
+  direction: rtl;
   margin-top: 14px;
   text-align: center;
   font-size: 12px;
