@@ -282,13 +282,23 @@ const setNode: NodeDefinition = {
 const delayNode: NodeDefinition = {
   type: "logic.delay",
   name: "انتظار",
-  description: "بيستنى عدد ثواني قبل الخطوة اللي بعده",
+  description: "بيوقّف السيناريو مدة قبل ما يكمّل - مفيد لما خدمة محتاجة وقت تجهّز، أو عشان متبعتش رسالتين ورا بعض في ثانية",
   app: "tools",
   appName: "أدوات",
   color: "#0f766e",
   group: "logic",
   kind: "action",
-  fields: [{ key: "seconds", label: "عدد الثواني (حد أقصى 120)", type: "number", default: 5 }],
+  // Long enough for the wait itself, with room to spare inside the run's own time.
+  timeoutMs: 150_000,
+  fields: [
+    {
+      key: "seconds",
+      label: "استنى كام ثانية",
+      type: "number",
+      default: 5,
+      help: "من صفر لـ 120 ثانية (دقيقتين). السيناريو كله عنده وقت محدود يخلّص فيه، عشان كده الانتظار مبيطولش أكتر من كده. عايز تستنى ساعات أو أيام؟ اعمل سيناريو تاني بمحفّز «جدولة» في الميعاد اللي تحبه",
+    },
+  ],
   sampleOutput: { waitedSeconds: 5 },
   async run({ params, signal }) {
     const seconds = Math.min(Math.max(toNumber(params.seconds, 5), 0), 120);

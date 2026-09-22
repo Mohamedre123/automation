@@ -179,15 +179,52 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
     });
 
     // Each pending step carries the outputs it can see: iterators give every item its own copy.
-    const queued = (ids: string[], scope: Record<string, unknown>) => ids.map((nodeId) => ({ nodeId, scope }));
-    const pending = queued(nextNodes(graph, trigger.id), outputs);
-    while (pending.length) {
+    type Pending = { nodeId: string; scope: Record<string, unknown>; from?: string; arrivals?: unknown[] };
+    const queued = (ids: string[], scope: Record<string, unknown>, from?: string): Pending[] => ids.map((nodeId) => ({ nodeId, scope, from }));
+    const pending: Pending[] = queued(nextNodes(graph, trigger.id), outputs);
+
+    /*
+     * Steps that wait. Normally a step runs the moment a path reaches it - which means a step
+     * two branches lead into would run twice, and a step after a loop would run once per round.
+     * A gathering step instead collects every arrival and runs once, at the end, with all of them.
+     */
+    const waiting = new Map<string, { scopes: Record<string, unknown>[]; from: unknown[] }>();
+    const gathered = new Set<string>();
+    const incomingCount = (nodeId: string) => new Set(graph.edges.filter((e) => e.target === nodeId).map((e) => e.source)).size;
+
+    while (pending.length || waiting.size) {
       if (abortSignal.aborted) throw new Error("اتلغى التشغيل");
       if (steps.length > MAX_STEPS) throw new Error(`السيناريو عدّى الحد الأقصى (${MAX_STEPS} خطوة)`);
-      const { nodeId: nextId, scope } = pending.shift()!;
+
+      // Nothing left to run, but something is still waiting: it has everything it is going to get.
+      // A branch that never arrived was not taken, stopped, or failed - waiting longer changes nothing.
+      if (!pending.length) {
+        const [nodeId, held] = [...waiting.entries()][0];
+        waiting.delete(nodeId);
+        gathered.add(nodeId);
+        pending.push({ nodeId, scope: Object.assign({}, ...held.scopes), from: undefined, arrivals: held.from });
+      }
+
+      const { nodeId: nextId, scope, from, arrivals } = pending.shift()!;
       const node = graph.nodes.find((n) => n.id === nextId);
       if (!node) continue;
       const def = getNode(node.type);
+
+      // An arrival at a gathering step: hold it, and only run once everything is in.
+      if (def?.gather && !node.disabled && !gathered.has(node.id)) {
+        const held = waiting.get(node.id) ?? { scopes: [], from: [] };
+        held.scopes.push(scope);
+        held.from.push(from ? scope[from] : undefined);
+        waiting.set(node.id, held);
+        // "Wait for the branches" knows how many to expect; "collect the rounds" cannot, so it
+        // waits until there is nothing else left to run.
+        if (def.gather === "branches" && held.scopes.length >= incomingCount(node.id)) {
+          waiting.delete(node.id);
+          gathered.add(node.id);
+          pending.unshift({ nodeId: node.id, scope: Object.assign({}, ...held.scopes), from: undefined, arrivals: held.from });
+        }
+        continue;
+      }
       const stepStart = Date.now();
       const base = { nodeId: node.id, type: node.type, name: node.name || def?.name || node.type, startedAt: now() };
 
@@ -226,6 +263,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
           signal: withTimeout(abortSignal, def.timeoutMs ?? config.nodeTimeoutMs),
           trigger: triggerContext,
           respond,
+          ...(arrivals ? { gathered: arrivals } : {}),
         };
         // "Try again if it fails": the internet is unreliable and most failures are a moment long.
         const tries = 1 + Math.min(Math.max(Math.trunc(Number(node.retries) || 0), 0), 5);
@@ -267,16 +305,20 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
           const children = nextNodes(graph, node.id, result.branch);
           // Depth-first: item 1 runs all its following steps before item 2 starts.
           const perItem = result.fanOut.flatMap((item, index) =>
-            queued(children, {
-              ...scope,
-              [node.id]: { ...(item && typeof item === "object" && !Array.isArray(item) ? item : { value: item }), _index: index + 1, _total: result.fanOut!.length },
-            }),
+            queued(
+              children,
+              {
+                ...scope,
+                [node.id]: { ...(item && typeof item === "object" && !Array.isArray(item) ? item : { value: item }), _index: index + 1, _total: result.fanOut!.length },
+              },
+              node.id,
+            ),
           );
           pending.unshift(...perItem);
           continue;
         }
         scope[node.id] = result.output;
-        pending.unshift(...queued(nextNodes(graph, node.id, result.branch), scope));
+        pending.unshift(...queued(nextNodes(graph, node.id, result.branch), scope, node.id));
       } catch (err) {
         const message = errorMessage(err);
         steps.push({
@@ -293,7 +335,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
           break;
         }
         scope[node.id] = { error: message };
-        pending.unshift(...queued(nextNodes(graph, node.id, def?.outputs ? def.outputs[def.outputs.length - 1].key : undefined), scope));
+        pending.unshift(...queued(nextNodes(graph, node.id, def?.outputs ? def.outputs[def.outputs.length - 1].key : undefined), scope, node.id));
       }
     }
   } catch (err) {

@@ -115,8 +115,15 @@ A node: { "id": "1", "type": "<step type>", "name": "اسم بالعربي", "po
 - Ids are strings counting up: "1", "2", "3". The trigger (kind = trigger) is always "1", and there is exactly one trigger.
 - Any step may also carry "retries": 0-5 and "retryWaitSeconds": 1-120 - add them to a step that calls a
   service known to be flaky. Only failures worth retrying (network, timeout, rate limit, 5xx) are retried.
-- To pause between steps use the step "logic.wait" with { "seconds": 1-120 }. For hours or days do not wait:
+- To pause between steps use the step "logic.delay" with { "seconds": 0-120 }. For hours or days do not wait:
   make a second scenario with a trigger.schedule at that time.
+- Two edges out of one step run BOTH branches, and a plain step both branches point at runs TWICE.
+  When the steps after a split should run once, end the split with "logic.merge": it waits for every
+  branch, runs once, and gives {{n.items}} - what each branch produced.
+- "logic.iterator" makes the steps after it run once per item in a list. To act on the whole list
+  afterwards (one message, one report) instead of once per item, put "logic.collect" after the loop's
+  last step: it waits for every round and gives {{n.items}}, {{n.count}} and {{n.text}}. Its "field"
+  setting picks one value out of each round.
 - position.x is the step's order x 280, position.y is 0. For branches use y = -130 and y = +130.
 - An edge: { "id": "e1-2", "source": "1", "target": "2", "sourceHandle": null }.
 - logic.if has two outputs: sourceHandle "true" and "false". Every other step uses null.

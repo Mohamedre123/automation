@@ -94,6 +94,85 @@ export const toolNodes: NodeDefinition[] = [
     },
   },
   {
+    type: "logic.collect",
+    name: "اجمع نتايج التكرار",
+    description:
+      "بيتحط بعد «تكرار على قايمة»: بيستنى كل اللفّات تخلص، وبيجمّع اللي طلع منها في قايمة واحدة - عشان تبعتها رسالة واحدة أو تكتب منها تقرير بدل ما تبعت رسالة لكل عنصر",
+    app: "logic",
+    appName: "التحكم في المسار",
+    color: "#16a34a",
+    group: "logic",
+    kind: "action",
+    gather: "all",
+    fields: [
+      {
+        key: "field",
+        label: "تاخد إيه من كل لفّة؟",
+        type: "text",
+        placeholder: "text",
+        help: "سيبها فاضية عشان تجمّع نتيجة كل لفّة كاملة. أو اكتب اسم حاجة واحدة جواها (زي text أو url أو name) عشان تجمّع دي بس",
+      },
+      {
+        key: "separator",
+        label: "يفصل بينهم بإيه في النص",
+        type: "select",
+        default: "lines",
+        options: [
+          { value: "lines", label: "كل واحد في سطر" },
+          { value: "bullets", label: "كل واحد في نقطة (-)" },
+          { value: "numbered", label: "مرقّمين (1. 2. 3.)" },
+          { value: "comma", label: "بفاصلة" },
+        ],
+      },
+    ],
+    sampleOutput: { items: ["نتيجة 1", "نتيجة 2"], count: 2, text: "نتيجة 1\nنتيجة 2" },
+    async run({ params, gathered }) {
+      const field = String(params.field ?? "").trim();
+      const items = (gathered ?? [])
+        .map((one) => {
+          if (!field) return one;
+          if (one && typeof one === "object") return (one as Record<string, unknown>)[field];
+          return one;
+        })
+        .filter((one) => one !== undefined && one !== null && one !== "");
+      const lines = items.map((one) => (typeof one === "string" ? one : JSON.stringify(one)));
+      const separator = String(params.separator ?? "lines");
+      const text =
+        separator === "comma"
+          ? lines.join("، ")
+          : separator === "bullets"
+            ? lines.map((line) => `- ${line}`).join("\n")
+            : separator === "numbered"
+              ? lines.map((line, i) => `${i + 1}. ${line}`).join("\n")
+              : lines.join("\n");
+      return { output: { items, count: items.length, text } };
+    },
+  },
+  {
+    type: "logic.merge",
+    name: "استنى كل الفروع",
+    description:
+      "لما يكون فيه فرعين شغالين مع بعض: بيستنى الاتنين يخلصوا، وبعدين بيكمّل مرة واحدة - من غيره الخطوة اللي بعدهم كانت هتشتغل مرتين",
+    app: "logic",
+    appName: "التحكم في المسار",
+    color: "#16a34a",
+    group: "logic",
+    kind: "action",
+    gather: "branches",
+    guide: [
+      "وصّل كل الفروع اللي عايز تستناها للخطوة دي",
+      "هتشتغل مرة واحدة بس، بعد ما آخر فرع يخلص",
+      "لو فرع وقف أو ماشتغلش (زي فرع «لأ» في السؤال)، هتكمّل باللي وصلها - مش هتستنى للأبد",
+      "نتيجة كل فرع بتيجي في {{رقم الخطوة.items}} بالترتيب اللي خلصوا بيه",
+    ],
+    fields: [],
+    sampleOutput: { items: [{ text: "من الفرع الأول" }, { url: "من الفرع التاني" }], count: 2 },
+    async run({ gathered }) {
+      const items = (gathered ?? []).filter((one) => one !== undefined);
+      return { output: { items, count: items.length } };
+    },
+  },
+  {
     type: "logic.filter",
     name: "فلتر",
     description: "بيكمّل للخطوات اللي بعده بس لو الشروط اتحققت، غير كده الفرع بيقف بهدوء",
@@ -121,34 +200,6 @@ export const toolNodes: NodeDefinition[] = [
       const results = conditions.map((c) => compare(c.left, c.op, c.right));
       const passed = results.length === 0 || (params.combine === "any" ? results.some(Boolean) : results.every(Boolean));
       return { output: { passed }, branch: passed ? undefined : "__filtered" };
-    },
-  },
-  {
-    type: "logic.wait",
-    name: "استنى شوية",
-    description:
-      "بيوقّف السيناريو مدة قبل ما يكمّل - مفيد لما خدمة محتاجة وقت تجهّز، أو عشان متبعتش رسالتين ورا بعض في ثانية",
-    app: "logic",
-    appName: "التحكم في المسار",
-    color: "#16a34a",
-    group: "logic",
-    kind: "action",
-    timeoutMs: 150_000,
-    fields: [
-      {
-        key: "seconds",
-        label: "استنى كام ثانية",
-        type: "number",
-        default: 10,
-        required: true,
-        help: "من ثانية لـ 120 ثانية (دقيقتين). السيناريو كله عنده وقت محدود يخلّص فيه، عشان كده الانتظار مبيطولش أكتر من كده. عايز تستنى ساعات أو أيام؟ اعمل سيناريو تاني بمحفّز «جدولة» في الميعاد اللي تحبه",
-      },
-    ],
-    sampleOutput: { waitedSeconds: 10 },
-    async run({ params, signal }) {
-      const seconds = Math.min(Math.max(toNumber(params.seconds, 10), 1), 120);
-      await sleep(seconds * 1000, signal);
-      return { output: { waitedSeconds: seconds } };
     },
   },
   {

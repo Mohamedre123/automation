@@ -92,6 +92,8 @@ export interface NodeContext {
   respond?: (response: WebhookResponse) => void;
   /** The workflow's trigger and its account (e.g. reply or notify through the same bot by default). */
   trigger?: { type: string; credential?: CredentialValue };
+  /** For a gathering step: what every branch, or every round of a loop, handed it. */
+  gathered?: unknown[];
 }
 
 export interface NodeResult {
@@ -161,6 +163,12 @@ export interface NodeDefinition {
   onTriggered?: (ctx: { output: unknown; credential?: CredentialValue; userId: string }) => Promise<void>;
   /** Steps that legitimately take long (video generation). Defaults to the platform step timeout. */
   timeoutMs?: number;
+  /**
+   * This step waits for what comes before it instead of running the moment one path reaches it:
+   * "branches" = once per incoming arrow, then run once; "all" = every round of a loop, then run
+   * once at the end. Either way it runs once, and ctx.gathered holds what arrived.
+   */
+  gather?: "branches" | "all";
 }
 
 export interface WorkflowNode {
