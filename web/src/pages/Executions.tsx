@@ -56,6 +56,11 @@ export function ExecutionSteps({ execution }: { execution: Execution }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <strong>{step.name}</strong> <span className="fnode-id">{step.nodeId}</span>
             </div>
+            {(step.attempts ?? 1) > 1 && (
+              <span className="faint" style={{ fontSize: 12 }} title="الخطوة فشلت وأعادت المحاولة">
+                اتجربت {step.attempts} مرات
+              </span>
+            )}
             <span className="faint" style={{ fontSize: 12 }}>
               {formatDuration(step.durationMs)}
             </span>

@@ -89,6 +89,11 @@ export const config = {
   blockPrivateUrls: isVercel || process.env.BLOCK_PRIVATE_URLS === "true",
   maxConcurrentExecutions: Number(process.env.MAX_CONCURRENT_EXECUTIONS || 5),
   nodeTimeoutMs: 2 * 60_000,
+  /**
+   * How long one run may take before the host kills it mid-step. On Vercel the function itself
+   * stops at 300s, so waiting and retrying have to stay inside that or the run dies with no log.
+   */
+  runBudgetMs: Number(process.env.RUN_BUDGET_MS ?? (isVercel ? 285_000 : 15 * 60_000)),
   executionsKeptPerWorkflow: 100,
   sessionDays: 30,
   testSessionSeconds: 120,

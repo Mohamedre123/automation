@@ -113,6 +113,10 @@ A scenario is { nodes: [...], edges: [...] }.
 A node: { "id": "1", "type": "<step type>", "name": "اسم بالعربي", "position": { "x": 0, "y": 0 }, "params": { ... }, "credentialId": null }
 
 - Ids are strings counting up: "1", "2", "3". The trigger (kind = trigger) is always "1", and there is exactly one trigger.
+- Any step may also carry "retries": 0-5 and "retryWaitSeconds": 1-120 - add them to a step that calls a
+  service known to be flaky. Only failures worth retrying (network, timeout, rate limit, 5xx) are retried.
+- To pause between steps use the step "logic.wait" with { "seconds": 1-120 }. For hours or days do not wait:
+  make a second scenario with a trigger.schedule at that time.
 - position.x is the step's order x 280, position.y is 0. For branches use y = -130 and y = +130.
 - An edge: { "id": "e1-2", "source": "1", "target": "2", "sourceHandle": null }.
 - logic.if has two outputs: sourceHandle "true" and "false". Every other step uses null.

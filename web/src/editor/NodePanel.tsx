@@ -70,6 +70,7 @@ export function NodePanel({
             <div className="row" style={{ marginBottom: 12 }}>
               <StatusBadge status={step.status} />
               <span className="faint">{formatDuration(step.durationMs)}</span>
+              {(step.attempts ?? 1) > 1 && <span className="faint">· اتجربت {step.attempts} مرات</span>}
             </div>
             <StepDetails step={step} />
           </>
@@ -187,9 +188,39 @@ export function NodePanel({
                     <span>كمّل السيناريو حتى لو الخطوة دي فشلت</span>
                     <Toggle on={Boolean(node.continueOnFail)} onChange={(v) => onChange({ continueOnFail: v })} />
                   </div>
-                  <div className="row" style={{ justifyContent: "space-between" }}>
+                  <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
                     <span>تعطيل الخطوة (هتتخطّى هي واللي بعدها)</span>
                     <Toggle on={Boolean(node.disabled)} onChange={(v) => onChange({ disabled: v })} />
+                  </div>
+                  <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                    <span>لو فشلت، جرّب تاني</span>
+                    <select
+                      value={String(node.retries ?? 0)}
+                      onChange={(e) => onChange({ retries: Number(e.target.value) })}
+                      style={{ width: 120 }}
+                    >
+                      <option value="0">لأ، مرة واحدة</option>
+                      <option value="1">مرة كمان</option>
+                      <option value="2">مرتين كمان</option>
+                      <option value="3">٣ مرات كمان</option>
+                      <option value="5">٥ مرات كمان</option>
+                    </select>
+                  </div>
+                  {Number(node.retries ?? 0) > 0 && (
+                    <div className="row" style={{ justifyContent: "space-between" }}>
+                      <span>يستنى كام ثانية قبل ما يعيد</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={node.retryWaitSeconds ?? 5}
+                        onChange={(e) => onChange({ retryWaitSeconds: Number(e.target.value) })}
+                        style={{ width: 120 }}
+                      />
+                    </div>
+                  )}
+                  <div className="help" style={{ marginTop: 6 }}>
+                    بيعيد المحاولة بس لما تكون المشكلة مؤقتة (النت، الخدمة زحمة، الوقت خلص). لو المشكلة في المفتاح أو حقل ناقص مش هيضيّع وقت في إعادة - وكل مرة بيستنى ضِعف اللي قبلها
                   </div>
                 </div>
                 <div className="alert info" style={{ marginTop: 14 }}>

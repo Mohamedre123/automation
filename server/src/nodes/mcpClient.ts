@@ -85,6 +85,53 @@ async function mcpSession(credential: CredentialValue, signal: AbortSignal) {
   return { call: (method: string, params: unknown) => send(method, params) };
 }
 
+/*
+ * Every MCP server hands a picture back its own way: an image block, a link in the text, or a
+ * field in structured output that somebody called url or output or result. We look in all three
+ * so a customer can connect an image service and just publish what it made.
+ */
+const LINK = /https?:\/\/[^\s"'<>)\]]+/g;
+const MEDIA_KEY = /^(url|uri|link|src|image|image_?url|images|video|video_?url|audio_?url|output|outputs|result|results|data|file_?url|download_?url)$/i;
+
+function mediaUrls(content: any[], structured: unknown, text: string): string[] {
+  const found: string[] = [];
+  const add = (value: unknown) => {
+    const url = String(value ?? "").trim();
+    if (/^(https?:\/\/|data:)/.test(url) && !found.includes(url)) found.push(url);
+  };
+
+  // An image or audio block: either a link to it, or the bytes inline.
+  for (const item of content) {
+    if (!item || typeof item !== "object") continue;
+    if (item.type === "image" || item.type === "audio") {
+      if (item.data) add(`data:${item.mimeType ?? "image/png"};base64,${item.data}`);
+      add(item.uri ?? item.url);
+    }
+    if (item.type === "resource_link") add(item.uri ?? item.url);
+    if (item.type === "resource" && item.resource) add(item.resource.uri ?? item.resource.url);
+  }
+
+  // Structured output, whatever they named the field. Two levels down is as deep as it gets.
+  const walk = (value: unknown, depth: number) => {
+    if (depth > 3 || !value) return;
+    if (Array.isArray(value)) {
+      for (const item of value) (typeof item === "string" ? add(item) : walk(item, depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+    for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+      if (typeof inner === "string") {
+        if (MEDIA_KEY.test(key)) add(inner);
+      } else walk(inner, depth + 1);
+    }
+  };
+  walk(structured, 0);
+
+  // Last resort: a link written in the reply.
+  if (!found.length) for (const match of text.match(LINK) ?? []) add(match);
+  return found;
+}
+
 export const mcpClientNode: NodeDefinition = {
   type: "mcp.callTool",
   name: "أداة من خادم MCP",
@@ -115,8 +162,28 @@ export const mcpClientNode: NodeDefinition = {
       help: "ودوس زرار البيانات جوه الخانة عشان تحط قيمة من خطوة قبلها",
       showIf: { field: "operation", values: ["call"] },
     },
+    {
+      key: "returns",
+      label: "الأداة دي بترجّع إيه؟",
+      type: "select",
+      default: "text",
+      showIf: { field: "operation", values: ["call"] },
+      options: [
+        { value: "text", label: "كلام" },
+        { value: "image", label: "صورة" },
+        { value: "video", label: "فيديو" },
+      ],
+      help: "لو اخترت صورة أو فيديو، خطوة النشر أو الإرسال اللي بعدها هتاخد الناتج لوحدها من غير ما تكتب حاجة",
+    },
   ],
-  sampleOutput: { text: "نتيجة الأداة...", content: [{ type: "text", text: "نتيجة الأداة..." }], structured: null, isError: false },
+  sampleOutput: {
+    text: "نتيجة الأداة...",
+    url: "https://example.com/result.png",
+    urls: ["https://example.com/result.png"],
+    content: [{ type: "text", text: "نتيجة الأداة..." }],
+    structured: null,
+    isError: false,
+  },
   async run({ params, credential, signal }) {
     const session = await mcpSession(credential!, signal);
     if (params.operation === "list") {
@@ -141,6 +208,14 @@ export const mcpClientNode: NodeDefinition = {
       .map((c) => c.text)
       .join("\n");
     if (result.isError) throw new Error(text || "الأداة رجّعت خطأ");
-    return { output: { text, content, structured: result.structuredContent ?? null, isError: false } };
+    const urls = mediaUrls(content, result.structuredContent, text);
+    const wants = String(params.returns ?? "text");
+    if (wants !== "text" && !urls.length) {
+      throw new Error(
+        `الأداة «${name}» مرجّعتش رابط ${wants === "video" ? "فيديو" : "صورة"}. شغّل «اعرض الأدوات المتاحة» وشوف الأداة الصح، ` +
+          `أو غيّر «الأداة دي بترجّع إيه؟» لـ «كلام». اللي رجع: ${(text || JSON.stringify(result.structuredContent ?? {})).slice(0, 200)}`,
+      );
+    }
+    return { output: { text, url: urls[0] ?? "", urls, content, structured: result.structuredContent ?? null, isError: false } };
   },
 };

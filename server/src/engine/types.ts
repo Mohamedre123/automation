@@ -172,6 +172,10 @@ export interface WorkflowNode {
   credentialId?: string | null;
   disabled?: boolean;
   continueOnFail?: boolean;
+  /** Try again when the step fails: 0 = once and done. Up to 5. */
+  retries?: number;
+  /** Seconds to wait before each new attempt (doubling each time). */
+  retryWaitSeconds?: number;
 }
 
 export interface WorkflowEdge {
@@ -197,6 +201,8 @@ export interface StepLog {
   output?: unknown;
   error?: string;
   branch?: string;
+  /** More than one when the step had to be retried, so the log shows what happened. */
+  attempts?: number;
 }
 
 export interface ExecutionRecord {

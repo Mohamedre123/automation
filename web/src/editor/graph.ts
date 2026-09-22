@@ -106,6 +106,11 @@ export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["au
   };
   const fromLibrary = (node: WorkflowNode) => (["media.select", "media.pick"].includes(node.type) ? `{{${node.id}.url}}` : "");
 
+  // An outside service connected over MCP (an image or video generator, say). We only wire it when
+  // the customer told the step it makes that kind of thing - we cannot read another server's mind.
+  const fromMcp = (node: WorkflowNode, wants: string) =>
+    node.type === "mcp.callTool" && node.params.returns === wants ? `{{${node.id}.url}}` : "";
+
   // The gallery step is where the customer puts the pictures and the words together.
   const fromGallery = (node: WorkflowNode, key: string) =>
     node.type === "media.gallery" && (key !== "caption" || String(node.params.caption ?? "").trim()) ? `{{${node.id}.${key}}}` : "";
@@ -121,11 +126,12 @@ export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["au
     case "video":
       return (
         first((n) => (n.type === "ai.video" ? `{{${n.id}.url}}` : "")) ||
+        first((n) => fromMcp(n, "video")) ||
         first((n) => (n.type === "media.gallery" && String(n.params.video ?? "").trim() ? `{{${n.id}.video}}` : "")) ||
         first((n) => formKey(n, FORM_VIDEO))
       );
     case "sourceImage":
-      return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => formKey(n, FORM_IMAGE));
+      return first((n) => fromGallery(n, "url")) || first(fromLibrary) || first((n) => fromMcp(n, "image")) || first((n) => formKey(n, FORM_IMAGE));
     case "publishTime":
       return first((n) => (n.type === "trigger.schedule" && String(n.params.publishTime ?? "").trim() ? `{{${n.id}.publishAt}}` : ""));
     case "record":
@@ -143,6 +149,7 @@ export function wireValue(kind: NonNullable<NodeDefinition["fields"][number]["au
         first((n) => (n.type === "ai.image" ? `{{${n.id}.url}}` : "")) ||
         first((n) => fromGallery(n, "list")) ||
         first(fromLibrary) ||
+        first((n) => fromMcp(n, "image")) ||
         first((n) => formKey(n, FORM_IMAGE))
       );
   }

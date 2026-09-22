@@ -7,7 +7,7 @@ import { assertExecutionQuota } from "../protection.js";
 import { runInBackground } from "../background.js";
 import { assertCanRun, billableSteps, chargeRun } from "../billing.js";
 import { autoFillFromRun } from "./autofill.js";
-import { errorMessage, withTimeout } from "../nodes/util.js";
+import { errorMessage, sleep, withTimeout } from "../nodes/util.js";
 import { resolveParams, systemVars } from "./expressions.js";
 import { ExecutionQueue } from "./queue.js";
 import type {
@@ -76,6 +76,19 @@ function nextNodes(graph: WorkflowGraph, nodeId: string, branch?: string): strin
   return graph.edges
     .filter((e) => e.source === nodeId && (branch === undefined || (e.sourceHandle || "main") === branch))
     .map((e) => e.target);
+}
+
+/**
+ * Worth trying again? A timeout, a dropped connection, a rate limit or a server having a bad
+ * moment will pass. A missing field or a rejected key will not, and retrying only wastes time.
+ */
+function worthRetrying(error: unknown): boolean {
+  if (!(error instanceof Error)) return true;
+  if (error.name === "AbortError") return false;
+  if (error.name === "TimeoutError") return true;
+  const text = `${error.name} ${error.message}`;
+  if (/مفتاح|صلاحيات|مرفوض|فاضي|مطلوب|غلط|unauthorized|forbidden|invalid|not found|401|403|404|422/i.test(text)) return false;
+  return /timeout|timed out|socket|network|fetch failed|ECONN|EAI_AGAIN|ETIMEDOUT|rate limit|too many|الحد المسموح|انتهت المهلة|429|\b5\d\d\b/i.test(text);
 }
 
 function compact(value: unknown): unknown {
@@ -185,6 +198,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
       progress(node.id);
 
       let params: Record<string, any> | undefined;
+      let attempts = 1;
       try {
         if (!def?.run) throw new Error(`نوع خطوة غير معروف: ${node.type}`);
         // Only what the customer typed in the step (not data flowing in from earlier steps) can mention library images.
@@ -203,7 +217,7 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
             throw new Error(`حقل «${field.label}» فاضي ومفيش خطوة قبلها يتاخد منها - املاه في إعدادات الخطوة`);
           }
         }
-        const result = await def.run({
+        const context = {
           params,
           credential: await resolveCredential(def, node, workflow.userId, credentialById),
           outputs: scope,
@@ -212,10 +226,32 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
           signal: withTimeout(abortSignal, def.timeoutMs ?? config.nodeTimeoutMs),
           trigger: triggerContext,
           respond,
-        });
+        };
+        // "Try again if it fails": the internet is unreliable and most failures are a moment long.
+        const tries = 1 + Math.min(Math.max(Math.trunc(Number(node.retries) || 0), 0), 5);
+        let wait = Math.min(Math.max(Number(node.retryWaitSeconds) || 5, 1), 120) * 1000;
+        let result!: Awaited<ReturnType<NonNullable<typeof def.run>>>;
+        for (let attempt = 1; ; attempt++) {
+          try {
+            result = await def.run(context);
+            attempts = attempt;
+            break;
+          } catch (err) {
+            // A cancelled run, or a mistake in the setup, will fail the same way every time.
+            // And there is no point sleeping past the moment the host kills the run anyway.
+            const left = config.runBudgetMs - (Date.now() - started);
+            if (attempt >= tries || abortSignal.aborted || !worthRetrying(err) || left < wait + 5_000) {
+              attempts = attempt;
+              throw err;
+            }
+            await sleep(wait, abortSignal);
+            wait = Math.min(wait * 2, 120_000);
+          }
+        }
         steps.push({
           ...base,
           status: "success",
+          ...(attempts > 1 ? { attempts } : {}),
           durationMs: Date.now() - stepStart,
           input: compact(params),
           output: compact(result.fanOut ? { items: result.fanOut.length, ...(result.output as object) } : result.output),
@@ -243,7 +279,14 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
         pending.unshift(...queued(nextNodes(graph, node.id, result.branch), scope));
       } catch (err) {
         const message = errorMessage(err);
-        steps.push({ ...base, status: "error", durationMs: Date.now() - stepStart, input: compact(params), error: message });
+        steps.push({
+          ...base,
+          status: "error",
+          ...(attempts > 1 ? { attempts } : {}),
+          durationMs: Date.now() - stepStart,
+          input: compact(params),
+          error: message,
+        });
         progress(null);
         if (!node.continueOnFail) {
           error = `${base.name} (${node.id}): ${message}`;

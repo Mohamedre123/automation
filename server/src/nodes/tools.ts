@@ -1,7 +1,7 @@
 import type { NodeDefinition } from "../engine/types.js";
 import { parseJsonParam } from "./api.js";
 import { compare } from "./core.js";
-import { toNumber } from "./util.js";
+import { sleep, toNumber } from "./util.js";
 
 const ROUTES = 5;
 
@@ -121,6 +121,34 @@ export const toolNodes: NodeDefinition[] = [
       const results = conditions.map((c) => compare(c.left, c.op, c.right));
       const passed = results.length === 0 || (params.combine === "any" ? results.some(Boolean) : results.every(Boolean));
       return { output: { passed }, branch: passed ? undefined : "__filtered" };
+    },
+  },
+  {
+    type: "logic.wait",
+    name: "استنى شوية",
+    description:
+      "بيوقّف السيناريو مدة قبل ما يكمّل - مفيد لما خدمة محتاجة وقت تجهّز، أو عشان متبعتش رسالتين ورا بعض في ثانية",
+    app: "logic",
+    appName: "التحكم في المسار",
+    color: "#16a34a",
+    group: "logic",
+    kind: "action",
+    timeoutMs: 150_000,
+    fields: [
+      {
+        key: "seconds",
+        label: "استنى كام ثانية",
+        type: "number",
+        default: 10,
+        required: true,
+        help: "من ثانية لـ 120 ثانية (دقيقتين). السيناريو كله عنده وقت محدود يخلّص فيه، عشان كده الانتظار مبيطولش أكتر من كده. عايز تستنى ساعات أو أيام؟ اعمل سيناريو تاني بمحفّز «جدولة» في الميعاد اللي تحبه",
+      },
+    ],
+    sampleOutput: { waitedSeconds: 10 },
+    async run({ params, signal }) {
+      const seconds = Math.min(Math.max(toNumber(params.seconds, 10), 1), 120);
+      await sleep(seconds * 1000, signal);
+      return { output: { waitedSeconds: seconds } };
     },
   },
   {

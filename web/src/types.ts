@@ -80,6 +80,8 @@ export interface WorkflowNode {
   credentialId?: string | null;
   disabled?: boolean;
   continueOnFail?: boolean;
+  retries?: number;
+  retryWaitSeconds?: number;
 }
 
 export interface WorkflowEdge {
@@ -122,6 +124,7 @@ export interface StepLog {
   output?: unknown;
   error?: string;
   branch?: string;
+  attempts?: number;
 }
 
 export interface Execution {
