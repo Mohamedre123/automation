@@ -4,9 +4,12 @@ import { api } from "../api";
 import { copyText, Empty, Modal, Spinner, timeAgo, useToast } from "../components/ui";
 import { Icon } from "../icons";
 
+type Mode = "build" | "run";
+
 interface Toolbox {
   id: string;
   name: string;
+  mode: Mode;
   tokenHint: string;
   workflowIds: string[];
   createdAt: string;
@@ -93,6 +96,7 @@ function ToolboxModal({
 }) {
   const toast = useToast();
   const [name, setName] = useState(existing?.name ?? "");
+  const [mode, setMode] = useState<Mode>(existing?.mode ?? "build");
   const [selected, setSelected] = useState<string[]>(existing?.workflowIds ?? []);
   const [busy, setBusy] = useState(false);
   const toggle = (id: string) => setSelected((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
@@ -101,10 +105,10 @@ function ToolboxModal({
     setBusy(true);
     try {
       if (existing) {
-        await api(`/mcp/toolboxes/${existing.id}`, { method: "PUT", body: { name, workflowIds: selected } });
+        await api(`/mcp/toolboxes/${existing.id}`, { method: "PUT", body: { name, mode, workflowIds: selected } });
         onSaved();
       } else {
-        const res = await api<{ url: string }>("/mcp/toolboxes", { body: { name, workflowIds: selected } });
+        const res = await api<{ url: string }>("/mcp/toolboxes", { body: { name, mode, workflowIds: selected } });
         onSaved(res.url);
       }
     } catch (e) {
@@ -131,9 +135,30 @@ function ToolboxModal({
     >
       <div className="field">
         <label className="label">الاسم</label>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: أدوات المبيعات" />
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: تدفّق" />
       </div>
-      <label className="label">السيناريوهات اللي الذكاء الاصطناعي يقدر يشغّلها</label>
+
+      <label className="label">الذكاء الاصطناعي يقدر يعمل إيه؟</label>
+      <div className="mcp-modes">
+        <button type="button" className={`mcp-mode ${mode === "build" ? "on" : ""}`} onClick={() => setMode("build")}>
+          <strong>
+            <Icon name="sparkles" size={15} /> يبني ويعدّل سيناريوهات
+          </strong>
+          <span>
+            بيشوف كل خطوات المنصة والتيمبلت وحساباتك، ويعمل سيناريوهات جديدة ويصلّحها ويجرّبها - وتلاقيها ظهرت في حسابك على طول
+          </span>
+        </button>
+        <button type="button" className={`mcp-mode ${mode === "run" ? "on" : ""}`} onClick={() => setMode("run")}>
+          <strong>
+            <Icon name="play" size={15} /> يشغّل سيناريوهات محددة بس
+          </strong>
+          <span>مش هيقدر يبني ولا يعدّل - هيشوف السيناريوهات اللي تختارها تحت ويشغّلها لما تطلب منه</span>
+        </button>
+      </div>
+
+      <label className="label">
+        سيناريوهات يقدر يشغّلها {mode === "build" ? "(اختياري - هو أصلاً بيشوفهم كلهم)" : ""}
+      </label>
       <div className="mcp-pick">
         {scenarios.map((s) => (
           <label key={s.id} className={`mcp-pick-row ${s.usable ? "" : "disabled"}`}>
@@ -146,7 +171,11 @@ function ToolboxModal({
         ))}
         {!scenarios.length && <div className="faint">مفيش سيناريوهات لسه - اعمل سيناريو بمحفّز Webhook أو فورم الأول</div>}
       </div>
-      <p className="help">كل سيناريو بيظهر كأداة: الذكاء الاصطناعي يبعتله البيانات ويستلم النتيجة. التشغيل بياخد كريديت عادي</p>
+      <p className="help">
+        {mode === "build"
+          ? "الرابط ده بيدي الذكاء الاصطناعي نفس صلاحياتك في بناء السيناريوهات. أي سيناريو بيتعمل بيبقى متوقف لحد ما تفعّله انت، والتشغيل بياخد كريديت عادي"
+          : "كل سيناريو بيظهر كأداة: الذكاء الاصطناعي يبعتله البيانات ويستلم النتيجة. التشغيل بياخد كريديت عادي"}
+      </p>
     </Modal>
   );
 }
@@ -225,12 +254,15 @@ export function Mcp() {
                 </div>
               </div>
               <div className="chips">
+                <span className={`badge ${t.mode === "build" ? "success" : ""}`} style={{ marginInlineEnd: 6 }}>
+                  {t.mode === "build" ? "بيبني ويعدّل" : "بيشغّل بس"}
+                </span>
                 {t.workflowIds.map((id) => (
                   <span key={id} className="chip">
                     {data.scenarios.find((s) => s.id === id)?.name ?? "سيناريو اتمسح"}
                   </span>
                 ))}
-                {!t.workflowIds.length && <span className="faint">مفيش سيناريوهات - دوس تعديل وضيف</span>}
+                {!t.workflowIds.length && t.mode !== "build" && <span className="faint">مفيش سيناريوهات - دوس تعديل وضيف</span>}
               </div>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <button className="btn sm" onClick={() => setEditing({ existing: t })}>

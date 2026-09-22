@@ -156,6 +156,8 @@ const SCHEMA = `
   ALTER TABLE executions ADD COLUMN IF NOT EXISTS current_node TEXT;
   /* Which subscription email this account has already had, so a reminder is never sent twice. */
   ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_notice TEXT NOT NULL DEFAULT '';
+  /* "run" = the chosen scenarios only; "build" = the agent can build on the platform too. */
+  ALTER TABLE mcp_toolboxes ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'run';
 
   CREATE TABLE IF NOT EXISTS scheduled_posts (
     id TEXT PRIMARY KEY,

@@ -8,10 +8,15 @@ import { httpError, requireString } from "./errors.js";
 import { errorMessage, keyValueRows } from "./nodes/util.js";
 import { rateLimit } from "./protection.js";
 import { rowToWorkflow, triggerInfo } from "./triggers/manager.js";
+import { builderTools, GRAPH_RULES, runBuilderTool } from "./builder.js";
 
 /*
- * MCP server (Streamable HTTP, JSON responses). A toolbox is a named set of the customer's scenarios with
- * its own secret URL; AI clients (Claude, ChatGPT, Cursor...) list them as tools and run them.
+ * MCP server (Streamable HTTP, JSON responses). A toolbox is a named set of the customer's scenarios
+ * with its own secret URL; AI clients (Claude, ChatGPT, Cursor...) connect to it.
+ *
+ * A toolbox in "build" mode also hands the agent the platform itself: the step catalog, the
+ * templates, and the tools to create, fix, test and run scenarios. So somebody can tell Claude
+ * "اعملي سيناريو يعمل كذا" and watch it appear in their account.
  */
 
 const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -24,9 +29,13 @@ interface ToolboxRow {
   name: string;
   token_hint: string;
   workflow_ids: string;
+  /** "run" = only the chosen scenarios; "build" = the whole platform as well. */
+  mode: string;
   created_at: string;
   last_used_at: string | null;
 }
+
+const canBuild = (toolbox: ToolboxRow) => toolbox.mode === "build";
 
 interface Tool {
   name: string;
@@ -98,20 +107,41 @@ async function handleRpc(toolbox: ToolboxRow, message: RpcMessage) {
         protocolVersion: PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "tadfuq", title: `تدفّق - ${toolbox.name}`, version: "1.0.0" },
-        instructions: "كل أداة هنا سيناريو أتمتة على منصة تدفّق. ابعت البيانات المطلوبة وهيرجعلك ناتج التشغيل",
+        instructions: canBuild(toolbox)
+          ? `You are connected to تدفّق (Tadfuq), the user's own automation platform - their scenarios, ` +
+            `their connected accounts, their runs. Anything you build here appears in their account at ${config.publicUrl}/app and runs on the platform's servers, whether or not their computer is on.\n\n` +
+            `Start with list_steps to see what this platform can do, and list_templates before building from scratch.\n\n${GRAPH_RULES}`
+          : "كل أداة هنا سيناريو أتمتة على منصة تدفّق. ابعت البيانات المطلوبة وهيرجعلك ناتج التشغيل",
       });
     }
     case "ping":
       return reply({});
     case "tools/list": {
-      const tools = await toolboxTools(toolbox);
-      return reply({ tools: tools.map(({ workflowId, ...tool }) => tool) });
+      const scenarios = (await toolboxTools(toolbox)).map(({ workflowId, ...tool }) => tool);
+      const building = canBuild(toolbox)
+        ? builderTools.map((t) => ({ name: t.name, title: t.name, description: t.description, inputSchema: t.schema }))
+        : [];
+      return reply({ tools: [...building, ...scenarios] });
     }
     case "tools/call": {
       const name = String(message.params?.name ?? "");
+      const args = message.params?.arguments && typeof message.params.arguments === "object" ? message.params.arguments : {};
+
+      if (canBuild(toolbox) && builderTools.some((t) => t.name === name)) {
+        try {
+          const result = await runBuilderTool(name, args, { userId: toolbox.user_id, appUrl: config.publicUrl });
+          return reply({
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            ...(result && typeof result === "object" && !Array.isArray(result) ? { structuredContent: result } : {}),
+            isError: false,
+          });
+        } catch (error) {
+          return reply({ content: [{ type: "text", text: errorMessage(error) }], isError: true });
+        }
+      }
+
       const tool = (await toolboxTools(toolbox)).find((t) => t.name === name);
       if (!tool) return fail(-32602, `مفيش أداة اسمها ${name}`);
-      const args = message.params?.arguments && typeof message.params.arguments === "object" ? message.params.arguments : {};
       try {
         const out = await runTool(toolbox, tool, args);
         return reply({
@@ -158,11 +188,14 @@ export async function mcpServerRoutes(app: FastifyInstance) {
 const toToolbox = (row: ToolboxRow) => ({
   id: row.id,
   name: row.name,
+  mode: row.mode === "build" ? "build" : "run",
   tokenHint: row.token_hint,
   workflowIds: parseJson<string[]>(row.workflow_ids, []),
   createdAt: row.created_at,
   lastUsedAt: row.last_used_at,
 });
+
+const cleanMode = (value: unknown, fallback = "build") => (value === "run" || value === "build" ? value : fallback);
 
 const newToken = () => `tdq_${randomToken(24)}`;
 
@@ -196,25 +229,35 @@ export async function mcpToolboxRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/mcp/toolboxes", async (req) => {
-    const body = (req.body ?? {}) as { name?: string; workflowIds?: unknown };
+    const body = (req.body ?? {}) as { name?: string; workflowIds?: unknown; mode?: unknown };
     const name = requireString(body.name, "اسم الـ Toolbox", 80);
     const count = await one<{ n: number }>("SELECT COUNT(*)::int AS n FROM mcp_toolboxes WHERE user_id = $1", [req.user.id]);
     if ((count?.n ?? 0) >= 20) throw httpError(400, "وصلت للحد الأقصى (20 Toolbox)");
     const token = newToken();
     const id = newId();
     await run(
-      "INSERT INTO mcp_toolboxes (id, user_id, name, token_hash, token_hint, workflow_ids, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [id, req.user.id, name, sha256(token), token.slice(-4), JSON.stringify(await cleanIds(req.user.id, body.workflowIds)), now()],
+      "INSERT INTO mcp_toolboxes (id, user_id, name, token_hash, token_hint, workflow_ids, mode, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [
+        id,
+        req.user.id,
+        name,
+        sha256(token),
+        token.slice(-4),
+        JSON.stringify(await cleanIds(req.user.id, body.workflowIds)),
+        cleanMode(body.mode),
+        now(),
+      ],
     );
     return { toolbox: toToolbox(await owned(req.user.id, id)), url: mcpUrl(token) };
   });
 
   app.put("/api/mcp/toolboxes/:id", async (req) => {
     const row = await owned(req.user.id, (req.params as { id: string }).id);
-    const body = (req.body ?? {}) as { name?: string; workflowIds?: unknown };
+    const body = (req.body ?? {}) as { name?: string; workflowIds?: unknown; mode?: unknown };
     const name = body.name === undefined ? row.name : requireString(body.name, "اسم الـ Toolbox", 80);
     const ids = body.workflowIds === undefined ? parseJson<string[]>(row.workflow_ids, []) : await cleanIds(req.user.id, body.workflowIds);
-    await run("UPDATE mcp_toolboxes SET name = $1, workflow_ids = $2 WHERE id = $3", [name, JSON.stringify(ids), row.id]);
+    const mode = body.mode === undefined ? row.mode : cleanMode(body.mode, row.mode);
+    await run("UPDATE mcp_toolboxes SET name = $1, workflow_ids = $2, mode = $3 WHERE id = $4", [name, JSON.stringify(ids), mode, row.id]);
     return { toolbox: toToolbox(await owned(req.user.id, row.id)) };
   });
 

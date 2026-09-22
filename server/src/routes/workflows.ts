@@ -3,7 +3,7 @@ import { assertCanActivate } from "../billing.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { newId, now, one, parseJson, query, run } from "../db.js";
 import { wireGraph } from "../engine/autofill.js";
-import { executionFromRow } from "../engine/executor.js";
+import { executeWorkflow, executionFromRow } from "../engine/executor.js";
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode } from "../engine/types.js";
 import { httpError, requireString } from "../errors.js";
 import { newWebhookPath } from "../nodes/core.js";
@@ -195,6 +195,47 @@ export async function updateInactiveWorkflow(userId: string, id: string, graphIn
     now(),
     id,
   ]);
+}
+
+/** Start or stop a scenario. Shared by the app route and anything building through an agent. */
+export async function setWorkflowActive(userId: string, id: string, active: boolean) {
+  const row = await one("SELECT * FROM workflows WHERE id = $1 AND user_id = $2", [id, userId]);
+  if (!row) throw httpError(404, "السيناريو مش موجود");
+  const workflow = rowToWorkflow(row);
+  if (active) {
+    validateForActivation(workflow.graph);
+    await assertCanActivate(userId, id, triggerIntervals(workflow.graph));
+    let nextRunAt: string | null;
+    try {
+      ({ nextRunAt } = await activateTrigger(workflow));
+    } catch (error) {
+      throw httpError(400, errorMessage(error));
+    }
+    await run("UPDATE workflows SET active = 1, next_run_at = $1, trigger_error = NULL, updated_at = $2 WHERE id = $3", [nextRunAt, now(), id]);
+  } else {
+    if (row.active) await deactivateTrigger(workflow);
+    await run("UPDATE workflows SET active = 0, next_run_at = NULL, trigger_error = NULL, updated_at = $1 WHERE id = $2", [now(), id]);
+  }
+  await syncLocalWorker(id);
+  return active;
+}
+
+/**
+ * One run, start to finish, with the result. Used by agents (MCP) - unlike the editor there is
+ * nobody sitting there to send test data, so the trigger is handed whatever the agent passed.
+ */
+export async function runScenarioOnce(userId: string, id: string, data: Record<string, unknown>) {
+  const row = await one("SELECT * FROM workflows WHERE id = $1 AND user_id = $2", [id, userId]);
+  if (!row) throw httpError(404, "السيناريو مش موجود");
+  const workflow = rowToWorkflow(row);
+  const info = triggerInfo(workflow.graph);
+  const triggerOutput =
+    info?.node.type === "trigger.form"
+      ? { data, submittedAt: now() }
+      : info?.node.type === "trigger.webhook"
+        ? { method: "POST", headers: {}, query: {}, body: data }
+        : { triggeredAt: now(), data };
+  return executeWorkflow({ workflow, triggerOutput, mode: "manual" });
 }
 
 export async function workflowRoutes(app: FastifyInstance) {
