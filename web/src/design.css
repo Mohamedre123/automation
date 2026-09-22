@@ -497,10 +497,26 @@ h4,
 }
 .lp-logos-track {
   display: flex;
-  gap: 44px;
   width: max-content;
-  animation: lp-marquee 40s linear infinite;
+  animation: lp-marquee 55s linear infinite;
   direction: ltr;
+  /* Its own layer, so the loop does not tear on a repaint. */
+  will-change: transform;
+}
+.lp-logos-track.reverse {
+  animation-name: lp-marquee-reverse;
+  animation-duration: 48s;
+  margin-top: 16px;
+}
+/*
+ * The seam: a gap between the items would make the track a half-gap wider than two copies,
+ * and translating by 50% would land just short of the start - the jump you could see. Each
+ * copy carries its own trailing space instead, so half the track is exactly one copy.
+ */
+.lp-logos-group {
+  display: flex;
+  gap: 44px;
+  padding-inline-end: 44px;
 }
 .lp-logos:hover .lp-logos-track {
   animation-play-state: paused;
@@ -513,14 +529,38 @@ h4,
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
+  flex: 0 0 auto;
   transition: color 0.2s;
 }
 .lp-logo:hover {
   color: var(--text);
 }
+.lp-logo.mcp {
+  color: var(--text-4, var(--text-3));
+  opacity: 0.85;
+}
+.lp-logos-note {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  opacity: 0.75;
+  padding: 0 16px;
+}
 @keyframes lp-marquee {
+  from {
+    transform: translateX(0);
+  }
   to {
     transform: translateX(-50%);
+  }
+}
+@keyframes lp-marquee-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 

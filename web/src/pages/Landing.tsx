@@ -70,23 +70,64 @@ function ProductWindow() {
 }
 
 /* ---------- data ---------- */
+/* The apps with a step of their own: you pick them from the list and connect your account. */
 const LOGOS = [
   ["whatsapp", "WhatsApp"],
   ["telegram", "Telegram"],
   ["instagram", "Instagram"],
   ["facebook", "Facebook"],
   ["tiktok", "TikTok"],
+  ["threads", "Threads"],
+  ["x", "X"],
+  ["linkedin", "LinkedIn"],
+  ["pinterest", "Pinterest"],
   ["gemini", "Gemini"],
   ["openai", "ChatGPT"],
   ["anthropic", "Claude"],
   ["sheets", "Google Sheets"],
+  ["drive", "Google Drive"],
+  ["gcalendar", "Google Calendar"],
+  ["gmail", "Gmail"],
   ["shopify", "Shopify"],
+  ["woocommerce", "WooCommerce"],
   ["salla", "سلة"],
   ["zid", "زد"],
+  ["wix", "Wix"],
   ["wordpress", "WordPress"],
+  ["ghost", "Ghost"],
+  ["webflow", "Webflow"],
   ["notion", "Notion"],
+  ["airtable", "Airtable"],
+  ["trello", "Trello"],
   ["slack", "Slack"],
+  ["discord", "Discord"],
+  ["github", "GitHub"],
+  ["hubspot", "HubSpot"],
+  ["mailchimp", "Mailchimp"],
   ["stripe", "Stripe"],
+];
+
+/*
+ * The other half: any service that speaks MCP plugs straight into a scenario. These are not
+ * steps we wrote - they are the customer's own account at that service, reached over MCP - so
+ * they live on their own line and say so, rather than sitting among the ones we built.
+ */
+const MCP_LOGOS = [
+  "Higgsfield",
+  "Runway",
+  "Midjourney",
+  "ElevenLabs",
+  "HeyGen",
+  "Kling AI",
+  "Luma",
+  "Replicate",
+  "Figma",
+  "Canva",
+  "Perplexity",
+  "Linear",
+  "Asana",
+  "ClickUp",
+  "Zapier",
 ];
 
 const CASES = [
@@ -215,12 +256,32 @@ export function Landing() {
       </div>
 
       <div className="lp-logos" aria-label="تطبيقات بتتربط">
+        {/* Two identical groups, each as wide as the other: the animation moves exactly one
+            group's width, so the end of the second meets the start of the first with no seam. */}
         <div className="lp-logos-track">
-          {[...LOGOS, ...LOGOS].map(([key, name], i) => (
-            <span className="lp-logo" key={`${key}-${i}`}>
-              <Icon name={key} size={18} /> {name}
-            </span>
+          {[0, 1].map((copy) => (
+            <div className="lp-logos-group" key={copy} aria-hidden={copy === 1}>
+              {LOGOS.map(([key, name]) => (
+                <span className="lp-logo" key={key}>
+                  <Icon name={key} size={18} /> {name}
+                </span>
+              ))}
+            </div>
           ))}
+        </div>
+        <div className="lp-logos-track reverse">
+          {[0, 1].map((copy) => (
+            <div className="lp-logos-group" key={copy} aria-hidden={copy === 1}>
+              {MCP_LOGOS.map((name) => (
+                <span className="lp-logo mcp" key={name}>
+                  <Icon name="mcp" size={16} /> {name}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="lp-logos-note">
+          السطر التاني بيتربط عبر MCP - أي خدمة بتدعمه تشتغل جوه السيناريو زي أي خطوة
         </div>
       </div>
 
