@@ -53,7 +53,15 @@ function fieldsToFill(def: NodeDefinition, node: WorkflowNode) {
       // or when they are the images and captions a publishing step is all about.
       const value = node.params?.[field.key];
       const written = typeof value === "string" && /^(اكتب|حدد|سيب|\(اكتب)/.test(value.trim());
-      return Boolean(field.required || written || field.autoFill === "image" || field.autoFill === "images" || field.autoFill === "caption");
+      // A chatbot that learns needs to know whose word counts - without it, nobody can teach it.
+      const ownerMissing =
+        field.key === "ownerContact" &&
+        node.params?.learn !== false &&
+        !String(node.params?.ownerContact ?? "").trim() &&
+        !String(node.params?.handoffTarget ?? "").trim();
+      return Boolean(
+        field.required || written || ownerMissing || field.autoFill === "image" || field.autoFill === "images" || field.autoFill === "caption",
+      );
     })
     .slice(0, 5)
     .map((field) => ({ label: field.label, help: field.help }));

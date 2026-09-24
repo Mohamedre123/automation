@@ -1,6 +1,7 @@
 import type { CredentialType, FieldDef, NodeDefinition, WebhookResponse } from "../engine/types.js";
 import { postJson } from "./llm.js";
 import { skipIfEmptyField } from "./telegram.js";
+import { rememberSent } from "./learning.js";
 
 const WASENDER_BASE = "https://wasenderapi.com/api";
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
@@ -162,6 +163,45 @@ export const wasenderNodes: NodeDefinition[] = [
           },
         ];
       },
+      /*
+       * The owner answering a customer from their own phone. WasenderAPI reports it as a message
+       * "from me" - but only with the Message Upsert event switched on in its webhook settings.
+       * It does not start a run (the bot must not answer its own owner's message to a customer);
+       * the chatbot in this scenario learns from it instead.
+       */
+      observe(request, { credential }) {
+        const secret = credential?.data.webhookSecret;
+        if (secret && request.headers["x-webhook-signature"] !== secret) return undefined;
+        const body = (request.body ?? {}) as any;
+        const data = body.data ?? {};
+        const message = data.messages ?? data.message ?? data;
+        if (!(message?.key?.fromMe || data.fromMe)) return undefined;
+        const key = message?.key ?? data.key ?? {};
+        const jid = String(key.remoteJid ?? data.remoteJid ?? "");
+        if (!jid || jid.includes("@g.us") || jid.includes("status@") || jid.includes("@broadcast")) return undefined;
+        const text = String(
+          data.messageBody ??
+            message?.messageBody ??
+            message?.message?.conversation ??
+            message?.message?.extendedTextMessage?.text ??
+            message?.conversation ??
+            "",
+        ).trim();
+        if (!text) return undefined;
+        // In a message the owner sent, the "sender" number is the owner's own - the customer is the
+        // chat itself (or its real number, when WhatsApp hides it behind a private id).
+        let chat = jid;
+        for (const value of [jid, key.remoteJidAlt, data.remoteJidAlt]) {
+          const candidate = String(value ?? "");
+          if (!candidate || candidate.endsWith("@lid")) continue;
+          const digits = candidate.split("@")[0].replace(/\D/g, "");
+          if (digits.length >= 7) {
+            chat = digits;
+            break;
+          }
+        }
+        return { chat, jid, text, messageId: key.id ? String(key.id) : undefined };
+      },
     },
   },
   {
@@ -189,7 +229,7 @@ export const wasenderNodes: NodeDefinition[] = [
       skipIfEmptyField,
     ],
     sampleOutput: { success: true, data: { msgId: "3EB0..." } },
-    async run({ params, credential, signal }) {
+    async run({ params, credential, signal, workflow }) {
       const to = String(params.to ?? "").replace(/[^\d@.a-zA-Z-]/g, "");
       if (!to) throw new Error("رقم المستلم فاضي");
       const text = String(params.text ?? "");
@@ -209,15 +249,16 @@ export const wasenderNodes: NodeDefinition[] = [
         throw new Error("نص الرسالة فاضي");
       }
       try {
-        return {
-          output: await postJson(
-            `${WASENDER_BASE}/send-message`,
-            body,
-            { authorization: `Bearer ${credential?.data.apiKey ?? ""}` },
-            signal,
-            "WasenderAPI",
-          ),
-        };
+        const output = (await postJson(
+          `${WASENDER_BASE}/send-message`,
+          body,
+          { authorization: `Bearer ${credential?.data.apiKey ?? ""}` },
+          signal,
+          "WasenderAPI",
+        )) as { data?: { msgId?: string } };
+        // So this message, echoed back as "sent from this number", is not taken for the owner typing.
+        await rememberSent(workflow.userId, to, text, output?.data?.msgId).catch(() => undefined);
+        return { output };
       } catch (error) {
         const message = (error as Error).message;
         if (/JID does not exist|not.*on WhatsApp/i.test(message)) {

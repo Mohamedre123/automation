@@ -166,7 +166,8 @@ async function execute({ workflow, triggerOutput, mode, respond, signal, onStart
         }),
       );
     }
-    const triggerContext = { type: trigger.type, credential: triggerCredential };
+    // Who wrote in, for the steps that answer them (a chatbot recognising its owner, say).
+    const triggerContext = { type: trigger.type, credential: triggerCredential, output: triggerOutput };
     const vars = systemVars({ id: workflow.id, name: workflow.name }, { id, mode });
     steps.push({
       nodeId: trigger.id,

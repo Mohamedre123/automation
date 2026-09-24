@@ -72,6 +72,19 @@ function hasCycle(nodes: WorkflowNode[], edges: WorkflowEdge[]): boolean {
   return nodes.some((n) => visit(n.id));
 }
 
+/**
+ * A save that leaves out the trigger's link keeps the one it had. The link is pasted into outside
+ * services (WasenderAPI, a website form), so quietly minting a new one - because an agent editing
+ * the scenario did not copy that field back - would leave the old link dead and the bot silent.
+ */
+function keepTriggerPath(previous: WorkflowGraph, graph: WorkflowGraph) {
+  const before = previous.nodes.find((n) => getNode(n.type)?.kind === "trigger");
+  const after = graph.nodes.find((n) => getNode(n.type)?.kind === "trigger");
+  const path = String(before?.params?.path ?? "");
+  if (!before || !after || !path || before.type !== after.type || String(after.params?.path ?? "")) return;
+  after.params = { ...after.params, path };
+}
+
 /** Webhook and app triggers own a unique URL path. */
 async function ensureTriggerPaths(graph: WorkflowGraph, workflowId: string) {
   for (const node of graph.nodes) {
@@ -190,6 +203,7 @@ export async function updateInactiveWorkflow(userId: string, id: string, graphIn
   if (!row) throw httpError(404, "السيناريو مش موجود");
   if (row.active) throw httpError(409, "السيناريو مفعّل - لازم يتوقف الأول قبل التعديل");
   const graph = wireGraph(sanitizeGraph(graphInput), getNode);
+  keepTriggerPath(parseJson<WorkflowGraph>(row.graph, { nodes: [], edges: [] }), graph);
   await ensureTriggerPaths(graph, id);
   const trigger = triggerColumns(graph);
   await run("UPDATE workflows SET name = $1, graph = $2, trigger_type = $3, trigger_path = $4, updated_at = $5 WHERE id = $6", [
@@ -296,6 +310,7 @@ export async function workflowRoutes(app: FastifyInstance) {
     const name = body.name === undefined ? row.name : requireString(body.name, "اسم السيناريو", 120);
     const description = typeof body.description === "string" ? body.description.slice(0, 1000) : row.description;
     const graph = body.graph === undefined ? parseJson<WorkflowGraph>(row.graph, { nodes: [], edges: [] }) : sanitizeGraph(body.graph);
+    keepTriggerPath(parseJson<WorkflowGraph>(row.graph, { nodes: [], edges: [] }), graph);
     await ensureTriggerPaths(graph, id);
     const trigger = triggerColumns(graph);
 

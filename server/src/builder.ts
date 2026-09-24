@@ -137,6 +137,14 @@ A node: { "id": "1", "type": "<step type>", "name": "اسم بالعربي", "po
 - No loops: a step never points back to a step before it.
 - If create_scenario or update_scenario answers with "tidied", tell the user what the platform fixed.
 
+# Chatbots
+
+An "ai.agent" step learns on the job by default ("learn": true). When a customer asks something its
+knowledge does not cover, it asks the owner, the owner's answer goes to that customer, and the bot keeps
+it. For that it needs "ownerContact": the owner's own WhatsApp number with country code (not the number
+the bot runs on) or their Telegram @username. Ask the user for it; never guess one. Put what the user
+tells you about their business (prices, hours, delivery, policies) in "knowledge".
+
 # Passing data between steps
 
 Write {{2.text}} to use step 2's output. Paths follow the step's sampleOutput, which describe_step returns:

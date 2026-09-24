@@ -4551,3 +4551,132 @@ h3 {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ---------- What the chatbot learned (inside the AI Agent step) ---------- */
+.learn {
+  margin: 18px 0 6px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  background: var(--grad-soft);
+}
+.learn-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.learn-count {
+  margin-inline-start: auto;
+  min-width: 26px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.learn-block {
+  margin-top: 14px;
+}
+.learn-block > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+.learn-block > summary + .help {
+  margin-top: 8px;
+}
+.learn-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.learn-add input {
+  flex: 1;
+  min-width: 0;
+}
+.learn textarea {
+  width: 100%;
+  margin-top: 8px;
+  resize: vertical;
+}
+.learn-question {
+  padding: 10px 12px;
+  margin-top: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: var(--accent-soft);
+}
+.learn-question-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.learn-question-top .btn {
+  margin-inline-start: auto;
+}
+.learn-num {
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+.learn-who {
+  font-weight: 600;
+  color: var(--text);
+}
+.learn-question-text {
+  margin-top: 6px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.learn-question .btn.primary {
+  margin-top: 8px;
+}
+.learn-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.learn-facts li {
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.learn-fact-text {
+  color: var(--text);
+  line-height: 1.6;
+  /* a price range written 800 - 2500 keeps its order */
+  unicode-bidi: plaintext;
+}
+.learn-fact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.learn-fact-actions {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 2px;
+}
+.learn-commands b {
+  color: var(--text);
+}

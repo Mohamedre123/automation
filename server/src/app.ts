@@ -15,6 +15,7 @@ import { mediaLibraryRoutes, mediaRoutes } from "./routes/media.js";
 import { cronRoutes, miscRoutes, publicRoutes } from "./routes/misc.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { workflowRoutes } from "./routes/workflows.js";
+import { learningRoutes } from "./routes/learning.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: { level: config.isVercel ? "warn" : "info" }, bodyLimit: 4 * 1024 * 1024, trustProxy: true });
@@ -88,6 +89,7 @@ export async function buildApp() {
       await rateLimit(`api:${req.user.id}`, 600, 60);
     });
     await api.register(workflowRoutes);
+    await api.register(learningRoutes);
     await api.register(credentialRoutes);
     await api.register(miscRoutes);
     await api.register(mediaLibraryRoutes);

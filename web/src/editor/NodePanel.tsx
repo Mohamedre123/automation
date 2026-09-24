@@ -5,6 +5,7 @@ import { Icon } from "../icons";
 import { CredentialModal } from "../pages/Credentials";
 import { StepDetails } from "../pages/Executions";
 import type { Credential, StepLog, WorkflowNode } from "../types";
+import { BotLearning } from "./BotLearning";
 import { FieldInput } from "./fields";
 import { isFieldVisible } from "./graph";
 
@@ -19,6 +20,7 @@ export function NodePanel({
   onClose,
   onCredentialCreated,
   onAutoFill,
+  workflowId,
 }: {
   node: WorkflowNode;
   step?: StepLog;
@@ -30,6 +32,8 @@ export function NodePanel({
   onClose: () => void;
   onCredentialCreated: (credential: Credential) => void;
   onAutoFill?: () => number;
+  /** The scenario being edited - a chatbot step shows what it learned in this scenario. */
+  workflowId?: string;
 }) {
   const { nodeDef, credType } = useMeta();
   const [credentialModal, setCredentialModal] = useState(false);
@@ -179,6 +183,8 @@ export function NodePanel({
                   </div>
                 ),
               )}
+
+            {def.type === "ai.agent" && workflowId && <BotLearning workflowId={workflowId} enabled={node.params.learn !== false} />}
 
             {def.kind !== "trigger" && (
               <>

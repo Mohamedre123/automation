@@ -2,6 +2,7 @@ import type { CredentialValue } from "../engine/types.js";
 import { datastoreRead, datastoreWrite } from "./core.js";
 import { sendCustomMessage } from "./custom.js";
 import { postJson } from "./llm.js";
+import { rememberSent } from "./learning.js";
 
 /** Bots can't message a private @username: we remember the chat id of everyone who wrote to the bot. */
 export const TELEGRAM_CONTACTS_STORE = "جهات_تيليجرام";
@@ -56,15 +57,18 @@ export async function sendNotification(credential: CredentialValue, target: stri
       }
       return;
     }
-    case "wasenderApi":
-      await postJson(
+    case "wasenderApi": {
+      const output = (await postJson(
         "https://wasenderapi.com/api/send-message",
         { to: to.replace(/[^\d@.a-zA-Z-]/g, ""), text },
         { authorization: `Bearer ${credential.data.apiKey}` },
         signal,
         "WasenderAPI",
-      );
+      )) as { data?: { msgId?: string } };
+      // Echoed back as "sent from this number" - it must not look like the owner typing.
+      await rememberSent(userId, to, text, output?.data?.msgId).catch(() => undefined);
       return;
+    }
     case "whatsappCloud":
       try {
         await postJson(

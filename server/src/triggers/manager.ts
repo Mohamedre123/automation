@@ -16,11 +16,13 @@ import type {
   ExecutionMode,
   ExecutionRecord,
   NodeDefinition,
+  OwnerMessage,
   WebhookRequest,
   WebhookResponse,
   WorkflowGraph,
   WorkflowNode,
 } from "../engine/types.js";
+import { learnFromOwnerReply } from "../nodes/ai.js";
 import { getNode } from "../nodes/index.js";
 import { parsePublishAt, runScheduledPosts } from "../nodes/publishAll.js";
 import { runSubscriptionMail } from "../billing.js";
@@ -225,15 +227,22 @@ export async function handleWebhook(path: string, request: WebhookRequest): Prom
   if (!workflow || !info) return notFound;
 
   let items: unknown[];
+  let ownerMessage: OwnerMessage | undefined;
   try {
     const ctx = await webhookContext(workflow, info, path);
     // Platform handshakes (Meta's hub.challenge) answer before any execution.
     const verified = info.def.webhook?.verify?.(request, ctx);
     if (verified) return verified;
     items = parseItems(info, request, ctx);
+    ownerMessage = info.def.webhook?.observe?.(request, ctx);
   } catch (e: any) {
     return { status: e.statusCode ?? 400, headers: {}, body: { error: errorMessage(e) } };
   }
+  // The owner answering a customer from their own phone: the chatbot learns from it. Never a run.
+  if (ownerMessage) runInBackground(learnFromOwnerReply(workflow, ownerMessage));
+  // Nothing to act on - a delivery or read receipt, a group message, the business's own message.
+  // Starting a run anyway would run the scenario on empty data, fail, and charge for it.
+  if (!items.length) return { status: 200, headers: {}, body: { ignored: true } };
   if (info.def.triggerType === "app") {
     runInBackground(runItems(workflow, items, "poll"));
     return { status: 200, headers: {}, body: { ok: true } };

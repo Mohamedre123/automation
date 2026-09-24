@@ -725,6 +725,7 @@ function EditorCanvas() {
             onDelete={() => deleteNode(selectedNode.id)}
             onClose={() => setSelectedId(null)}
             onCredentialCreated={(credential) => setCredentials((list) => [credential, ...list])}
+            workflowId={id}
           />
         )}
 

@@ -91,7 +91,7 @@ export interface NodeContext {
   signal: AbortSignal;
   respond?: (response: WebhookResponse) => void;
   /** The workflow's trigger and its account (e.g. reply or notify through the same bot by default). */
-  trigger?: { type: string; credential?: CredentialValue };
+  trigger?: { type: string; credential?: CredentialValue; output?: unknown };
   /** For a gathering step: what every branch, or every round of a loop, handed it. */
   gathered?: unknown[];
 }
@@ -134,6 +134,20 @@ export interface TriggerWebhook {
   verify?: (request: WebhookRequest, ctx: WebhookContext) => WebhookResponse | undefined;
   /** Incoming request -> trigger items (one execution each). Return [] to ignore. */
   parse: (request: WebhookRequest, ctx: WebhookContext) => unknown[];
+  /**
+   * A message the business sent itself - the owner replying to a customer from their own phone. It
+   * never starts a run; the chatbot learns from it instead. Undefined for everything else.
+   */
+  observe?: (request: WebhookRequest, ctx: WebhookContext) => OwnerMessage | undefined;
+}
+
+export interface OwnerMessage {
+  /** The customer's number (digits), or their chat id when WhatsApp hides the number. */
+  chat: string;
+  /** The raw chat id, in case the conversation was remembered under it. */
+  jid?: string;
+  text: string;
+  messageId?: string;
 }
 
 export type NodeGroup = "trigger" | "ai" | "apps" | "logic" | "data";
