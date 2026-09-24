@@ -1,9 +1,10 @@
 import { executionFromRow } from "./engine/executor.js";
 import type { WorkflowGraph } from "./engine/types.js";
 import { one, parseJson, query } from "./db.js";
-import { nodeDefinitions } from "./nodes/index.js";
+import { getNode, nodeDefinitions } from "./nodes/index.js";
 import { templates } from "./templates.js";
 import { insertWorkflow, sanitizeGraph, setWorkflowActive, updateInactiveWorkflow } from "./routes/workflows.js";
+import { arrangeGraph, type Arranged } from "./engine/layout.js";
 
 /*
  * Everything an AI needs to build on this platform, in one place.
@@ -124,11 +125,17 @@ A node: { "id": "1", "type": "<step type>", "name": "اسم بالعربي", "po
   afterwards (one message, one report) instead of once per item, put "logic.collect" after the loop's
   last step: it waits for every round and gives {{n.items}}, {{n.count}} and {{n.text}}. Its "field"
   setting picks one value out of each round.
-- position.x is the step's order x 280, position.y is 0. For branches use y = -130 and y = +130.
+- EVERY step except the trigger needs at least one edge pointing at it, or it never runs. Send the
+  edges every time - a list of steps is not a scenario. (If you forget one, the platform joins that
+  step to the step you wrote just before it and says so under "tidied" - but that is a guess.)
+- position.x is the step's order x 280, position.y is 0. For branches use y = -160 and y = +160.
+  Never put two steps at the same position: they open stacked on top of each other.
 - An edge: { "id": "e1-2", "source": "1", "target": "2", "sourceHandle": null }.
-- logic.if has two outputs: sourceHandle "true" and "false". Every other step uses null.
+- Steps with named exits need sourceHandle set to the exit: logic.if uses "true" / "false",
+  logic.switch uses "r1".."r5" / "else" (describe_step lists a step's "outputs"). Every other step uses null.
 - Two edges out of one step means both branches run.
 - No loops: a step never points back to a step before it.
+- If create_scenario or update_scenario answers with "tidied", tell the user what the platform fixed.
 
 # Passing data between steps
 
@@ -230,6 +237,14 @@ export interface BuilderContext {
   onAction?: (action: BuilderAction) => void;
 }
 
+/** What the platform tidied in a graph an agent sent, in words the agent can pass on. */
+function tidied(arranged: Arranged) {
+  const notes: string[] = [];
+  if (arranged.connected) notes.push(`${arranged.connected} step(s) had no arrow pointing at them and were joined to the step written before them`);
+  if (arranged.laidOut) notes.push("the steps were on top of each other and were laid out left to right");
+  return notes.length ? { tidied: notes } : {};
+}
+
 export async function runBuilderTool(name: string, input: Record<string, any>, context: BuilderContext): Promise<unknown> {
   const { userId } = context;
   const link = (id: string) => `${context.appUrl}/app/workflows/${id}`;
@@ -284,15 +299,17 @@ export async function runBuilderTool(name: string, input: Record<string, any>, c
     }
     case "create_scenario": {
       const scenarioName = String(input.name || "سيناريو جديد").slice(0, 120);
-      const id = await insertWorkflow(userId, scenarioName, sanitizeGraph(input.graph));
+      const arranged = arrangeGraph(sanitizeGraph(input.graph), getNode);
+      const id = await insertWorkflow(userId, scenarioName, arranged.graph);
       context.onAction?.({ type: "scenario_created", scenarioId: id, name: scenarioName });
-      return { created: true, id, name: scenarioName, url: link(id), note: "اتعمل متوقف - المستخدم هو اللي يفعّله" };
+      return { created: true, id, name: scenarioName, url: link(id), note: "اتعمل متوقف - المستخدم هو اللي يفعّله", ...tidied(arranged) };
     }
     case "update_scenario": {
       const id = String(input.scenario_id ?? "");
-      await updateInactiveWorkflow(userId, id, input.graph, input.name);
+      const arranged = arrangeGraph(sanitizeGraph(input.graph), getNode);
+      await updateInactiveWorkflow(userId, id, arranged.graph, input.name);
       context.onAction?.({ type: "scenario_updated", scenarioId: id });
-      return { updated: true, id, url: link(id) };
+      return { updated: true, id, url: link(id), ...tidied(arranged) };
     }
     case "set_scenario_active": {
       const row = await ownScenario(input.scenario_id);

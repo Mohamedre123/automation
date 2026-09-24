@@ -111,7 +111,7 @@ function EditorCanvas() {
       .then((wf) => {
         setWorkflow(wf);
         setName(wf.name);
-        const flow = toFlow(wf.graph ?? { nodes: [], edges: [] });
+        const flow = toFlow(wf.graph ?? { nodes: [], edges: [] }, (type) => nodeDef(type)?.kind === "trigger");
         setNodes(flow.nodes);
         setEdges(flow.edges);
         setTimeout(() => fitView({ padding: 0.35, maxZoom: 1 }), 60);
@@ -654,6 +654,8 @@ function EditorCanvas() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             isValidConnection={isValidConnection}
+            // Letting go of a line anywhere near a step's dot joins it - no pixel hunting.
+            connectionRadius={44}
             onNodeClick={(_, n) => {
               setSelectedId(n.id);
               setSide("node");

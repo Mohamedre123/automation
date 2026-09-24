@@ -1787,14 +1787,48 @@ h3 {
 }
 
 .react-flow__handle.fhandle {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border: 2px solid var(--bg-2);
   background: var(--text-3);
+  /*
+   * Above the step's circle. The incoming dot comes before the circle in the page, so the circle
+   * was painted over half of it - and on hover the circle grows and lifts, covering more. The
+   * mouse landed on the circle instead of the dot, which is why grabbing it sometimes missed.
+   */
+  z-index: 6;
+  transition:
+    scale 0.12s ease,
+    background-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+/*
+ * A catch area much bigger than the dot you see: pressing anywhere within about 20px of it grabs
+ * it. (A pseudo-element counts as the dot itself for the mouse and for touch.)
+ */
+.react-flow__handle.fhandle::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+}
+/* The dot answers the moment the mouse is on it, so you know it caught before you drag.
+   "scale" rather than "transform": the library already uses transform to centre the dot. */
+.react-flow__handle.fhandle:hover,
+.react-flow__handle.fhandle.connectingfrom {
+  scale: 1.45;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .react-flow__handle.fhandle.source {
   background: var(--accent);
+}
+/* While dragging a line, the dot it will land on lights up. */
+.react-flow__handle.fhandle.connectingto,
+.react-flow__handle.fhandle.valid {
+  scale: 1.6;
+  background: var(--success);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .react-flow__edge-path {

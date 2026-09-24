@@ -7,9 +7,10 @@ import { newId, now, one, parseJson, query, run } from "./db.js";
 import { executionFromRow } from "./engine/executor.js";
 import type { WorkflowGraph } from "./engine/types.js";
 import { httpError } from "./errors.js";
-import { credentialTypes, nodeDefinitions } from "./nodes/index.js";
+import { credentialTypes, getNode, nodeDefinitions } from "./nodes/index.js";
 import { errorMessage } from "./nodes/util.js";
 import { insertWorkflow, sanitizeGraph, updateInactiveWorkflow } from "./routes/workflows.js";
+import { arrangeGraph } from "./engine/layout.js";
 
 /*
  * «مساعد تدفّق»: an in-app Claude agent that knows the platform, builds workflows for the user
@@ -219,14 +220,16 @@ async function runTool(name: string, input: Record<string, any>, userId: string,
       return query("SELECT id, type, name FROM credentials WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
     case "create_workflow": {
       const workflowName = String(input.name || "سيناريو جديد").slice(0, 120);
-      const id = await insertWorkflow(userId, workflowName, sanitizeGraph(input.graph));
+      const arranged = arrangeGraph(sanitizeGraph(input.graph), getNode);
+      const id = await insertWorkflow(userId, workflowName, arranged.graph);
       actions.push({ type: "workflow_created", workflowId: id, name: workflowName });
-      return { created: true, id };
+      return { created: true, id, joinedSteps: arranged.connected, laidOut: arranged.laidOut };
     }
     case "update_workflow":
-      await updateInactiveWorkflow(userId, String(input.workflow_id), input.graph, input.name);
+      const arranged = arrangeGraph(sanitizeGraph(input.graph), getNode);
+      await updateInactiveWorkflow(userId, String(input.workflow_id), arranged.graph, input.name);
       actions.push({ type: "workflow_updated", workflowId: String(input.workflow_id) });
-      return { updated: true };
+      return { updated: true, joinedSteps: arranged.connected, laidOut: arranged.laidOut };
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

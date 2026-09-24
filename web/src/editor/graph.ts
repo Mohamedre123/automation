@@ -5,11 +5,68 @@ import type { NodeDefinition, WorkflowEdge, WorkflowGraph, WorkflowNode } from "
 export type FlowNodeData = { node: WorkflowNode };
 export type FlowNodeType = Node<FlowNodeData, "app">;
 
-export function toFlow(graph: WorkflowGraph): { nodes: FlowNodeType[]; edges: Edge[] } {
+export function toFlow(graph: WorkflowGraph, isTrigger?: (type: string) => boolean): { nodes: FlowNodeType[]; edges: Edge[] } {
+  // A scenario an agent saved with every step at the same spot opens spread out instead of as a pile.
+  const positions = isTrigger && overlapping(graph.nodes) ? spreadOut(graph, isTrigger) : null;
   return {
-    nodes: graph.nodes.map((node) => ({ id: node.id, type: "app", position: node.position, data: { node } })),
+    nodes: graph.nodes.map((node) => ({ id: node.id, type: "app", position: positions?.get(node.id) ?? node.position, data: { node } })),
     edges: graph.edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? "main" })),
   };
+}
+
+/** Steps close enough to cover each other on the canvas. */
+function overlapping(nodes: WorkflowNode[]): boolean {
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i].position;
+      const b = nodes[j].position;
+      if (Math.abs(a.x - b.x) < 140 && Math.abs(a.y - b.y) < 110) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Left to right by distance from the trigger, steps at the same distance spread top to bottom.
+ * The same rule the server applies to what an agent builds (server/src/engine/layout.ts).
+ */
+function spreadOut(graph: WorkflowGraph, isTrigger: (type: string) => boolean): Map<string, { x: number; y: number }> {
+  const trigger = graph.nodes.find((n) => isTrigger(n.type));
+  const depth = new Map<string, number>();
+  const order: string[] = [];
+  if (trigger) {
+    depth.set(trigger.id, 0);
+    const queue = [trigger.id];
+    const visits = new Map<string, number>();
+    while (queue.length) {
+      const id = queue.shift()!;
+      if (!order.includes(id)) order.push(id);
+      for (const e of graph.edges) {
+        if (e.source !== id) continue;
+        const next = (depth.get(id) ?? 0) + 1;
+        if (next > (depth.get(e.target) ?? -1)) depth.set(e.target, next);
+        const count = (visits.get(e.target) ?? 0) + 1;
+        visits.set(e.target, count);
+        if (count <= graph.nodes.length) queue.push(e.target);
+      }
+    }
+  }
+  let last = Math.max(0, ...depth.values());
+  for (const node of graph.nodes) {
+    if (!depth.has(node.id)) {
+      depth.set(node.id, ++last);
+      order.push(node.id);
+    }
+  }
+  const columns = new Map<number, string[]>();
+  for (const id of order) {
+    const column = columns.get(depth.get(id)!) ?? [];
+    if (!column.includes(id)) column.push(id);
+    columns.set(depth.get(id)!, column);
+  }
+  const placed = new Map<string, { x: number; y: number }>();
+  for (const [d, ids] of columns) ids.forEach((id, i) => placed.set(id, { x: d * 280, y: Math.round((i - (ids.length - 1) / 2) * 160) }));
+  return placed;
 }
 
 export function toGraph(nodes: FlowNodeType[], edges: Edge[]): WorkflowGraph {

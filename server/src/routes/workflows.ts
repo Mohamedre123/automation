@@ -35,6 +35,11 @@ export function sanitizeGraph(input: unknown): WorkflowGraph {
       credentialId: typeof n.credentialId === "string" && n.credentialId ? n.credentialId : null,
       disabled: Boolean(n.disabled),
       continueOnFail: Boolean(n.continueOnFail),
+      // "Try again if it fails" - kept only when set, so a graph without it saves exactly as before.
+      ...(Number(n.retries) > 0 ? { retries: Math.min(Math.trunc(Number(n.retries)), 5) } : {}),
+      ...(Number(n.retries) > 0 && Number(n.retryWaitSeconds) > 0
+        ? { retryWaitSeconds: Math.min(Math.max(Number(n.retryWaitSeconds), 1), 120) }
+        : {}),
     };
   });
   const ids = new Set(nodes.map((n) => n.id));
