@@ -726,6 +726,7 @@ function EditorCanvas() {
             onClose={() => setSelectedId(null)}
             onCredentialCreated={(credential) => setCredentials((list) => [credential, ...list])}
             workflowId={id}
+            triggerType={triggerNode?.data.node.type}
           />
         )}
 

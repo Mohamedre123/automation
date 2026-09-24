@@ -21,6 +21,7 @@ export function NodePanel({
   onCredentialCreated,
   onAutoFill,
   workflowId,
+  triggerType,
 }: {
   node: WorkflowNode;
   step?: StepLog;
@@ -34,6 +35,8 @@ export function NodePanel({
   onAutoFill?: () => number;
   /** The scenario being edited - a chatbot step shows what it learned in this scenario. */
   workflowId?: string;
+  /** What starts the scenario - the chatbot guide depends on the channel customers write on. */
+  triggerType?: string;
 }) {
   const { nodeDef, credType } = useMeta();
   const [credentialModal, setCredentialModal] = useState(false);
@@ -184,7 +187,7 @@ export function NodePanel({
                 ),
               )}
 
-            {def.type === "ai.agent" && workflowId && <BotLearning workflowId={workflowId} enabled={node.params.learn !== false} />}
+            {def.type === "ai.agent" && workflowId && <BotLearning workflowId={workflowId} params={node.params} triggerType={triggerType} />}
 
             {def.kind !== "trigger" && (
               <>

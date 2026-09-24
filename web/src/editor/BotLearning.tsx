@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { timeAgo, useToast } from "../components/ui";
 import { Icon } from "../icons";
+import { LEARN_COMMANDS, learnChannel, learningSetup, learningTryIt, type LearnChannel } from "./learningGuide";
 
 /*
  * What the chatbot in this scenario has learned, shown inside the AI Agent step: every fact it keeps
@@ -36,7 +37,18 @@ const SOURCE: Record<Fact["source"], string> = {
   app: "كتبتها هنا",
 };
 
-export function BotLearning({ workflowId, enabled }: { workflowId: string; enabled: boolean }) {
+export function BotLearning({
+  workflowId,
+  params,
+  triggerType,
+}: {
+  workflowId: string;
+  /** The step's settings as they are right now, saved or not - the checklist follows the typing. */
+  params: Record<string, any>;
+  triggerType?: string;
+}) {
+  const enabled = params.learn !== false;
+  const channel = learnChannel(triggerType);
   const toast = useToast();
   const [data, setData] = useState<Learning | null>(null);
   const [error, setError] = useState("");
@@ -89,6 +101,13 @@ export function BotLearning({ workflowId, enabled }: { workflowId: string; enabl
         <div className="help">بيحمّل...</div>
       ) : (
         <>
+          {/* Starts open until it is set up and has learned something - then it stays out of the way. */}
+          <LearningGuide
+            channel={channel}
+            params={params}
+            defaultOpen={learningSetup(channel, params).some((s) => s.done === false) || data.facts.length === 0}
+          />
+
           {data.open.length > 0 && (
             <div className="learn-block">
               <div className="label">أسئلة عملاء مستنية إجابتك ({data.open.length})</div>
@@ -241,22 +260,65 @@ export function BotLearning({ workflowId, enabled }: { workflowId: string; enabl
             </div>
           </details>
 
-          <details className="learn-block">
-            <summary>تعلّمه إزاي من موبايلك</summary>
-            <div className="help learn-commands">
-              من رقمك انت (اللي في «رقمك انت» فوق)، ابعت للبوت:
-              <br />• <b>اتعلم:</b> المعلومة
-              <br />• <b>انسى:</b> الموضوع أو رقمه
-              <br />• <b>اللي اتعلمته</b> - يعرضلك كل حاجة بأرقامها
-              <br />• <b>الأسئلة</b> - الأسئلة اللي مستنية إجابتك
-              <br />• <b>رد 3:</b> الإجابة - توصل للعميل صاحب السؤال 3 ويحفظها
-              <br />
-              <br />
-              على واتساب WasenderAPI كمان: ردّ على العميل عادي من موبايلك، والبوت هيتعلم من ردك (فعّل Message Upsert في Webhooks بتاعة WasenderAPI)
-            </div>
-          </details>
+          {channel !== "other" && (
+            <details className="learn-block">
+              <summary>الأوامر اللي تبعتها للبوت من موبايلك</summary>
+              <div className="help">من رقمك انت بس (اللي في «رقمك انت»). أي عميل تاني يبعت نفس الكلام، البوت بيرد عليه عادي ومش بيتعلم منه</div>
+              <table className="learn-table">
+                <tbody>
+                  {LEARN_COMMANDS.map((c) => (
+                    <tr key={c.say}>
+                      <td>
+                        <code>{c.say}</code>
+                      </td>
+                      <td>{c.does}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
         </>
       )}
     </section>
+  );
+}
+
+/** The one-time setup, ticked off as it gets done, and a two-minute check with a second phone. */
+function LearningGuide({ channel, params, defaultOpen }: { channel: LearnChannel; params: Record<string, any>; defaultOpen: boolean }) {
+  // Decided once: finishing the last step while reading it must not snap it shut.
+  const [open, setOpen] = useState(defaultOpen);
+  const setup = learningSetup(channel, params);
+  const missing = setup.filter((s) => s.done === false).length;
+  return (
+    <details className="learn-guide" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>
+        <Icon name="info" size={15} />
+        <span>إزاي تشغّله خطوة بخطوة</span>
+        {missing > 0 && <span className="learn-missing">ناقص {missing}</span>}
+      </summary>
+      <p className="help" style={{ marginTop: 8 }}>
+        البوت بيرد من المعلومات اللي كتبتها. أول ما عميل يسأل حاجة مش فيها، ميألّفش: يقوله «هتأكد وأرد عليك» ويبعتلك السؤال. ترد انت، الإجابة
+        توصل للعميل، والبوت يحفظها ويرد بيها لوحده على اللي بعده. ومع الوقت بيبطّل يسألك.
+      </p>
+      <div className="learn-guide-title">مرة واحدة بس</div>
+      <ol className="learn-steps">
+        {setup.map((step, i) => (
+          <li key={i} className={step.done === true ? "done" : step.done === false ? "todo" : ""}>
+            <span className="learn-step-mark">{step.done ? <Icon name="check" size={12} /> : i + 1}</span>
+            <span>{step.text}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="learn-guide-title">جرّبه في دقيقتين</div>
+      <ol className="learn-steps plain">
+        {learningTryIt(channel).map((line, i) => (
+          <li key={i}>
+            <span className="learn-step-mark">{i + 1}</span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }

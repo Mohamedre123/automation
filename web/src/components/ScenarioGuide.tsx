@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
+import { learnChannel, learningSetup, learningTryIt } from "../editor/learningGuide";
 import type { CredentialTypeDef, FieldDef, NodeDefinition, WorkflowGraph, WorkflowNode } from "../types";
 import { AppIcon } from "./ui";
 
@@ -105,6 +106,21 @@ const startAdvice = (def: NodeDefinition | undefined, node: WorkflowNode | undef
       accounts: [],
     };
   }
+  // WhatsApp arrives as a webhook, but to the customer it is a chatbot like Telegram's - not a link to paste into a website.
+  if (def?.type === "wasender.trigger" || def?.type === "whatsapp.trigger") {
+    return {
+      ...manual,
+      lines: [
+        def.type === "wasender.trigger"
+          ? "دوس على خطوة «رسالة واتساب جديدة» وانسخ رابط الـ Webhook، وحطه في WasenderAPI ← الجلسة بتاعتك ← Webhooks، وعلّم على Message Received"
+          : "دوس على خطوة الواتساب وانسخ رابط الـ Webhook، وحطه في Meta for Developers ← WhatsApp ← Configuration في خانة Callback URL",
+        "فعّل السيناريو من زرار «متوقف / مفعّل» فوق",
+        "من موبايل تاني ابعت رسالة لرقم الواتساب - هتلاقي الرد وصل، وكل تشغيل بيتسجّل في «سجل التشغيل»",
+      ],
+      fill: [],
+      accounts: [],
+    };
+  }
   if (def?.triggerType === "app") {
     return {
       ...manual,
@@ -179,6 +195,36 @@ export function buildGuide(
       accounts: (def.credentialTypes ?? []).map((key) => credType(key)?.name ?? key),
     });
   });
+
+  // A chatbot that learns: what to set up once, and how to see it work.
+  const bot = nodes.find((node) => node.type === "ai.agent" && !node.disabled && node.params?.learn !== false);
+  if (bot) {
+    const channel = learnChannel(trigger?.type);
+    steps.push({
+      nodeId: bot.id,
+      kicker: "البوت بيتعلّم منك",
+      title: "خلّيه يتعلّم من ردودك",
+      app: "agent",
+      lines: [
+        "أي سؤال البوت ميعرفش إجابته بيبعتهولك بدل ما يألّف. ترد انت، الإجابة توصل للعميل، والبوت يحفظها ويرد بيها لوحده بعد كده",
+        // Only what is still left to do.
+        ...learningSetup(channel, bot.params ?? {})
+          .filter((step) => step.done !== true)
+          .map((step) => step.text),
+      ],
+      fill: [],
+      accounts: [],
+    });
+    steps.push({
+      nodeId: bot.id,
+      kicker: "البوت بيتعلّم منك",
+      title: "جرّبه في دقيقتين",
+      app: "agent",
+      lines: [...learningTryIt(channel), "كل اللي اتعلمه هتلاقيه في خطوة البوت تحت «اللي البوت اتعلمه» - تقدر تعدّله أو تمسحه في أي وقت"],
+      fill: [],
+      accounts: [],
+    });
+  }
 
   steps.push(startAdvice(trigger ? nodeDef(trigger.type) : undefined, trigger));
   return steps;

@@ -109,7 +109,7 @@ export const wasenderNodes: NodeDefinition[] = [
         key: "path",
         label: "رابط الـ Webhook",
         type: "readonly",
-        help: "انسخ الرابط ده وحطه في WasenderAPI ← Session ← Webhooks، وفعّل حدث Message Received",
+        help: "انسخ الرابط ده وحطه في WasenderAPI ← Session ← Webhooks، وفعّل حدث Message Received. ولو فيه بوت بيتعلّم في السيناريو، علّم كمان على Message Upsert عشان يشوف ردودك انت من موبايلك",
       },
       {
         key: "eventType",
