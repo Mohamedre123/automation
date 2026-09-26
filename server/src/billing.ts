@@ -319,6 +319,47 @@ export async function startTrial(userId: string, days = TRIAL_DAYS) {
   await setPlan(userId, "trial", "monthly", null, ends);
 }
 
+const PAID: PlanKey[] = ["core", "pro", "max"];
+
+/** Has this plan run out? A trial with no end date counts as over. */
+const planOver = (row: { plan: string; trial_ends_at: string | null; plan_expires_at: string | null }, nowIso: string) =>
+  (row.plan === "trial" && (!row.trial_ends_at || row.trial_ends_at <= nowIso)) ||
+  (PAID.includes(row.plan as PlanKey) && Boolean(row.plan_expires_at) && row.plan_expires_at! <= nowIso) ||
+  !PLANS[row.plan as PlanKey];
+
+/**
+ * A plan that ran out goes back to free, once - and a paid one says so by email. Both the
+ * scheduler's sweep and the account's own next visit can get here; whichever is first does it.
+ */
+async function endPlan(row: { id: string; email: string; name: string; plan: string }) {
+  const claimed = await run("UPDATE users SET plan = 'free' WHERE id = $1 AND plan = $2", [row.id, row.plan]);
+  if (!claimed) return false;
+  await setPlan(row.id, "free", "monthly", null);
+  if (PAID.includes(row.plan as PlanKey) && isConfigured(await mailSettings())) {
+    await sendQuietly(row.email, planEndedEmail(row.name, PLANS[row.plan as PlanKey].name), "plan ended");
+  }
+  return true;
+}
+
+/**
+ * Every account whose trial or subscription has ended, moved to free now. Without this an account
+ * only dropped to free the next time its owner opened the app - so the admin console kept calling
+ * it a trial, and its scenarios kept running on the trial's allowances.
+ */
+export async function expireEndedPlans(): Promise<number> {
+  const nowIso = now();
+  const ended = await query<{ id: string; email: string; name: string; plan: string }>(
+    `SELECT id, email, name, plan FROM users
+     WHERE (plan = 'trial' AND (trial_ends_at IS NULL OR trial_ends_at <= $1))
+        OR (plan IN ('core', 'pro', 'max') AND plan_expires_at IS NOT NULL AND plan_expires_at <= $1)
+     LIMIT 500`,
+    [nowIso],
+  );
+  let count = 0;
+  for (const row of ended) if (await endPlan(row)) count++;
+  return count;
+}
+
 /** Reads the account, applying anything that came due: trial end, plan expiry, monthly refill. */
 export async function getAccount(userId: string): Promise<Account> {
   let row = await one<AccountRow>(`SELECT ${ACCOUNT_COLUMNS} FROM users WHERE id = $1`, [userId]);
@@ -330,10 +371,9 @@ export async function getAccount(userId: string): Promise<Account> {
     await startTrial(userId);
     row = (await one<AccountRow>(`SELECT ${ACCOUNT_COLUMNS} FROM users WHERE id = $1`, [userId]))!;
   }
-  const trialOver = row.plan === "trial" && (!row.trial_ends_at || row.trial_ends_at <= nowIso);
-  const paidOver = ["core", "pro", "max"].includes(row.plan) && row.plan_expires_at && row.plan_expires_at <= nowIso;
-  if (trialOver || paidOver || !PLANS[row.plan as PlanKey]) {
-    await setPlan(userId, "free", "monthly", null);
+  if (planOver(row, nowIso)) {
+    // If the sweep got there a moment earlier, it is already done - just read it again.
+    await endPlan(row);
     row = (await one<AccountRow>(`SELECT ${ACCOUNT_COLUMNS} FROM users WHERE id = $1`, [userId]))!;
   } else if (row.plan !== "trial" && row.credits_reset_at && row.credits_reset_at <= nowIso) {
     // New month: credits refill to the plan's amount (unused credits don't pile up).
@@ -539,7 +579,6 @@ export async function runSubscriptionMail(): Promise<{ warned: number; ended: nu
   const soon = addDays(new Date(), 3);
   const nowIso = now();
   let warned = 0;
-  let ended = 0;
 
   const expiring = await query<{ id: string; email: string; name: string; plan: string; plan_expires_at: string }>(
     `SELECT id, email, name, plan, plan_expires_at FROM users
@@ -559,17 +598,9 @@ export async function runSubscriptionMail(): Promise<{ warned: number; ended: nu
     warned++;
   }
 
-  const over = await query<{ id: string; email: string; name: string; plan: string }>(
-    `SELECT id, email, name, plan FROM users
-     WHERE plan NOT IN ('free', 'trial') AND plan_expires_at IS NOT NULL AND plan_expires_at <= $1 AND plan_notice <> 'ended'
-     LIMIT 200`,
-    [nowIso],
-  );
-  for (const user of over) {
-    await run("UPDATE users SET plan_notice = 'ended' WHERE id = $1", [user.id]);
-    await sendQuietly(user.email, planEndedEmail(user.name, PLANS[user.plan as PlanKey]?.name ?? user.plan), "plan ended");
-    ended++;
-  }
+  // "Your plan ended" goes out with the move to free itself (endPlan) - by the time a plan is over it
+  // is already free here, so looking for ended paid plans would find nobody.
+  const ended = await expireEndedPlans();
   return { warned, ended };
 }
 
@@ -659,6 +690,8 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/admin/users", async () => {
+    // Show each account as it is now - a trial that ended yesterday is not a trial any more.
+    await expireEndedPlans();
     const rows = await query<AccountRow & { workflows: number; active_workflows: number; runs_30d: number }>(
       `SELECT ${ACCOUNT_COLUMNS.split(", ")
         .map((c) => `u.${c}`)

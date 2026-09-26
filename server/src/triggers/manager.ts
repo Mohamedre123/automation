@@ -25,7 +25,7 @@ import type {
 import { learnFromOwnerReply } from "../nodes/ai.js";
 import { getNode } from "../nodes/index.js";
 import { parsePublishAt, runScheduledPosts } from "../nodes/publishAll.js";
-import { runSubscriptionMail } from "../billing.js";
+import { expireEndedPlans, getAccount, runSubscriptionMail } from "../billing.js";
 import { cleanupRateLimits } from "../protection.js";
 import { errorMessage, sleep, toNumber } from "../nodes/util.js";
 
@@ -490,6 +490,18 @@ export async function syncLocalWorker(workflowId: string) {
 
 /* ---------- schedules ---------- */
 export async function runDueSchedules(limit = 25): Promise<number> {
+  // Plans that ran out drop to free before anything runs on them.
+  await expireEndedPlans().catch((e) => console.error("[plans] expiry sweep failed", e));
+  // The shortest gap each account's plan allows between runs - read once per account per tick.
+  const minGap = new Map<string, Promise<number>>();
+  const gapFor = (userId: string) => {
+    let gap = minGap.get(userId);
+    if (!gap) {
+      gap = getAccount(userId).then((a) => (a.isAdmin ? 0 : a.plan.minIntervalMinutes * 60_000), () => 0);
+      minGap.set(userId, gap);
+    }
+    return gap;
+  };
   const due = await query(
     `SELECT * FROM workflows WHERE active = 1 AND trigger_type = 'schedule' AND next_run_at IS NOT NULL AND next_run_at <= $1
      ORDER BY next_run_at LIMIT $2`,
@@ -506,6 +518,9 @@ export async function runDueSchedules(limit = 25): Promise<number> {
     } catch (e) {
       await setTriggerError(row.id, errorMessage(e));
     }
+    // A scenario set to run every minute on a trial keeps to the plan it is on now (free: every 15).
+    const gap = await gapFor(row.user_id);
+    if (next && gap && Date.parse(next) < Date.now() + gap) next = new Date(Date.now() + gap).toISOString();
     // Claim the slot so overlapping ticks never run it twice.
     const claimed = await run("UPDATE workflows SET next_run_at = $1 WHERE id = $2 AND next_run_at = $3", [next, row.id, row.next_run_at]);
     if (!claimed) continue;
