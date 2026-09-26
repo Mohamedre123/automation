@@ -25,42 +25,50 @@ Gmail بـ App Password كان هيشتغل، بس:
 Resend عكس ده: بتبعت بـ HTTP API عادي، من دومينك انت، وباقة مجانية 3,000 إيميل في الشهر
 (100 في اليوم) — أكتر من كفاية في البداية.
 
-### الخطوات (نفّذها أول ما تشتري الدومين)
+### الخطوات لـ tadfuqai.com
+
+> **مهم:** الدومين متوصّل بـ Vercel عن طريق **Nameservers**، فكل سجلات الـ DNS بقت بتتحط في
+> **Vercel** مش في Hostinger. أي سجل تضيفه في Hostinger دلوقتي مش هيشتغل.
 
 1. **اعمل حساب** على [resend.com](https://resend.com) — مجاني، من غير بطاقة.
 
-2. **ضيف الدومين**: من القائمة → **Domains** → **Add Domain** → اكتب دومينك (مثلاً `tadfuq.com`)
-   واختار المنطقة الأقرب.
+2. **ضيف الدومين**: من القائمة → **Domains** → **Add Domain** → اكتب `tadfuqai.com`، واختار المنطقة
+   **Ireland (eu-west-1)** — نفس منطقة السيرفر وقاعدة البيانات.
 
-3. **حط سجلات الـ DNS**: Resend هتديك 3 سجلات. ادخل على اللي شاريت منه الدومين (Namecheap،
-   GoDaddy، Cloudflare…) → DNS → وضيفهم زي ما هما بالظبط:
+3. **حط سجلات الـ DNS في Vercel**: Resend هتعرضلك 3 سجلات. افتح [vercel.com](https://vercel.com) →
+   من فوق **Domains** (صفحة الفريق، مش إعدادات المشروع) → دوس على `tadfuqai.com` → **DNS Records** →
+   **Add Record**، وضيف كل سجل لوحده:
 
-   | النوع | الاسم | القيمة |
-   |-------|-------|--------|
-   | MX    | `send` | `feedback-smtp.<region>.amazonses.com` (بأولوية 10) |
-   | TXT   | `send` | `v=spf1 include:amazonses.com ~all` |
-   | TXT   | `resend._domainkey` | المفتاح الطويل اللي Resend هتديهولك |
+   | Type | Name | Value | Priority |
+   |------|------|-------|----------|
+   | MX   | `send` | `feedback-smtp.eu-west-1.amazonses.com` | 10 |
+   | TXT  | `send` | `v=spf1 include:amazonses.com ~all` | — |
+   | TXT  | `resend._domainkey` | المفتاح الطويل اللي Resend هتديهولك | — |
 
-   > انسخ القيم من صفحة Resend نفسها — المنطقة والمفتاح بيختلفوا من حساب للتاني.
+   - في خانة **Name** اكتب الجزء اللي قبل الدومين بس (`send` مش `send.tadfuqai.com`) — Vercel بيكمّله لوحده.
+   - انسخ القيم من صفحة Resend نفسها — المفتاح بيختلف من حساب للتاني.
+   - السجلات دي على `send` و`resend._domainkey` بس، فمش هتأثر على الموقع نفسه.
 
-4. **استنى التوثيق**: ارجع لصفحة Domains ودوس **Verify**. الحالة لازم تبقى **Verified**
-   (عادة دقايق، ممكن توصل لـ 48 ساعة لو الـ DNS بطيء).
+4. **استنى التوثيق**: ارجع لـ Resend → Domains → **Verify**. الحالة لازم تبقى **Verified**
+   (مع Vercel عادة دقايق).
 
-5. **زوّد DMARC** (مهم عشان الإيميل يدخل الوارد مش السبام):
+5. **زوّد DMARC** (عشان الإيميل يدخل الوارد مش السبام) — في Vercel برضو:
 
-   | النوع | الاسم | القيمة |
-   |-------|-------|--------|
-   | TXT   | `_dmarc` | `v=DMARC1; p=none; rua=mailto:you@yourdomain.com` |
+   | Type | Name | Value |
+   |------|------|-------|
+   | TXT  | `_dmarc` | `v=DMARC1; p=none; rua=mailto:your-email@gmail.com` |
 
-6. **اعمل مفتاح**: **API Keys** → **Create API Key** → الصلاحية **Sending access** → انسخه
+6. **اعمل مفتاح**: Resend → **API Keys** → **Create API Key** → الصلاحية **Sending access** → انسخه
    (بيبدأ بـ `re_`). المفتاح بيظهر مرة واحدة بس.
 
-7. **حطه في المنصة**: ادخل المنصة بحساب الأدمن → **لوحة الأدمن** → كارت **إيميل المنصة**:
+7. **حطه في المنصة**: ادخل على `https://tadfuqai.com` بحساب الأدمن → **لوحة الأدمن** → كارت **إيميل المنصة**:
    - اختار **Resend**
    - الصق الـ API Key
-   - **الإيميل اللي بيبعت**: `no-reply@yourdomain.com`
+   - **الإيميل اللي بيبعت**: `no-reply@tadfuqai.com`
    - **اسم المرسل**: تدفّق
-   - **الرد يروح فين**: `support@yourdomain.com` (اختياري)
+   - **الرد يروح فين**: إيميلك انت (الـ Gmail). Resend بتبعت بس، مفيش صندوق وارد على tadfuqai.com.
+     لو حبيت يبقى عندك `hello@tadfuqai.com` بيوصل على الـ Gmail، استخدم خدمة تحويل مجانية زي
+     ImprovMX وحط سجلاتها في Vercel برضو.
    - دوس **جرّب واحفظ**
 
    هيتبعت إيميل تجربة على إيميلك. لو وصل، بيتحفظ. لو مجاش، الرسالة هتقولك السبب بالظبط
@@ -72,9 +80,9 @@ Resend عكس ده: بتبعت بـ HTTP API عادي، من دومينك انت
 
 ```
 RESEND_API_KEY=re_xxxxxxxxxxxx
-MAIL_FROM=no-reply@yourdomain.com
+MAIL_FROM=no-reply@tadfuqai.com
 MAIL_FROM_NAME=تدفّق
-MAIL_REPLY_TO=support@yourdomain.com
+MAIL_REPLY_TO=your-email@gmail.com
 ```
 
 اللي في اللوحة بيغلب اللي في متغيرات البيئة.

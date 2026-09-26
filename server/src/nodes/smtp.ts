@@ -1,6 +1,16 @@
 import net from "node:net";
 import tls from "node:tls";
+import { config } from "../config.js";
 import type { CredentialType, CredentialValue, NodeDefinition } from "../engine/types.js";
+
+/** How the platform introduces itself to a mail server: its own address, not a domain it does not own. */
+const HELLO_NAME = (() => {
+  try {
+    return new URL(config.publicUrl).hostname || "localhost";
+  } catch {
+    return "localhost";
+  }
+})();
 
 /*
  * Plain SMTP (with a password / app password): Gmail, Outlook, Zoho, Hostinger, cPanel mail...
@@ -107,12 +117,12 @@ async function session(credential: CredentialValue | undefined, signal: AbortSig
   const smtp = new SmtpConnection(await connect(host, port, signal, implicitTls));
   try {
     await smtp.command(null, [220], "greeting");
-    let ehlo = await smtp.command("EHLO tadfuq.app", [250], "EHLO");
+    let ehlo = await smtp.command(`EHLO ${HELLO_NAME}`, [250], "EHLO");
     if (!implicitTls) {
       if (!ehlo.some((line) => /STARTTLS/i.test(line))) throw new Error("سيرفر الإيميل مش بيدعم تشفير STARTTLS - جرّب بورت 465");
       await smtp.command("STARTTLS", [220], "STARTTLS");
       await smtp.upgrade(host);
-      ehlo = await smtp.command("EHLO tadfuq.app", [250], "EHLO");
+      ehlo = await smtp.command(`EHLO ${HELLO_NAME}`, [250], "EHLO");
     }
     if (ehlo.some((line) => /AUTH[ =].*PLAIN/i.test(line))) {
       await smtp.command(`AUTH PLAIN ${Buffer.from(`\0${user}\0${password}`).toString("base64")}`, [235], "login", true);
@@ -142,7 +152,7 @@ export async function sendSmtpMail(
       await smtp.command(`RCPT TO:<${address(recipient)}>`, [250, 251], `RCPT ${recipient}`);
     }
     await smtp.command("DATA", [354], "DATA");
-    const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${address(user).split("@")[1] ?? "tadfuq.app"}>`;
+    const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${address(user).split("@")[1] ?? HELLO_NAME}>`;
     const headers = [
       `From: ${from}`,
       `To: ${mail.to.join(", ")}`,

@@ -12,6 +12,19 @@
       "maxDuration": 300
     }
   },
+  "redirects": [
+    {
+      "source": "/((?!api/|webhook/|mcp/|media/|assets/).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "automation-server-chi.vercel.app"
+        }
+      ],
+      "destination": "https://tadfuqai.com/$1",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -24,6 +37,10 @@
     {
       "source": "/mcp/(.+)",
       "destination": "/api?__route=/mcp/$1"
+    },
+    {
+      "source": "/media/(.+)",
+      "destination": "/api?__route=/media/$1"
     },
     {
       "source": "/((?!assets/).*)",

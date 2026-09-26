@@ -15,7 +15,7 @@ import {
   type EdgeChange,
   type NodeChange,
 } from "@xyflow/react";
-import { api } from "../api";
+import { api, siteUrl } from "../api";
 import { GuideLauncher } from "../components/ScenarioGuide";
 import { Modal, Spinner, StatusBadge, Toggle, copyText, formatDuration, modeLabels, timeAgo, useToast } from "../components/ui";
 import { useMeta } from "../context";
@@ -561,13 +561,13 @@ function EditorCanvas() {
           <div className="form-link-pill">
             <Icon name="form" size={15} />
             <span className="truncate">{workflow.active ? "الفورم شغال - ابعت الرابط لأي حد" : "رابط الفورم (فعّل السيناريو عشان يشتغل على طول)"}</span>
-            <a className="btn sm" href={`${window.location.origin}/form/${String(triggerNode.data.node.params.path)}`} target="_blank" rel="noreferrer">
+            <a className="btn sm" href={`${siteUrl(meta.publicUrl)}/form/${String(triggerNode.data.node.params.path)}`} target="_blank" rel="noreferrer">
               افتح الفورم
             </a>
             <button
               className="btn sm"
               onClick={async () => {
-                if (await copyText(`${window.location.origin}/form/${String(triggerNode.data.node.params.path)}`)) toast("رابط الفورم اتنسخ", "success");
+                if (await copyText(`${siteUrl(meta.publicUrl)}/form/${String(triggerNode.data.node.params.path)}`)) toast("رابط الفورم اتنسخ", "success");
               }}
             >
               <Icon name="copy" size={14} /> نسخ
@@ -587,7 +587,7 @@ function EditorCanvas() {
                       <a
                         className="btn primary sm"
                         style={{ marginTop: 8 }}
-                        href={`${window.location.origin}/form/${triggerNode.data.node.params.path ?? ""}`}
+                        href={`${siteUrl(meta.publicUrl)}/form/${triggerNode.data.node.params.path ?? ""}`}
                         target="_blank"
                         rel="noreferrer"
                       >

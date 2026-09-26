@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { api } from "../api";
+import { api, siteUrl } from "../api";
 import { AppIcon, Toggle, copyText, useToast } from "../components/ui";
 import { useMeta } from "../context";
 import { Icon } from "../icons";
@@ -572,7 +572,7 @@ export function FieldInput({
 
   switch (field.type) {
     case "readonly": {
-      const url = `${field.urlKind === "form" ? window.location.origin : meta.publicUrl}/${field.urlKind === "form" ? "form" : "webhook"}/${text}`;
+      const url = `${field.urlKind === "form" ? siteUrl(meta.publicUrl) : meta.publicUrl}/${field.urlKind === "form" ? "form" : "webhook"}/${text}`;
       return (
         <div className="copy-box">
           <input className="input mono" readOnly value={text ? url : "احفظ السيناريو عشان يتعمل الرابط"} onFocus={(e) => e.target.select()} />

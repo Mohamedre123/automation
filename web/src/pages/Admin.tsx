@@ -245,7 +245,12 @@ export function Admin() {
  * heartbeat is shown here with what to do when it stops.
  */
 function SchedulerCard() {
-  const [health, setHealth] = useState<{ webhooksReachable?: boolean; minutesSinceTick?: number | null; lastTickAt?: string | null } | null>(null);
+  const [health, setHealth] = useState<{
+    webhooksReachable?: boolean;
+    minutesSinceTick?: number | null;
+    lastTickAt?: string | null;
+    publicUrl?: string;
+  } | null>(null);
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
@@ -255,6 +260,11 @@ function SchedulerCard() {
   if (!health) return null;
   const minutes = health.minutesSinceTick;
   const stalled = minutes === null || minutes === undefined || minutes > 15;
+  // Every link the platform hands out (forms, webhooks, MCP, emails, images) is built from its public
+  // address. If that is not the domain the site is served on, those links point somewhere else.
+  const publicHost = health.publicUrl ? new URL(health.publicUrl).host : "";
+  const local = /localhost|127\.0\.0\.1/.test(location.host);
+  const addressWrong = !local && Boolean(publicHost) && publicHost !== location.host;
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 22 }}>
@@ -280,7 +290,32 @@ function SchedulerCard() {
             </div>
           </div>
         </div>
+        <div className="ov-row">
+          <Icon name="globe" size={17} style={{ color: addressWrong ? "var(--danger)" : "var(--success)", flexShrink: 0 }} />
+          <div className="grow">
+            <div>عنوان المنصة في الروابط</div>
+            <div dir="auto">
+              {addressWrong
+                ? `الروابط بتطلع على ${publicHost} - وانت فاتح على ${location.host}`
+                : `كل الروابط بتطلع على ${publicHost || location.host}`}
+            </div>
+          </div>
+        </div>
       </div>
+      {addressWrong && (
+        <div className="guide-note" style={{ marginTop: 12, display: "block" }}>
+          <strong style={{ display: "block", marginBottom: 6 }}>روابط الفورم والـ Webhook وMCP والإيميلات بتطلع على العنوان القديم</strong>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.95, color: "var(--text-2)" }}>
+            في Vercel ← المشروع ← Settings ← Environment Variables غيّر PUBLIC_URL (أو APP_URL لو ده اللي موجود) لـ
+            <br />
+            <span className="mono" dir="ltr" style={{ fontSize: 12.5 }}>
+              https://{location.host}
+            </span>
+            <br />
+            وبعدها Deployments ← آخر نشر ← ⋮ ← Redeploy. العنوان لازم يكون اللي بيفتح على طول من غير ما يحوّل لعنوان تاني
+          </p>
+        </div>
+      )}
       {stalled && (
         <div className="guide-note" style={{ marginTop: 12, display: "block" }}>
           <strong style={{ display: "block", marginBottom: 6 }}>عشان المواعيد تشتغل بالدقيقة</strong>
