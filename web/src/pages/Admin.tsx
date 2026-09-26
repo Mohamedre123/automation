@@ -244,15 +244,25 @@ export function Admin() {
  * need it - they arrive on their own - but a schedule that nobody is ticking is silent, so the
  * heartbeat is shown here with what to do when it stops.
  */
+/** The host of an address, or the text itself when it is not a full URL. */
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+
 function SchedulerCard() {
   const [health, setHealth] = useState<{
     webhooksReachable?: boolean;
     minutesSinceTick?: number | null;
     lastTickAt?: string | null;
     publicUrl?: string;
+    publicUrlRedirectsTo?: string | null;
   } | null>(null);
   useEffect(() => {
-    fetch("/api/health")
+    fetch("/api/health?check=address")
       .then((r) => r.json())
       .then(setHealth)
       .catch(() => {});
@@ -264,7 +274,9 @@ function SchedulerCard() {
   // address. If that is not the domain the site is served on, those links point somewhere else.
   const publicHost = health.publicUrl ? new URL(health.publicUrl).host : "";
   const local = /localhost|127\.0\.0\.1/.test(location.host);
-  const addressWrong = !local && Boolean(publicHost) && publicHost !== location.host;
+  // Worse than a mismatch: the address itself redirects, and webhooks, MCP and the cron pinger stop at the redirect.
+  const redirectHost = health.publicUrlRedirectsTo ? hostOf(health.publicUrlRedirectsTo) : "";
+  const addressWrong = !local && Boolean(publicHost) && (Boolean(redirectHost) || publicHost !== location.host);
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 22 }}>
@@ -295,26 +307,43 @@ function SchedulerCard() {
           <div className="grow">
             <div>عنوان المنصة في الروابط</div>
             <div dir="auto">
-              {addressWrong
-                ? `الروابط بتطلع على ${publicHost} - وانت فاتح على ${location.host}`
-                : `كل الروابط بتطلع على ${publicHost || location.host}`}
+              {redirectHost
+                ? `الروابط بتطلع على ${publicHost} - بس العنوان ده بيحوّل لـ ${redirectHost}`
+                : addressWrong
+                  ? `الروابط بتطلع على ${publicHost} - وانت فاتح على ${location.host}`
+                  : `كل الروابط بتطلع على ${publicHost || location.host}`}
             </div>
           </div>
         </div>
       </div>
-      {addressWrong && (
+      {redirectHost ? (
         <div className="guide-note" style={{ marginTop: 12, display: "block" }}>
-          <strong style={{ display: "block", marginBottom: 6 }}>روابط الفورم والـ Webhook وMCP والإيميلات بتطلع على العنوان القديم</strong>
+          <strong style={{ display: "block", marginBottom: 6 }}>
+            العنوان {publicHost} بيحوّل لعنوان تاني - البوتات والجدولة وروابط MCP الجديدة مش هتوصل
+          </strong>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.95, color: "var(--text-2)" }}>
-            في Vercel ← المشروع ← Settings ← Environment Variables غيّر PUBLIC_URL (أو APP_URL لو ده اللي موجود) لـ
+            واتساب وتيليجرام وcron-job.org مش بيمشوا ورا التحويل. الحل من Vercel ← المشروع ← Settings ← Domains:
+            <br />• جنب <span dir="ltr">{publicHost}</span> دوس Edit ← Connect to an environment ← Production ← Save
+            <br />• جنب <span dir="ltr">{redirectHost}</span> دوس Edit ← Redirect to Another Domain ← <span dir="ltr">{publicHost}</span> ← Save
             <br />
-            <span className="mono" dir="ltr" style={{ fontSize: 12.5 }}>
-              https://{location.host}
-            </span>
-            <br />
-            وبعدها Deployments ← آخر نشر ← ⋮ ← Redeploy. العنوان لازم يكون اللي بيفتح على طول من غير ما يحوّل لعنوان تاني
+            الحل التاني: تخلي عنوان المنصة <span dir="ltr">https://{redirectHost}</span> في متغير APP_URL (نوعه Config مش Secret) وتعمل Redeploy
           </p>
         </div>
+      ) : (
+        addressWrong && (
+          <div className="guide-note" style={{ marginTop: 12, display: "block" }}>
+            <strong style={{ display: "block", marginBottom: 6 }}>روابط الفورم والـ Webhook وMCP والإيميلات بتطلع على عنوان تاني</strong>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.95, color: "var(--text-2)" }}>
+              في Vercel ← المشروع ← Settings ← Environment Variables خلّي APP_URL (نوعه Config مش Secret) =
+              <br />
+              <span className="mono" dir="ltr" style={{ fontSize: 12.5 }}>
+                https://{location.host}
+              </span>
+              <br />
+              وبعدها Deployments ← آخر نشر ← ⋮ ← Redeploy. العنوان لازم يكون اللي بيفتح على طول من غير ما يحوّل لعنوان تاني
+            </p>
+          </div>
+        )
       )}
       {stalled && (
         <div className="guide-note" style={{ marginTop: 12, display: "block" }}>

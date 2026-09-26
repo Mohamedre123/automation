@@ -44,13 +44,24 @@ export async function buildApp() {
   registerProtection(app);
 
   // Always answers, so a broken database or missing env var is visible instead of a blank 500.
-  app.get("/api/health", async () => {
+  app.get("/api/health", async (req) => {
     const health: Record<string, unknown> = {
       ok: true,
       publicUrl: config.publicUrl,
       webhooksReachable: config.receivesWebhooks,
       scheduler: config.cronSecret ? "ready" : "CRON_SECRET مش متضبط",
     };
+    // Asked for by the admin console: does the public address answer, or does the host redirect it?
+    // Every webhook, MCP and scheduler link is built on it, and WhatsApp, Telegram and cron pingers
+    // do not follow redirects - a redirecting address silently stops all of them.
+    if ((req.query as { check?: string })?.check === "address" && config.receivesWebhooks) {
+      try {
+        const res = await fetch(`${config.publicUrl}/api/health`, { redirect: "manual", signal: AbortSignal.timeout(6000) });
+        health.publicUrlRedirectsTo = res.status >= 300 && res.status < 400 ? (res.headers.get("location") ?? "?") : null;
+      } catch {
+        health.publicUrlRedirectsTo = null;
+      }
+    }
     try {
       await ensureDatabase();
       health.database = "connected";

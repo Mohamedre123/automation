@@ -36,8 +36,9 @@
 ### 2. غيّر `PUBLIC_URL` في Vercel
 
 1. Vercel → المشروع → **Settings** → **Environment Variables**
-2. دوّر على `PUBLIC_URL` → **Edit** → خليه `https://tadfuqai.com` (من غير `/` في الآخر) → **Save**
-3. لو لقيت كمان `APP_URL` → غيّره لنفس القيمة، أو امسحه
+2. الأسهل تعدّل `APP_URL` (غالباً ده اللي موجود) → **Edit** → `https://tadfuqai.com` (من غير `/` في الآخر) → **Save**
+3. لو بتضيف `PUBLIC_URL` جديد: اختار النوع **Config** مش **Secret** — Vercel بيرفض أي متغير
+   بيبدأ بـ `PUBLIC_` لو نوعه Secret. (العنوان مش سر أصلاً.)
 4. **مهم:** التغيير مش بيشتغل غير بعد نشر جديد: **Deployments** → آخر نشر → **⋯** → **Redeploy**
 
 ### 3. اتأكد إنه اشتغل
