@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { errorText } from "../api";
 import { Link, useParams } from "react-router-dom";
 import { Spinner } from "../components/ui";
 import { ThemeToggle } from "../components/UserMenu";
@@ -66,7 +67,7 @@ export function FormPage() {
       if (!response.ok) throw new Error(data.error ?? "رفع الصورة فشل");
       setValues((v) => ({ ...v, [key]: data.url }));
     } catch (err) {
-      setResult({ ok: false, text: (err as Error).message, images: [] });
+      setResult({ ok: false, text: errorText(err), images: [] });
     } finally {
       setUploading((u) => ({ ...u, [key]: false }));
     }
@@ -79,7 +80,7 @@ export function FormPage() {
         if (!r.ok) throw new Error(data.error ?? "الفورم مش متاح");
         setForm(data);
       })
-      .catch((e: Error) => setLoadError(e.message));
+      .catch((e: Error) => setLoadError(errorText(e)));
   }, [path]);
 
   const submit = async (e: FormEvent) => {
@@ -112,7 +113,7 @@ export function FormPage() {
         images,
       });
     } catch (err) {
-      setResult({ ok: false, text: (err as Error).message, images: [] });
+      setResult({ ok: false, text: errorText(err), images: [] });
     } finally {
       setSending(false);
     }

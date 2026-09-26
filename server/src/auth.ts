@@ -110,7 +110,8 @@ export async function authRoutes(app: FastifyInstance) {
       ]);
     }
     if (!mail) return signedIn(id, email, name);
-    await sendCode(id, email, name, "register", mail);
+    // Pressed twice, or came back a moment later: the code already in the inbox still works - go to it.
+    await sendCode(id, email, name, "register", mail, true);
     return { verify: true, email };
   });
 

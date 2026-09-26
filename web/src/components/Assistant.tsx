@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { api, tokenStore } from "../api";
+import { api, errorText, tokenStore } from "../api";
 import { useAccount } from "../context";
 import { Icon } from "../icons";
 import { Spinner, timeAgo } from "./ui";
@@ -310,7 +310,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
       const stopped = controller.signal.aborted;
       patchLast((message) => ({
         ...message,
-        text: stopped ? message.text || "اتوقف الرد" : `${message.text ? `${message.text}\n\n` : ""}${(e as Error).message}`,
+        text: stopped ? message.text || "اتوقف الرد" : `${message.text ? `${message.text}\n\n` : ""}${errorText(e)}`,
         error: !stopped,
       }));
     } finally {
